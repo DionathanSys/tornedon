@@ -7,21 +7,15 @@ use App\Enum\Payment\Method;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\RemoveDraftSourceAction;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\ServiceOrderResource;
+use App\Filament\Forms\Components\PaymentConditionFields;
 use BackedEnum;
-use Filament\Actions\AssociateAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
@@ -93,7 +87,7 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->default(0.0),
                 Select::make('payment_method')
                     ->options(Method::class),
-                \App\Filament\Forms\Components\PaymentConditionFields::make(),
+                PaymentConditionFields::make(),
                 Select::make('payment_condition')->live()
                     ->options(Condition::class),
                 Select::make('technician_id')
@@ -124,12 +118,12 @@ class ServiceOrdersRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('number')
-            ->recordUrl(fn($record) => ServiceOrderResource::getUrl('edit', ['record' => $record]), true)
+            ->recordUrl(fn ($record) => ServiceOrderResource::getUrl('edit', ['record' => $record]), true)
             ->columns([
                 TextColumn::make('number')
                     ->label('Nº')
                     ->searchable(),
-                TextColumn::make('customer.name')   
+                TextColumn::make('customer.name')
                     ->label('Cliente')
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('quote.id')
@@ -170,18 +164,18 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                     ->badge()
-                    ->formatStateUsing(fn(State $state) => $state->description())
-                    ->color(fn(State $state) => $state->color())
+                    ->formatStateUsing(fn (State $state) => $state->description())
+                    ->color(fn (State $state) => $state->color())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('priority')
                     ->label('Prioridade')
-                    ->formatStateUsing(fn(Priority $state) => $state->description())
+                    ->formatStateUsing(fn (Priority $state) => $state->description())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('type')
                     ->label('Tipo')
-                    ->formatStateUsing(fn(Type $state) => $state->description())
+                    ->formatStateUsing(fn (Type $state) => $state->description())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('equipment.name')
@@ -210,11 +204,11 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('payment_method')
                     ->label('Forma de Pagto')
-                    ->formatStateUsing(fn(Method $state) => $state->description())
+                    ->formatStateUsing(fn (Method $state) => $state->description())
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('payment_condition')
                     ->label('Condição de Pagamento')
-                    ->formatStateUsing(fn(Condition $state) => $state->description())
+                    ->formatStateUsing(fn (Condition $state) => $state->description())
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('technician.name')
@@ -273,6 +267,7 @@ class ServiceOrdersRelationManager extends RelationManager
             ->headerActions([
             ])
             ->recordActions([
+                RemoveDraftSourceAction::make(),
             ])
             ->toolbarActions([
             ]);

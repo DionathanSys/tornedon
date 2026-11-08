@@ -2,12 +2,14 @@
 
 namespace App\Services\Invoice\Actions;
 
+use App\Enum\Invoice\InvoiceAction;
 use App\Enum\ProductionOrder\Status as ProductionOrderStatus;
 use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Enum\ServiceOrder\State as ServiceOrderState;
 use App\Models\Invoice;
 use App\Models\User;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Invoice\InvoiceActionEligibilityService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -110,9 +112,7 @@ class DeleteInvoiceAction
 
         foreach ($this->invoice->requisitions()->where('company_id', $this->invoice->company_id)->lockForUpdate()->get() as $requisition) {
             $requisition->update([
-                'status' => $requisition->status === RequisitionStatus::INVOICED
-                    ? ($requisition->status_before_invoicing ?? RequisitionStatus::CLOSED)
-                    : $requisition->status,
+                'status' => RequisitionStatus::CLOSED,
                 'invoice_id' => null,
                 'invoiced_at' => null,
                 'status_before_invoicing' => null,
@@ -131,6 +131,12 @@ class DeleteInvoiceAction
 
     private function validateCanDelete(): bool
     {
+        $eligibility = app(InvoiceActionEligibilityService::class)->evaluate($this->invoice, InvoiceAction::DELETE);
+        if (! $eligibility['allowed']) {
+            $this->setError(implode(' ', array_column($eligibility['blockers'], 'message')));
+
+            return false;
+        }
         $user = User::query()->find($this->deletedBy);
 
         if (! $user || ! $user->belongsToCompany($this->invoice->company_id)) {

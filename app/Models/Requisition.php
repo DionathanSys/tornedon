@@ -6,6 +6,7 @@ use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Enum\Requisition\Status;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\ProtectsInvoiceComposition;
 use App\Services\Requisition\States\RequisitionState;
 use App\Services\Requisition\States\StateResolver;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Requisition extends Model
 {
     use HasAttachments;
+    use ProtectsInvoiceComposition;
 
     private ?array $resolvedItemsAmounts = null;
 

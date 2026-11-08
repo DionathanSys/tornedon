@@ -8,9 +8,11 @@ use App\Enum\FiscalDocument\FreightModality;
 use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
+use App\Enum\Invoice\InvoiceAction;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
+use App\Exceptions\FinancialTransactionFailed;
 use App\Jobs\ScheduleBankSlipIssuanceJob;
 use App\Jobs\SchedulePixChargeIssuanceJob;
 use App\Models\AccountReceivable;
@@ -21,13 +23,17 @@ use App\Models\Invoice;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfseConfigService;
+use App\Services\Invoice\InvoiceActionEligibilityService;
+use App\Services\Invoice\InvoiceCompositionService;
 use App\Services\Invoice\InvoiceService;
 use App\Support\Financial\InstallmentSchedule;
 use App\Support\Financial\PaymentTerms;
 use App\Traits\HandlesActionResponse;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ConfirmInvoiceAction
@@ -42,6 +48,24 @@ class ConfirmInvoiceAction
     public function execute(array $data, bool $generateFiscalDocuments = true): ?array
     {
         try {
+            return DB::transaction(function () use ($data, $generateFiscalDocuments): array {
+                $this->invoice = Invoice::where('company_id', $this->invoice->company_id)->lockForUpdate()->findOrFail($this->invoice->id);
+                $result = $this->perform($data, $generateFiscalDocuments);
+                if ($result === null) {
+                    throw new FinancialTransactionFailed(null);
+                }
+
+                return $result;
+            });
+        } catch (FinancialTransactionFailed) {
+            return null;
+        }
+    }
+
+    private function perform(array $data, bool $generateFiscalDocuments): ?array
+    {
+        try {
+            app(InvoiceActionEligibilityService::class)->ensureAllowed($this->invoice, InvoiceAction::CONFIRM);
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($this->invoice);
 
@@ -107,7 +131,8 @@ class ConfirmInvoiceAction
                 $fiscalDocument = $invoiceService->createFiscalDocument(
                     $this->invoice,
                     $this->buildFiscalData($documentType, $data),
-                    $this->confirmedBy
+                    $this->confirmedBy,
+                    confirmInvoice: false,
                 );
 
                 if ($invoiceService->hasError() || $fiscalDocument === null) {
@@ -147,6 +172,9 @@ class ConfirmInvoiceAction
             if ($paymentsCount === null) {
                 return null;
             }
+
+            app(InvoiceCompositionService::class)->capture($this->invoice, $this->confirmedBy);
+            $this->invoice->unsetRelation('latestConfirmation');
 
             $this->invoice->update([
                 'status' => InvoiceStatus::CONFIRMED->value,
@@ -197,6 +225,10 @@ class ConfirmInvoiceAction
             $this->setSuccess();
 
             return $result;
+        } catch (ValidationException $e) {
+            $this->setError($e->getMessage(), $e->errors());
+
+            return null;
         } catch (Throwable $e) {
             $this->setError('Erro inesperado ao confirmar fatura');
 

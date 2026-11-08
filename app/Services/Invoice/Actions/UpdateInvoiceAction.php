@@ -2,8 +2,10 @@
 
 namespace App\Services\Invoice\Actions;
 
+use App\Enum\Invoice\InvoiceAction;
 use App\Models\Invoice;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Invoice\InvoiceActionEligibilityService;
 use App\Services\Invoice\Validators\InvoiceValidator;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
@@ -22,6 +24,17 @@ class UpdateInvoiceAction
     public function execute(array $data): ?Invoice
     {
         try {
+            app(InvoiceActionEligibilityService::class)->ensureAllowed($this->invoice, InvoiceAction::EDIT_COMPOSITION);
+            foreach (['status', 'pending', 'confirmed', 'canceled'] as $field) {
+                if (array_key_exists($field, $data)) {
+                    $current = $this->invoice->{$field};
+                    $current = $current instanceof \BackedEnum ? $current->value : $current;
+                    $requested = $data[$field] instanceof \BackedEnum ? $data[$field]->value : $data[$field];
+                    if ($requested != $current) {
+                        throw ValidationException::withMessages([$field => 'Utilize a ação específica para alterar a situação da fatura.']);
+                    }
+                }
+            }
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($this->invoice);
 

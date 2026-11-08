@@ -109,6 +109,7 @@ class InvoiceService
 
         try {
             return $this->financialTransaction(function () use ($invoice, $data, $updatedBy) {
+                $invoice = Invoice::where('company_id', $invoice->company_id)->lockForUpdate()->findOrFail($invoice->id);
                 $action = new UpdateInvoiceAction($updatedBy, $invoice);
                 $updated = $action->execute($data);
 
@@ -369,12 +370,16 @@ class InvoiceService
      * Cria um documento fiscal (NF-e) a partir da fatura, importando os itens das
      * requisições e ordens de serviço vinculadas.
      */
-    public function createFiscalDocument(Invoice $invoice, array $fiscalData, int $userId): ?FiscalDocument
+    public function createFiscalDocument(Invoice $invoice, array $fiscalData, int $userId, bool $confirmInvoice = true): ?FiscalDocument
     {
         $this->resetResponse();
 
         try {
-            return $this->financialTransaction(function () use ($invoice, $fiscalData, $userId) {
+            return $this->financialTransaction(function () use ($invoice, $fiscalData, $userId, $confirmInvoice) {
+                $invoice = Invoice::where('company_id', $invoice->company_id)->lockForUpdate()->findOrFail($invoice->id);
+                if ($invoice->status === Status::CANCELLED || $invoice->operations()->where('active_slot', 1)->exists()) {
+                    throw ValidationException::withMessages(['invoice' => 'A fatura está cancelada ou possui uma operação em andamento.']);
+                }
                 $documentType = ($fiscalData['document_type'] ?? DocumentModel::NFE->value);
 
                 $invoice->loadMissing([
@@ -588,7 +593,9 @@ class InvoiceService
                 // ------------------------------------------------------------------
                 // 4. Sincronizar financeiro da fatura
                 // ------------------------------------------------------------------
-                $this->syncInvoiceStatusAfterFiscalDocumentGeneration($invoice, $userId);
+                if ($confirmInvoice) {
+                    $this->syncInvoiceStatusAfterFiscalDocumentGeneration($invoice, $userId);
+                }
 
                 $this->setSuccess('Documento fiscal criado com sucesso a partir da fatura.');
 
@@ -678,6 +685,11 @@ class InvoiceService
 
     private function syncInvoiceStatusAfterFiscalDocumentGeneration(Invoice $invoice, int $userId): void
     {
+        if ($invoice->status === Status::CONFIRMED) {
+            return;
+        }
+        app(InvoiceCompositionService::class)->capture($invoice, $userId);
+        $invoice->unsetRelation('latestConfirmation');
         $invoice->update([
             'status' => Status::CONFIRMED->value,
             'pending' => false,

@@ -8,6 +8,7 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\ListInvoices;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\AccountReceivablesRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InvoiceSourcesRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\RequisitionsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\Schemas\InvoiceForm;
@@ -61,6 +62,7 @@ class InvoiceResource extends Resource
                 ServiceOrdersRelationManager::class,
             ]),
             AttachmentsRelationManager::class,
+            InvoiceSourcesRelationManager::class,
         ];
     }
 

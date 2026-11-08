@@ -32,6 +32,11 @@ class GenerateInvoiceAccountReceivablesAction
      */
     public function execute(array $data): ?array
     {
+        if ($this->invoice->operations()->where('active_slot', 1)->exists()) {
+            $this->setError('A fatura possui uma operação em andamento.');
+
+            return null;
+        }
         if ($this->invoice->financial_policy !== null) {
             $this->setError('Esta venda possui decisão financeira registrada na finalização. Não é permitida geração independente.');
 

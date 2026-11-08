@@ -11,8 +11,8 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateAcc
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
-use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ReturnInvoiceToPendingAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedFiscalDocumentsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedProductionOrdersAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedRequisitionsAction;
@@ -37,7 +37,7 @@ class EditInvoice extends EditRecord
 
     public function getSubheading(): ?string
     {
-        return "Fatura # {$this->record->invoice_number} - {$this->record->status->description()}";
+        return "Fatura # {$this->record->invoice_number} - {$this->record->statusLabel()}";
     }
 
     public function getAutoRefreshInterval(): ?string
@@ -122,9 +122,9 @@ class EditInvoice extends EditRecord
                         $result = $service->delete($record, Auth::id());
                         if ($service->hasError()) {
                             Log::error($service->getMessage(), [
-                                'metodo'     => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'error_code' => $service->getErrorCode(),
-                                'message'    => $service->getMessage(),
+                                'message' => $service->getMessage(),
                                 'invoice_id' => $record->id,
                             ]);
 
@@ -132,11 +132,12 @@ class EditInvoice extends EditRecord
                                 message: $service->getMessageUser(),
                                 errorCode: $service->getErrorCode()
                             );
+
                             return false;
                         }
 
                         Log::info('EditInvoice: Fatura deletada com sucesso', [
-                            'metodo'     => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'invoice_id' => $record->id,
                         ]);
 
@@ -160,9 +161,9 @@ class EditInvoice extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         Log::debug('EditInvoice: Iniciando atualização de fatura', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'invoice_id' => $record->id,
-            'data'       => $data,
+            'data' => $data,
         ]);
 
         $service = app(InvoiceService::class);
@@ -170,10 +171,10 @@ class EditInvoice extends EditRecord
 
         if ($service->hasError() || $updated === null) {
             Log::error($service->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $service->getErrorCode(),
-                'message'    => $service->getMessage(),
-                'errors'     => $service->getErrors(),
+                'message' => $service->getMessage(),
+                'errors' => $service->getErrors(),
                 'invoice_id' => $record->id,
             ]);
 
@@ -186,7 +187,7 @@ class EditInvoice extends EditRecord
         }
 
         Log::info('EditInvoice: Fatura atualizada com sucesso', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'invoice_id' => $updated->id,
         ]);
 

@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Models\Concerns\ProtectsInvoicedItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ServiceOrderItem extends Model
 {
+    use ProtectsInvoicedItem;
+
     protected $fillable = [
         'service_order_id',
         'service_id',
@@ -23,12 +26,12 @@ class ServiceOrderItem extends Model
     ];
 
     protected $casts = [
-        'unit_price'           => MoneyCast::class,
-        'unit_cost'            => MoneyCast::class,
-        'discount_amount'      => MoneyCast::class,
-        'gross_amount'         => MoneyCast::class,
-        'total_amount'         => MoneyCast::class,
-        'additional_info'      => 'array',
+        'unit_price' => MoneyCast::class,
+        'unit_cost' => MoneyCast::class,
+        'discount_amount' => MoneyCast::class,
+        'gross_amount' => MoneyCast::class,
+        'total_amount' => MoneyCast::class,
+        'additional_info' => 'array',
     ];
 
     /* ==============================

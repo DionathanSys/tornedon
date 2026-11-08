@@ -73,6 +73,7 @@ class InvoiceTravelAmountTest extends TestCase
     public function test_receivable_and_installments_include_full_travel_amount(): void
     {
         $invoice = $this->createInvoiceWithTravel();
+        $invoice->update(['status' => Status::CONFIRMED, 'pending' => false, 'confirmed' => true]);
         $service = app(InvoiceService::class);
         $result = $service->generateAccountReceivables($invoice->fresh(), [
             'payment_method' => Method::PIX->value,
@@ -109,9 +110,9 @@ class InvoiceTravelAmountTest extends TestCase
             'company_id' => $order->company_id,
             'invoice_number' => 'INV-TRAVEL-001',
             'invoice_date' => now()->toDateString(),
-            'status' => Status::CONFIRMED,
-            'pending' => false,
-            'confirmed' => true,
+            'status' => Status::PENDING,
+            'pending' => true,
+            'confirmed' => false,
             'canceled' => false,
             'created_by' => $order->created_by,
         ]);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enum\Invoice\CancellationReason;
 use App\Enum\Invoice\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
 use App\Enum\Payment\Method as PaymentMethod;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
@@ -31,9 +33,37 @@ class Invoice extends Model
 
     protected static function booted(): void
     {
+        static::saving(function (self $invoice): void {
+            if ($invoice->isDirty('status') && $invoice->status !== null) {
+                $invoice->pending = $invoice->status === Status::PENDING;
+                $invoice->confirmed = $invoice->status === Status::CONFIRMED;
+                $invoice->canceled = $invoice->status === Status::CANCELLED;
+            }
+        });
+        static::updating(function (self $invoice): void {
+            if ($invoice->getRawOriginal('status') === Status::CANCELLED->value && $invoice->isDirty('status')) {
+                throw new \RuntimeException('Uma fatura cancelada não pode ser reaberta.');
+            }
+            if (in_array($invoice->getRawOriginal('status'), [Status::CONFIRMED->value, Status::CANCELLED->value], true) && $invoice->confirmations()->exists()) {
+                if ($invoice->isDirty(['company_id', 'customer_id', 'invoice_date', 'invoice_number', 'financial_policy'])) {
+                    throw new \RuntimeException('Os dados comerciais de uma fatura confirmada estão congelados.');
+                }
+                foreach (['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id'] as $field) {
+                    if ($invoice->isDirty($field) && ($invoice->status === Status::CANCELLED || $invoice->getRawOriginal($field) !== null || $invoice->accountReceivables()->exists())) {
+                        throw new \RuntimeException('As condições financeiras já definidas não podem ser alteradas por edição da fatura.');
+                    }
+                }
+            }
+        });
         static::deleting(function (self $invoice): void {
+            if ($invoice->status !== Status::PENDING || $invoice->confirmed || $invoice->canceled || $invoice->confirmations()->exists() || $invoice->sources()->exists() || $invoice->operations()->exists()) {
+                throw new \RuntimeException('Somente rascunhos sem histórico podem ser excluídos.');
+            }
             if ($invoice->fiscalDocuments()->exists()) {
                 throw new \RuntimeException('Não é possível excluir fatura que já gerou documento fiscal.');
+            }
+            if ($invoice->accountReceivables()->exists()) {
+                throw new \RuntimeException('Não é possível excluir fatura com contas a receber vinculadas.');
             }
         });
     }
@@ -60,10 +90,12 @@ class Invoice extends Model
         'canceled_by',
         'confirmed_at',
         'canceled_at',
+        'cancellation_reason',
     ];
 
     protected $casts = [
         'status' => Status::class,
+        'cancellation_reason' => CancellationReason::class,
         'invoice_date' => 'date',
         'payment_method' => PaymentMethod::class,
         'payment_condition' => PaymentCondition::class,
@@ -137,6 +169,40 @@ class Invoice extends Model
     public function fiscalDocuments(): HasMany
     {
         return $this->hasMany(FiscalDocument::class);
+    }
+
+    public function confirmations(): HasMany
+    {
+        return $this->hasMany(InvoiceConfirmation::class);
+    }
+
+    public function latestConfirmation(): HasOne
+    {
+        return $this->hasOne(InvoiceConfirmation::class)->latestOfMany();
+    }
+
+    public function sources(): HasMany
+    {
+        return $this->hasMany(InvoiceSource::class);
+    }
+
+    public function operations(): HasMany
+    {
+        return $this->hasMany(InvoiceOperation::class);
+    }
+
+    public function confirmedComposition(): ?InvoiceConfirmation
+    {
+        return $this->status === Status::PENDING ? null : $this->latestConfirmation;
+    }
+
+    public function statusLabel(): string
+    {
+        $label = $this->status?->description() ?? '-';
+
+        return $this->status === Status::CANCELLED && $this->cancellation_reason
+            ? $label.' — '.$this->cancellation_reason->description()
+            : $label;
     }
 
     public function requisitions(): HasMany
@@ -238,6 +304,11 @@ class Invoice extends Model
         if ($invoices->isEmpty()) {
             return;
         }
+        $invoices->loadMissing('latestConfirmation');
+        $invoices = $invoices->filter(fn (self $invoice): bool => $invoice->confirmedComposition() === null);
+        if ($invoices->isEmpty()) {
+            return;
+        }
         $ids = $invoices->modelKeys();
         $companies = $invoices->pluck('company_id')->unique()->all();
         $aggregate = static fn (string $source, string $items, string $foreignKey) => DB::table($source)
@@ -276,6 +347,9 @@ class Invoice extends Model
      */
     private function resolveAmounts(): array
     {
+        if ($confirmation = $this->confirmedComposition()) {
+            return array_map(fn ($cents): float => round($cents / 100, 2), $confirmation->amounts);
+        }
         if ($this->resolvedAmounts !== null) {
             return $this->resolvedAmounts;
         }
@@ -373,5 +447,12 @@ class Invoice extends Model
             'total_amount' => $totalAmount,
             'net_value' => $totalAmount,
         ];
+    }
+
+    public function refresh()
+    {
+        $this->resolvedAmounts = null;
+
+        return parent::refresh();
     }
 }

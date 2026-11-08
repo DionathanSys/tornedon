@@ -8,6 +8,7 @@ use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\ProtectsInvoiceComposition;
 use App\Services\ServiceOrder\StateResolver;
 use App\Services\ServiceOrder\States\ServiceOrderState;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class ServiceOrder extends Model
 {
     use HasAttachments, HasFactory;
+    use ProtectsInvoiceComposition;
 
     private ?array $resolvedItemsAmounts = null;
 

@@ -130,7 +130,7 @@ class ServiceOrderWorkflowTest extends TestCase
         $this->assertSame($firstServiceOrder->fresh()->invoice_id, $firstRequisition->fresh()->invoice_id);
     }
 
-    public function test_deleting_invoice_restores_automatically_closed_requisition_to_open_and_allows_reinvoicing(): void
+    public function test_deleting_draft_invoice_keeps_automatically_closed_requisition_closed_and_allows_reinvoicing(): void
     {
         [$user, $serviceOrder, $requisition] = $this->makeLinkedDocuments();
         $user->companies()->attach($serviceOrder->company_id, ['role' => 'member', 'is_active' => true]);
@@ -147,7 +147,7 @@ class ServiceOrderWorkflowTest extends TestCase
         $this->assertModelMissing($invoice);
         $this->assertSame(State::CLOSED, $serviceOrder->fresh()->status);
         $this->assertNull($serviceOrder->fresh()->invoice_id);
-        $this->assertSame(RequisitionStatus::OPEN, $requisition->fresh()->status);
+        $this->assertSame(RequisitionStatus::CLOSED, $requisition->fresh()->status);
         $this->assertNull($requisition->fresh()->invoice_id);
         $this->assertNull($requisition->fresh()->invoiced_at);
         $this->assertNull($requisition->fresh()->status_before_invoicing);
@@ -185,7 +185,7 @@ class ServiceOrderWorkflowTest extends TestCase
         $this->assertSame($user->id, $productionOrder->fresh()->updated_by);
     }
 
-    public function test_deleting_invoice_created_during_close_restores_requisition_to_open(): void
+    public function test_deleting_draft_invoice_created_during_close_keeps_requisition_closed(): void
     {
         [$user, $serviceOrder, $requisition] = $this->makeLinkedDocuments();
         $user->companies()->attach($serviceOrder->company_id, ['role' => 'member', 'is_active' => true]);
@@ -195,7 +195,7 @@ class ServiceOrderWorkflowTest extends TestCase
         $service = app(InvoiceService::class);
         $this->assertTrue($service->delete($workflow->invoice(), $user->id), $service->getMessage());
         $this->assertSame(State::CLOSED, $serviceOrder->fresh()->status);
-        $this->assertSame(RequisitionStatus::OPEN, $requisition->fresh()->status);
+        $this->assertSame(RequisitionStatus::CLOSED, $requisition->fresh()->status);
     }
 
     public function test_failed_deletion_rolls_back_linked_records_and_invoice(): void

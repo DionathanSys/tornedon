@@ -919,7 +919,8 @@ class QuickSalesTest extends TestCase
         $this->assertSame(200.0, (float) $discount->gross_amount);
         $this->assertSame(10.0, (float) $discount->discount_amount);
         $this->assertSame(190.0, (float) $discount->net_value);
-        $this->assertCount(3, DB::getQueryLog());
+        // Confirmed totals are loaded in one batch, without consulting mutable sources.
+        $this->assertCount(1, DB::getQueryLog());
         DB::disableQueryLog();
     }
 }

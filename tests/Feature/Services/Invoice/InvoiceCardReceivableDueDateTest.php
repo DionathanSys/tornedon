@@ -47,9 +47,9 @@ class InvoiceCardReceivableDueDateTest extends TestCase
             'company_id' => $company->id,
             'invoice_number' => 'INV-CARD-001',
             'invoice_date' => '2026-05-04',
-            'status' => InvoiceStatus::CONFIRMED->value,
-            'pending' => false,
-            'confirmed' => true,
+            'status' => InvoiceStatus::PENDING->value,
+            'pending' => true,
+            'confirmed' => false,
             'canceled' => false,
             'created_by' => $user->id,
         ]);
@@ -107,6 +107,7 @@ class InvoiceCardReceivableDueDateTest extends TestCase
             'allow_cash_movement' => true,
         ]);
 
+        $invoice->update(['status' => InvoiceStatus::CONFIRMED, 'pending' => false, 'confirmed' => true]);
         $service = app(InvoiceService::class);
         $result = $service->generateAccountReceivables($invoice->fresh(), [
             'payment_method' => PaymentMethod::CREDIT_CARD->value,
@@ -149,9 +150,9 @@ class InvoiceCardReceivableDueDateTest extends TestCase
             'company_id' => $company->id,
             'invoice_number' => 'INV-DEFAULT-001',
             'invoice_date' => '2026-05-10',
-            'status' => InvoiceStatus::CONFIRMED->value,
-            'pending' => false,
-            'confirmed' => true,
+            'status' => InvoiceStatus::PENDING->value,
+            'pending' => true,
+            'confirmed' => false,
             'canceled' => false,
             'created_by' => $user->id,
         ]);
@@ -200,6 +201,7 @@ class InvoiceCardReceivableDueDateTest extends TestCase
 
         CompanyPreference::setDefaultReceivableFinancialCategoryId($category->id, $company->id);
 
+        $invoice->update(['status' => InvoiceStatus::CONFIRMED, 'pending' => false, 'confirmed' => true]);
         $service = app(InvoiceService::class);
         $result = $service->generateAccountReceivables($invoice->fresh(), [
             'payment_method' => PaymentMethod::PIX->value,

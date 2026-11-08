@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Models\Concerns\ProtectsInvoicedItem;
 use App\Services\Product\ProductUnitConversionService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RequisitionItem extends Model
 {
+    use ProtectsInvoicedItem;
+
     protected static function booted(): void
     {
         static::saving(function (self $item): void {

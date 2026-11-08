@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enum\ProductionOrder\DestinationType;
 use App\Enum\ProductionOrder\Priority;
 use App\Enum\ProductionOrder\Status;
+use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\ProtectsInvoiceComposition;
 use App\Services\ProductionOrder\ProductionOrderNumberGenerator;
 use App\Services\ProductionOrder\StateResolver;
 use App\Services\ProductionOrder\States\ProductionOrderState;
@@ -13,12 +15,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Models\Concerns\HasAttachments;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ProductionOrder extends Model
 {
     use HasAttachments;
+    use ProtectsInvoiceComposition;
 
     protected static function booted(): void
     {
@@ -146,7 +148,7 @@ class ProductionOrder extends Model
 
     public function canCancel(): bool
     {
-        return !in_array($this->status, [Status::COMPLETED, Status::CANCELLED]);
+        return ! in_array($this->status, [Status::COMPLETED, Status::CANCELLED]);
     }
 
     public function isInProgress(): bool
@@ -167,6 +169,7 @@ class ProductionOrder extends Model
         }
 
         $producedQuantity = $this->items->sum('quantity_produced');
+
         return ($producedQuantity / $totalQuantity) * 100;
     }
 
@@ -178,6 +181,7 @@ class ProductionOrder extends Model
         }
 
         $totalApproved = $this->items->sum('quantity_approved');
+
         return ($totalApproved / $totalProduced) * 100;
     }
 

@@ -7,7 +7,8 @@
 /storage/*.key
 /storage/pail
 /vendor
-/docs
+/docs/*
+!/docs/faturas-regras-e-funcionamento.md
 .env
 .env.backup
 .env.production

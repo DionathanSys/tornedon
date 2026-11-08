@@ -2,11 +2,13 @@
 
 namespace App\Services\Invoice\Actions;
 
+use App\Enum\Invoice\InvoiceAction;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Models\Invoice;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\FiscalDocument\FiscalDocumentService;
+use App\Services\Invoice\InvoiceActionEligibilityService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -21,6 +23,12 @@ class ReturnInvoiceToPendingAction
 
     public function execute(): bool
     {
+        $eligibility = app(InvoiceActionEligibilityService::class)->evaluate($this->invoice, InvoiceAction::RETURN_TO_DRAFT);
+        if (! $eligibility['allowed']) {
+            $this->setError(implode(' ', array_column($eligibility['blockers'], 'message')));
+
+            return false;
+        }
         if ($this->invoice->financial_policy !== null) {
             $this->setError('Uma venda rápida finalizada não pode voltar a rascunho. Trate seu cancelamento e os vínculos existentes.');
 

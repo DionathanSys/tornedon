@@ -6,6 +6,7 @@ use App\Enum\Invoice\Status;
 use App\Filament\Bpo\Resources\Invoices\Pages;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesPdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InvoiceSourcesRelationManager;
 use App\Models\Invoice;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\UserAccessService;
@@ -36,7 +37,7 @@ class InvoiceResource extends Resource
     {
         return $schema->columns(2)->components([TextEntry::make('invoice_number')->label('Fatura'), TextEntry::make('customer.name')->label('Cliente'),
             TextEntry::make('invoice_date')->label('Data')->date('d/m/Y'), TextEntry::make('netValue')->label('Valor líquido')->money('BRL'),
-            TextEntry::make('status')->label('Situação')->formatStateUsing(fn ($state) => $state?->description()),
+            TextEntry::make('status')->label('Situação')->formatStateUsing(fn (Invoice $record) => $record->statusLabel()),
             TextEntry::make('accountReceivables.document_number')->label('Recebíveis gerados')->listWithLineBreaks(),
             TextEntry::make('fiscalDocuments.document_number')->label('Documentos fiscais')->listWithLineBreaks()]);
     }
@@ -66,5 +67,10 @@ class InvoiceResource extends Resource
     public static function getPages(): array
     {
         return ['index' => Pages\ListInvoices::route('/'), 'view' => Pages\ViewInvoice::route('/{record}'), 'edit' => Pages\ViewInvoice::route('/{record}/edit')];
+    }
+
+    public static function getRelations(): array
+    {
+        return [InvoiceSourcesRelationManager::class];
     }
 }
