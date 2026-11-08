@@ -80,10 +80,11 @@ class AccountReceivablesRelationManager extends RelationManager
             ->headerActions([])
             ->recordActions([
                 Action::make('openAccountReceivable')
-                    ->label('Abrir conta a receber')
+                    ->label('Abrir')
                     ->icon(Heroicon::ArrowTopRightOnSquare)
-                    ->url(fn (AccountReceivable $record): string => AccountReceivableResource::getUrl('edit', ['record' => $record]))
-                    ->visible(fn (AccountReceivable $record): bool => AccountReceivableResource::canEdit($record)),
+                    ->url(fn (AccountReceivable $record): string => AccountReceivableResource::getUrl('view', ['record' => $record]))
+                    ->openUrlInNewTab()
+                    ->visible(fn (AccountReceivable $record): bool => AccountReceivableResource::canView($record)),
             ])
             ->toolbarActions([])
             ->emptyStateHeading('Sem registros');
