@@ -3,7 +3,6 @@
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Tables;
 
 use App\Enum\AccountReceivable\Status;
-use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Clusters\Financial\Resources\Components\AccountSummary;
 use App\Filament\Clusters\Financial\Resources\Components\FinancialTableColumns;
@@ -115,8 +114,6 @@ class AccountReceivablesTable
                 EditAction::make()
                     ->iconButton(),
                 ViewAction::make()->iconButton(),
-                IgnoreFinancialAction::make(),
-                IgnoreFinancialAction::make(restore: true),
                 DeleteAction::make()
                     ->iconButton(),
             ])

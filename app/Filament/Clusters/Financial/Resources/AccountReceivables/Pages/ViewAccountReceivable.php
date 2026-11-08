@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\Pages;
 
-use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
 use App\Filament\Clusters\Financial\Concerns\RefreshesAccountSummary;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Clusters\Financial\Resources\Components\AccountSummary;
@@ -23,6 +22,6 @@ class ViewAccountReceivable extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [EditAction::make(), IgnoreFinancialAction::make(), IgnoreFinancialAction::make(restore: true)];
+        return [EditAction::make()];
     }
 }

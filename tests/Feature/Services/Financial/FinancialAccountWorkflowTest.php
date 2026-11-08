@@ -246,21 +246,27 @@ class FinancialAccountWorkflowTest extends TestCase
         $this->assertSame(50.0, $installment->fresh()->balance_amount);
     }
 
-    public function test_payable_account_actions_are_only_available_on_installments(): void
+    #[DataProvider('domains')]
+    public function test_account_actions_are_only_available_on_installments(string $domain): void
     {
         $this->grantConsideration();
-        [, $account] = $this->account('payable');
-        Livewire::test(ViewAccountPayable::class, ['record' => $account->id])
+        [, $account] = $this->account($domain);
+        $view = $domain === 'payable' ? ViewAccountPayable::class : ViewAccountReceivable::class;
+        $resource = $domain === 'payable' ? AccountPayableResource::class : AccountReceivableResource::class;
+        $relation = $domain === 'payable'
+            ? InstallmentsRelationManager::class
+            : \App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\InstallmentsRelationManager::class;
+        Livewire::test($view, ['record' => $account->id])
             ->assertActionDoesNotExist('ignore_financial')
             ->assertActionDoesNotExist('restore_consideration');
-        Livewire::test(AccountPayableResource::getPages()['index']->getPage())
+        Livewire::test($resource::getPages()['index']->getPage())
             ->assertCanSeeTableRecords([$account])
             ->assertTableActionDoesNotExist('ignore_financial')
             ->assertTableActionDoesNotExist('restore_consideration');
 
         $installments = $account->installments()->orderBy('id')->get();
-        $page = Livewire::test(InstallmentsRelationManager::class, [
-            'ownerRecord' => $account, 'pageClass' => ViewAccountPayable::class,
+        $page = Livewire::test($relation, [
+            'ownerRecord' => $account, 'pageClass' => $view,
         ]);
         $page->assertTableActionVisible('ignore_financial', $installments[0])
             ->assertTableActionHidden('restore_consideration', $installments[0])
@@ -292,19 +298,6 @@ class FinancialAccountWorkflowTest extends TestCase
             $page->assertTableActionHidden('ignore_financial', $installment->fresh())
                 ->assertTableActionHidden('restore_consideration', $installment->fresh());
         }
-    }
-
-    public function test_receivable_account_view_can_ignore_and_restore_all_open_installments(): void
-    {
-        $this->grantConsideration();
-        [, $account] = $this->account('receivable');
-        $page = Livewire::test(ViewAccountReceivable::class, ['record' => $account->id]);
-        $page->callAction('ignore_financial', ['reason' => 'Implantação do módulo'])->assertHasNoActionErrors();
-        $this->assertSame(0, $account->installments()->open()->count());
-        $this->assertSame(2, $account->installments()->whereNotNull('ignored_at')->count());
-        $page->callAction('restore_consideration', ['reason' => 'Revisão da implantação'])->assertHasNoActionErrors();
-        $this->assertSame(2, $account->installments()->open()->count());
-        $this->assertDatabaseCount('cash_movements', 0);
     }
 
     #[DataProvider('domains')]
