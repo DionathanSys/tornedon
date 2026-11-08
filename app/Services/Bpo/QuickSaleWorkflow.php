@@ -77,6 +77,10 @@ class QuickSaleWorkflow
             'description' => 'nullable|string|max:1000',
             'fiscal_description' => 'nullable|string|max:10000',
             'fiscal_additional_information' => 'nullable|string|max:2000',
+            'additional_tax_information' => 'nullable|string|max:2000',
+            'additional_purchase_information_nota_empenho' => 'nullable|string|max:60',
+            'additional_purchase_information_pedido' => 'nullable|string|max:60',
+            'additional_purchase_information_contrato' => 'nullable|string|max:60',
         ])->validate();
 
         return DB::transaction(function () use ($user, $company, $data, $requestId, $id, $revision): BpoSale {
@@ -171,7 +175,8 @@ class QuickSaleWorkflow
                 $itemService = app($isService ? ServiceOrderItemService::class : RequisitionItemService::class);
                 $this->requireResult($itemService->create($itemData, $user->id), $itemService);
             }
-            $attributes = ['payment_settings' => Arr::only($data, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id', 'description', 'fiscal_description', 'fiscal_additional_information']),
+            $attributes = ['payment_settings' => Arr::only($data, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id', 'description', 'fiscal_description', 'fiscal_additional_information',
+                'additional_tax_information', 'additional_purchase_information_nota_empenho', 'additional_purchase_information_pedido', 'additional_purchase_information_contrato']),
                 'revision' => $sale ? $sale->revision + 1 : 1];
             if ($sale) {
                 $sale->update($attributes);
@@ -196,6 +201,10 @@ class QuickSaleWorkflow
             'source_type' => ['required', Rule::in(['service_order', 'requisition', 'production_order'])],
             'source_id' => 'required|integer', 'fiscal_description' => 'nullable|string|max:10000',
             'fiscal_additional_information' => 'nullable|string|max:2000',
+            'additional_tax_information' => 'nullable|string|max:2000',
+            'additional_purchase_information_nota_empenho' => 'nullable|string|max:60',
+            'additional_purchase_information_pedido' => 'nullable|string|max:60',
+            'additional_purchase_information_contrato' => 'nullable|string|max:60',
         ])->validate();
 
         return DB::transaction(function () use ($user, $company, $data, $requestId, $id, $revision): BpoSale {
@@ -264,7 +273,8 @@ class QuickSaleWorkflow
                 $this->fail('Esta origem já está vinculada a uma venda. Continue a venda existente.');
             }
             $before = $sale ? app(AuditRecorder::class)->snapshot($sale) : null;
-            $settings = Arr::only($data, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id', 'fiscal_description', 'fiscal_additional_information']);
+            $settings = Arr::only($data, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id', 'fiscal_description', 'fiscal_additional_information',
+                'additional_tax_information', 'additional_purchase_information_nota_empenho', 'additional_purchase_information_pedido', 'additional_purchase_information_contrato']);
             $settings += ['existing_source' => true, 'source_type' => $data['source_type'], 'source_id' => $selected->id];
             $attributes = ['payment_settings' => $settings, 'revision' => $sale ? $sale->revision + 1 : 1];
             if ($isService) {
@@ -412,9 +422,23 @@ class QuickSaleWorkflow
                 'sale_operation_nature' => $sale->template_snapshot['operation_nature'] ?? null,
                 'nfse_additional_information' => array_key_exists('fiscal_additional_information', $settings) ? $settings['fiscal_additional_information'] : ($sale->template_snapshot['additional_information'] ?? null),
             ]), $confirmation);
+            $nfeInformation = Arr::only($settings, ['additional_tax_information']);
             if (array_key_exists('fiscal_additional_information', $settings)) {
+                $nfeInformation['additional_taxpayer_information'] = $settings['fiscal_additional_information'];
+            }
+            $purchaseInformation = [];
+            foreach (['nota_empenho', 'pedido', 'contrato'] as $field) {
+                if (array_key_exists('additional_purchase_information_'.$field, $settings)) {
+                    $purchaseInformation[$field] = trim((string) $settings['additional_purchase_information_'.$field]);
+                }
+            }
+            if ($purchaseInformation !== []) {
+                $purchaseInformation = array_filter($purchaseInformation, fn (string $value) => $value !== '');
+                $nfeInformation['additional_purchase_information'] = $purchaseInformation === [] ? null : json_encode($purchaseInformation, JSON_UNESCAPED_UNICODE);
+            }
+            if ($nfeInformation !== []) {
                 $invoice->fiscalDocuments()->where('document_type', DocumentModel::NFE->value)
-                    ->each(fn ($document) => $document->update(['additional_taxpayer_information' => $settings['fiscal_additional_information']]));
+                    ->each(fn ($document) => $document->update($nfeInformation));
             }
             if ($policy === 'link_existing') {
                 $target = AccountReceivable::where('company_id', $company->id)->lockForUpdate()->findOrFail($settings['financial_target_id'] ?? 0);

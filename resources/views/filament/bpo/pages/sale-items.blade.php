@@ -14,12 +14,12 @@
         <table class="w-full text-sm">
             <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                    <th scope="col" class="p-3 text-left">Produto / serviço</th>
-                    <th scope="col" class="p-3 text-right">Quantidade</th>
-                    <th scope="col" class="p-3 text-right">Preço unitário</th>
-                    <th scope="col" class="p-3 text-right">Desconto</th>
-                    <th scope="col" class="p-3 text-right">Valor líquido</th>
-                    @if ($editable)<th scope="col" class="p-3 text-right">Ações</th>@endif
+                    <th scope="col" class="px-5 py-4 text-left whitespace-nowrap">Produto / serviço</th>
+                    <th scope="col" class="px-5 py-4 text-right whitespace-nowrap">Quantidade</th>
+                    <th scope="col" class="px-5 py-4 text-right whitespace-nowrap">Preço unitário</th>
+                    <th scope="col" class="px-5 py-4 text-right whitespace-nowrap">Desconto</th>
+                    <th scope="col" class="px-5 py-4 text-right whitespace-nowrap">Valor líquido</th>
+                    @if ($editable)<th scope="col" class="px-5 py-4 text-right">Ações</th>@endif
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -29,15 +29,17 @@
                         $total += $amount;
                     @endphp
                     <tr wire:key="sale-item-{{ $key }}">
-                        <td class="p-3 font-medium">{{ $item['label'] ?? 'Item da venda' }}</td>
-                        <td class="p-3 text-right">{{ number_format((float) ($item['quantity'] ?? 0), 3, ',', '.') }}</td>
-                        <td class="p-3 text-right whitespace-nowrap">{{ $money($item['unit_price'] ?? 0) }}</td>
-                        <td class="p-3 text-right whitespace-nowrap">{{ $money($item['discount_amount'] ?? 0) }}</td>
-                        <td class="p-3 text-right whitespace-nowrap font-semibold">{{ $money($amount) }}</td>
+                        <td class="px-5 py-3 align-middle font-medium">{{ $item['label'] ?? 'Item da venda' }}</td>
+                        <td class="px-5 py-3 align-middle text-right">{{ number_format((float) ($item['quantity'] ?? 0), 3, ',', '.') }}</td>
+                        <td class="px-5 py-3 align-middle text-right whitespace-nowrap">{{ $money($item['unit_price'] ?? 0) }}</td>
+                        <td class="px-5 py-3 align-middle text-right whitespace-nowrap">{{ $money($item['discount_amount'] ?? 0) }}</td>
+                        <td class="px-5 py-3 align-middle text-right whitespace-nowrap font-semibold">{{ $money($amount) }}</td>
                         @if ($editable)
-                            <td class="p-3 text-right whitespace-nowrap">
-                                {{ ($this->editItemAction)(['key' => $key]) }}
-                                <x-filament::icon-button icon="heroicon-o-trash" color="danger" label="Remover item" wire:click="removeItem('{{ $key }}')" wire:confirm="Remover este item da venda?" />
+                            <td class="px-5 py-3 align-middle text-right whitespace-nowrap">
+                                <div class="flex items-center justify-end gap-2">
+                                    {{ ($this->editItemAction)(['key' => $key]) }}
+                                    <x-filament::icon-button icon="heroicon-o-trash" color="danger" label="Remover item" tooltip="Remover item" wire:click="removeItem('{{ $key }}')" wire:confirm="Remover este item da venda?" />
+                                </div>
                             </td>
                         @endif
                     </tr>
@@ -46,10 +48,10 @@
                 @endforelse
             </tbody>
             <tfoot class="bg-gray-50 dark:bg-gray-800">
-                <tr><th scope="row" colspan="4" class="p-3 text-right">Total dos itens</th><td class="p-3 text-right whitespace-nowrap font-semibold">{{ $money($total) }}</td>@if ($editable)<td></td>@endif</tr>
+                <tr><th scope="row" colspan="4" class="px-5 py-3 text-right">Total dos itens</th><td class="px-5 py-3 text-right whitespace-nowrap font-semibold">{{ $money($total) }}</td>@if ($editable)<td></td>@endif</tr>
                 @if ((float) ($this->data['travel_amount'] ?? 0))
-                    <tr><th scope="row" colspan="4" class="p-3 text-right">Deslocamento da OS</th><td class="p-3 text-right">{{ $money($this->data['travel_amount']) }}</td>@if ($editable)<td></td>@endif</tr>
-                    <tr><th scope="row" colspan="4" class="p-3 text-right">Total da venda</th><td class="p-3 text-right font-semibold">{{ $money($total + $this->data['travel_amount']) }}</td>@if ($editable)<td></td>@endif</tr>
+                    <tr><th scope="row" colspan="4" class="px-5 py-3 text-right">Deslocamento da OS</th><td class="px-5 py-3 text-right">{{ $money($this->data['travel_amount']) }}</td>@if ($editable)<td></td>@endif</tr>
+                    <tr><th scope="row" colspan="4" class="px-5 py-3 text-right">Total da venda</th><td class="px-5 py-3 text-right font-semibold">{{ $money($total + $this->data['travel_amount']) }}</td>@if ($editable)<td></td>@endif</tr>
                 @endif
             </tfoot>
         </table>

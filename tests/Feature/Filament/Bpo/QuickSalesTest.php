@@ -485,6 +485,31 @@ class QuickSalesTest extends TestCase
         $this->assertNull($document->emission_requested_at);
     }
 
+    public function test_nfe_additional_and_purchase_information_survive_draft_and_reach_the_document(): void
+    {
+        $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Produtos com dados de compra', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
+        $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id]);
+        $fields = ['fiscal_additional_information' => 'Entrega conforme contrato.', 'additional_tax_information' => 'Informação fiscal da operação.',
+            'additional_purchase_information_nota_empenho' => 'NE-2026/123', 'additional_purchase_information_pedido' => 'PED-456',
+            'additional_purchase_information_contrato' => 'Contrato nº 789'];
+        $data = $this->payload();
+        $data['sale_template_id'] = $template->id;
+        $data['items'][0]['catalog_id'] = $product->id;
+        $page = Livewire::test(SaleEditor::class);
+        $this->fillSalePage($page, $data + $fields)->call('saveDraft')->assertHasNoFormErrors();
+        $sale = BpoSale::sole();
+        $page = Livewire::test(SaleEditor::class, ['sale' => $sale->id])
+            ->assertSee('Informações adicionais de compra')->assertSee('Informações ao Fisco')->assertSee('Nota de Empenho');
+        foreach ($fields as $field => $value) {
+            $page->assertSet('data.'.$field, $value);
+        }
+        $this->fillSalePage($page, $this->payment('fiscal_only'))->call('finalizeSale')->assertHasNoFormErrors();
+        $document = $sale->fresh()->invoice->fiscalDocuments()->sole();
+        $this->assertSame($fields['fiscal_additional_information'], $document->additional_taxpayer_information);
+        $this->assertSame($fields['additional_tax_information'], $document->additional_tax_information);
+        $this->assertSame(['nota_empenho' => 'NE-2026/123', 'pedido' => 'PED-456', 'contrato' => 'Contrato nº 789'], json_decode($document->additional_purchase_information, true));
+    }
+
     public function test_sale_page_bills_an_existing_closed_os_without_recreating_its_items(): void
     {
         $draft = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
@@ -525,11 +550,14 @@ class QuickSalesTest extends TestCase
             $itemId = $source->items()->sole()->id;
             $page = Livewire::test(SaleEditor::class)->set('data.source_type', $type)->set('data.source_id', $selected->id)
                 ->set('data.sale_template_id', $template->id);
-            $this->fillSalePage($page, $this->payment('fiscal_only') + ['fiscal_additional_information' => 'Contrato 789.'])
+            $this->fillSalePage($page, $this->payment('fiscal_only') + ['fiscal_additional_information' => 'Contrato 789.',
+                'additional_tax_information' => 'Dados fiscais da origem.', 'additional_purchase_information_pedido' => 'Pedido 123'])
                 ->call('finalizeSale')->assertHasNoFormErrors();
             $sale = BpoSale::where('requisition_id', $source->id)->sole();
             $this->assertSame($itemId, $source->items()->sole()->id);
             $this->assertSame('Contrato 789.', $sale->invoice->fiscalDocuments()->sole()->additional_taxpayer_information);
+            $this->assertSame('Dados fiscais da origem.', $sale->invoice->fiscalDocuments()->sole()->additional_tax_information);
+            $this->assertSame(['pedido' => 'Pedido 123'], json_decode($sale->invoice->fiscalDocuments()->sole()->additional_purchase_information, true));
             if ($type === 'production_order') {
                 $this->assertSame($sale->invoice_id, $selected->fresh()->invoice_id);
                 $this->assertSame('invoiced', $selected->fresh()->status->value);
@@ -577,7 +605,9 @@ class QuickSalesTest extends TestCase
         $requisition->update(['service_order_id' => $order->id]);
         $page = Livewire::test(SaleEditor::class)->set('data.source_type', 'service_order')->set('data.source_id', $order->id)
             ->set('data.sale_template_id', $this->template->id)->assertSee($product->name)->assertSee($this->service->name);
-        $this->fillSalePage($page, $this->payment() + ['fiscal_description' => 'Serviço completo.', 'fiscal_additional_information' => 'Contrato comum.'])
+        $page->assertSee('Informações adicionais de compra')->assertSee('Informações ao Fisco');
+        $this->fillSalePage($page, $this->payment() + ['fiscal_description' => 'Serviço completo.', 'fiscal_additional_information' => 'Contrato comum.',
+            'additional_tax_information' => 'Dados da NF-e vinculada.', 'additional_purchase_information_contrato' => 'Contrato comum 123'])
             ->call('finalizeSale')->assertHasNoFormErrors();
         $sale = BpoSale::sole();
         $this->assertSame($requisition->id, $sale->requisition_id);
@@ -586,6 +616,8 @@ class QuickSalesTest extends TestCase
         $this->assertSame($sale->invoice_id, $requisition->fresh()->invoice_id);
         $this->assertSame(380.0, (float) $sale->invoice->accountReceivables()->get()->sum('due_amount'));
         $this->assertSame('Contrato comum.', $sale->invoice->fiscalDocuments()->where('document_type', 'nfe')->sole()->additional_taxpayer_information);
+        $this->assertSame('Dados da NF-e vinculada.', $sale->invoice->fiscalDocuments()->where('document_type', 'nfe')->sole()->additional_tax_information);
+        $this->assertSame(['contrato' => 'Contrato comum 123'], json_decode($sale->invoice->fiscalDocuments()->where('document_type', 'nfe')->sole()->additional_purchase_information, true));
         $this->assertSame('Serviço completo.', $sale->invoice->fiscalDocuments()->where('document_type', 'nfse')->sole()->items()->sole()->description);
         Livewire::test(Sales::class)->assertCanSeeTableRecords([$sale])->assertSee('380,00');
         $summary = Livewire::test(Sales::class)->mountAction(TestAction::make('details')->table($sale));

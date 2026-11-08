@@ -131,6 +131,7 @@ class SaleEditor extends Page
             'received_at' => today()->toDateString(),
             'items' => $this->sourceItems($source),
             'travel_amount' => $source instanceof ServiceOrder ? (float) $source->travel_value : 0,
+            'has_product_items' => $source instanceof ServiceOrder && ($source->requisition?->items()->exists() ?? false),
             'fiscal_description' => $sale->payment_settings['description'] ?? null,
             'fiscal_additional_information' => $sale->template_snapshot['additional_information'] ?? null,
         ], $settings));
@@ -140,22 +141,23 @@ class SaleEditor extends Page
     {
         return $schema->statePath('data')->components([
             Section::make('Origem da venda')->description('Inicie uma venda ou utilize os itens de um documento operacional.')->columns(2)->schema([
-                Select::make('source_type')->label('Origem')->options(['new' => 'Nova venda', 'service_order' => 'Ordem de serviço (OS)', 'requisition' => 'Requisição', 'production_order' => 'Ordem de produção (OP)'])
+                Select::make('source_type')->native(false)->label('Origem')->options(['new' => 'Nova venda', 'service_order' => 'Ordem de serviço (OS)', 'requisition' => 'Requisição', 'production_order' => 'Ordem de produção (OP)'])
                     ->required()->live()->disabled(fn () => (bool) $this->sale)->dehydrated()
                     ->afterStateUpdated(function (Set $set): void {
                         foreach (['source_id', 'customer_id', 'document_type', 'sale_template_id'] as $field) {
                             $set($field, null);
                         }
                         $set('items', []);
+                        $set('has_product_items', false);
                     }),
-                Select::make('source_id')->label('Documento de origem')->searchable()->live()
+                Select::make('source_id')->native(false)->label('Documento de origem')->searchable()->live()
                     ->options(fn (Get $get) => $this->sourceOptions($get('source_type')))
                     ->getSearchResultsUsing(fn (Get $get, string $search) => $this->sourceOptions($get('source_type'), $search))
                     ->getOptionLabelUsing(fn ($value, Get $get) => $this->sourceOptions($get('source_type'), id: $value)[$value] ?? null)
                     ->visible(fn (Get $get) => $get('source_type') !== 'new')->required(fn (Get $get) => $get('source_type') !== 'new')
                     ->helperText(fn (Get $get) => $get('source_type') === 'production_order' ? 'Selecione uma OP concluída, com requisição gerada pela produção.' : 'A OS inclui os serviços e os produtos da requisição vinculada.')
                     ->disabled(fn () => (bool) $this->sale)->dehydrated()->afterStateUpdated(fn ($state) => $this->loadSource($state)),
-                Select::make('sale_template_id')->label('Modelo de venda')->options(fn (Get $get) => SaleTemplate::where('company_id', Filament::getTenant()->id)->where('is_active', true)
+                Select::make('sale_template_id')->native(false)->label('Modelo de venda')->options(fn (Get $get) => SaleTemplate::where('company_id', Filament::getTenant()->id)->where('is_active', true)
                     ->when($get('source_type') !== 'new', fn ($query) => $query->where('document_type', $get('source_type') === 'service_order' ? 'nfse' : 'nfe'))->pluck('name', 'id'))
                     ->searchable()->required()->live()->disabled(fn () => (bool) $this->sale)->dehydrated()
                     ->afterStateUpdated(function ($state, Get $get, Set $set): void {
@@ -167,7 +169,7 @@ class SaleEditor extends Page
                         $set('fiscal_additional_information', $template?->additional_information);
                     }),
                 Hidden::make('document_type'),
-                Select::make('customer_id')->label('Cliente')->searchable()->required()
+                Select::make('customer_id')->native(false)->label('Cliente')->searchable()->required()
                     ->options(fn () => $this->customers())
                     ->getSearchResultsUsing(fn (string $search) => $this->customers($search))
                     ->getOptionLabelUsing(fn ($value) => $this->customers(id: $value)[$value] ?? null)
@@ -180,19 +182,33 @@ class SaleEditor extends Page
             Section::make('Itens da venda')->description('Confira quantidades, descontos e valores líquidos.')->schema([
                 Hidden::make('items')->default([]),
                 Hidden::make('travel_amount')->default(0),
+                Hidden::make('has_product_items')->default(false),
                 View::make('filament.bpo.pages.sale-items'),
             ]),
-            Section::make('Conteúdo da nota fiscal')->description('Este conteúdo será levado ao documento fiscal na finalização da venda.')->schema([
+            Section::make(fn (Get $get) => $get('document_type') === 'nfe' ? 'Informações adicionais' : 'Conteúdo da nota fiscal')->description('Este conteúdo será levado ao documento fiscal na finalização da venda.')->schema([
                 Textarea::make('fiscal_description')->label('Discriminação do serviço na NFS-e')->rows(6)->maxLength(10000)
                     ->visible(fn (Get $get) => $get('document_type') === 'nfse')
                     ->helperText('Descreva o serviço, período de referência, contrato e demais informações que devem constar no corpo da nota. Em branco, será usada a descrição dos serviços.'),
                 Textarea::make('fiscal_additional_information')->label(fn (Get $get) => $get('document_type') === 'nfse' ? 'Informações adicionais da NFS-e' : 'Informações ao contribuinte na NF-e')
                     ->rows(4)->maxLength(2000)->helperText('Texto específico desta venda. Revise as informações sugeridas pelo modelo.'),
+                Textarea::make('additional_tax_information')->label('Informações ao Fisco')->rows(3)->maxLength(2000)
+                    ->visible(fn (Get $get) => $this->hasNfe($get)),
             ]),
+            Section::make('Informações adicionais de compra')->description('Dados de compra que constarão na NF-e.')->columns(['md' => 3])
+                ->visible(fn (Get $get) => $this->hasNfe($get))->schema([
+                    TextInput::make('additional_purchase_information_nota_empenho')->label('Nota de Empenho')->maxLength(60),
+                    TextInput::make('additional_purchase_information_pedido')->label('Pedido')->maxLength(60),
+                    TextInput::make('additional_purchase_information_contrato')->label('Contrato')->maxLength(60),
+                ]),
             Section::make('Pagamento e conclusão')->schema([
                 Grid::make(2)->schema($this->paymentSchema()),
             ])->visible(fn () => $this->allows('bpo_sales.approve')),
         ]);
+    }
+
+    private function hasNfe(Get $get): bool
+    {
+        return $get('document_type') === 'nfe' || (bool) $get('has_product_items');
     }
 
     private function saleMoneyValue(mixed $value): float
@@ -216,30 +232,30 @@ class SaleEditor extends Page
         return [
             TextEntry::make('review_total')->label('Total da venda')->state(fn (Get $get) => 'R$ '.number_format(
                 collect($get('items') ?? [])->sum(fn (array $item) => round(round((float) ($item['quantity'] ?? 0), 3) * round($this->saleMoneyValue($item['unit_price'] ?? 0), 2), 2) - round($this->saleMoneyValue($item['discount_amount'] ?? 0), 2)) + (float) ($get('travel_amount') ?? 0), 2, ',', '.'))->columnSpanFull(),
-            Select::make('financial_policy')->label('Tratamento financeiro')->options(['create_receivable' => 'Gerar contas a receber', 'link_existing' => 'Vincular recebível existente', 'fiscal_only' => 'Somente emitir nota'])->default('create_receivable')->required()->live()
+            Select::make('financial_policy')->native(false)->label('Tratamento financeiro')->options(['create_receivable' => 'Gerar contas a receber', 'link_existing' => 'Vincular recebível existente', 'fiscal_only' => 'Somente emitir nota'])->default('create_receivable')->required()->live()
                 ->columnSpanFull()->afterStateUpdated(function (Set $set): void {
                     $set('mark_as_received', false);
                     $set('auto_bank_slip_issuance', false);
                     $set('auto_pix_charge_issuance', false);
                 }),
-            Select::make('financial_target_id')->label('Recebível existente')->searchable()->options(fn (Get $get) => AccountReceivable::where('company_id', Filament::getTenant()->id)
+            Select::make('financial_target_id')->native(false)->label('Recebível existente')->searchable()->options(fn (Get $get) => AccountReceivable::where('company_id', Filament::getTenant()->id)
                 ->where('customer_id', $get('customer_id'))->whereNull('invoice_id')->whereNull('fiscal_document_id')->limit(50)->get()->mapWithKeys(fn ($title) => [$title->id => '#'.$title->id.' · '.$title->description.' · R$ '.number_format($title->due_amount, 2, ',', '.')]))
                 ->getSearchResultsUsing(fn (Get $get, string $search) => AccountReceivable::where('company_id', Filament::getTenant()->id)->where('customer_id', $get('customer_id'))
                     ->whereNull('invoice_id')->whereNull('fiscal_document_id')->where(fn ($query) => $query->where('description', 'like', '%'.$search.'%')->orWhere('document_number', 'like', '%'.$search.'%'))
                     ->limit(50)->get()->mapWithKeys(fn ($title) => [$title->id => '#'.$title->id.' · '.$title->description]))
                 ->getOptionLabelUsing(fn ($value) => AccountReceivable::where('company_id', Filament::getTenant()->id)->find($value)?->description)
                 ->visible(fn (Get $get) => $get('financial_policy') === 'link_existing')->required(fn (Get $get) => $get('financial_policy') === 'link_existing'),
-            Select::make('payment_method')->label('Forma de pagamento')->options(fn () => $this->allows('card_institutions.view') ? Method::toSelectArray() : array_diff_key(Method::toSelectArray(), [Method::CREDIT_CARD->value => true]))->default(Method::PIX->value)->required()->live()
+            Select::make('payment_method')->native(false)->label('Forma de pagamento')->options(fn () => $this->allows('card_institutions.view') ? Method::toSelectArray() : array_diff_key(Method::toSelectArray(), [Method::CREDIT_CARD->value => true]))->default(Method::PIX->value)->required()->live()
                 ->afterStateUpdated(function (Set $set): void {
                     $set('auto_bank_slip_issuance', false);
                     $set('auto_pix_charge_issuance', false);
                     $set('mark_as_received', false);
                 }),
-            Select::make('card_payment_profile_id')->label('Instituição de cartão')->searchable()->options(fn () => CardInstitution::where('company_id', Filament::getTenant()->id)->where('active', true)->pluck('name', 'id'))
+            Select::make('card_payment_profile_id')->native(false)->label('Instituição de cartão')->searchable()->options(fn () => CardInstitution::where('company_id', Filament::getTenant()->id)->where('active', true)->pluck('name', 'id'))
                 ->visible(fn (Get $get) => $get('payment_method') === Method::CREDIT_CARD->value)->required(fn (Get $get) => $get('payment_method') === Method::CREDIT_CARD->value),
             DatePicker::make('payment_date')->label('Data da venda no cartão')->default(today())
                 ->visible(fn (Get $get) => $get('payment_method') === Method::CREDIT_CARD->value)->required(fn (Get $get) => $get('payment_method') === Method::CREDIT_CARD->value),
-            Select::make('payment_condition')->label('Condição de pagamento')->options(Condition::toGroupedSelectArray())->required()->live(),
+            Select::make('payment_condition')->native(false)->label('Condição de pagamento')->options(Condition::toGroupedSelectArray())->required()->live(),
             PaymentConditionFields::make(),
             SelectFinancialCategory::make('financial_category_id', 'receivable')->columnSpanFull(),
             Toggle::make('mark_as_received')->label('O valor já foi recebido na conta da empresa')->default(false)->live()
@@ -257,7 +273,7 @@ class SaleEditor extends Page
                 ->visible(fn (Get $get) => $get('financial_policy') === 'create_receivable' && ! $get('mark_as_received') && $get('payment_method') === Method::BANK_SLIP->value && $this->allows('account_receivables.issue') && $this->allows('financial_accounts.view')),
             Toggle::make('auto_pix_charge_issuance')->label('Gerar cobrança PIX automaticamente')->default(false)->live()->columnSpanFull()
                 ->visible(fn (Get $get) => $get('financial_policy') === 'create_receivable' && ! $get('mark_as_received') && $get('payment_method') === Method::PIX->value && $this->allows('account_receivables.issue') && $this->allows('financial_accounts.view')),
-            Select::make('financial_account_id')->label('Conta de cobrança / recebimento')->options(fn () => FinancialAccount::optionsForCompany(Filament::getTenant()->id))->searchable()->columnSpanFull()
+            Select::make('financial_account_id')->native(false)->label('Conta de cobrança / recebimento')->options(fn () => FinancialAccount::optionsForCompany(Filament::getTenant()->id))->searchable()->columnSpanFull()
                 ->visible(fn (Get $get) => $get('mark_as_received') || $get('auto_bank_slip_issuance') || $get('auto_pix_charge_issuance'))
                 ->required(fn (Get $get) => $get('mark_as_received') || $get('auto_bank_slip_issuance') || $get('auto_pix_charge_issuance')),
             Toggle::make('request_emission')->label('Solicitar emissão após finalizar')->default(false)->columnSpanFull()
@@ -325,6 +341,7 @@ class SaleEditor extends Page
         $this->data['document_type'] = $source instanceof ServiceOrder ? 'nfse' : 'nfe';
         $this->data['items'] = $this->sourceItems($source);
         $this->data['travel_amount'] = $source instanceof ServiceOrder ? (float) $source->travel_value : 0;
+        $this->data['has_product_items'] = $source instanceof ServiceOrder && ($source->requisition?->items()->exists() ?? false);
     }
 
     private function sourceItems(ServiceOrder|Requisition $source): array
@@ -358,7 +375,7 @@ class SaleEditor extends Page
 
     public function editItemAction(): Action
     {
-        return $this->itemAction('editItem', true);
+        return $this->itemAction('editItem', true)->iconButton()->color('gray')->tooltip('Editar item');
     }
 
     private function itemAction(string $name, bool $editing = false): Action
@@ -368,7 +385,7 @@ class SaleEditor extends Page
             ->visible(fn () => ($this->data['source_type'] ?? 'new') === 'new' && filled($this->data['document_type'] ?? null))
             ->fillForm(fn (array $arguments) => $editing ? ($this->data['items'][$arguments['key'] ?? ''] ?? []) : ['quantity' => 1, 'discount_amount' => 0])
             ->schema([
-                Select::make('catalog_id')->label(($this->data['document_type'] ?? null) === 'nfse' ? 'Serviço' : 'Produto')->required()->searchable()->live()
+                Select::make('catalog_id')->native(false)->label(($this->data['document_type'] ?? null) === 'nfse' ? 'Serviço' : 'Produto')->required()->searchable()->live()
                     ->options(fn () => $this->catalogOptionsForItems())
                     ->getSearchResultsUsing(fn (string $search) => $this->catalogOptionsForItems($search))
                     ->getOptionLabelUsing(fn ($value) => $this->catalogOptionsForItems(id: $value)[$value] ?? null)
