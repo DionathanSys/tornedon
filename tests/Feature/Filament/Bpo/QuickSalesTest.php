@@ -10,6 +10,7 @@ use App\Enum\Payment\Method;
 use App\Enum\ServiceOrder\State;
 use App\Enum\StockMovement\Type;
 use App\Enum\Tax\TaxRegime;
+use App\Filament\Bpo\Pages\SaleEditor;
 use App\Filament\Bpo\Pages\Sales;
 use App\Filament\Bpo\Pages\SaleTemplates;
 use App\Filament\Bpo\Resources\InvoiceResource;
@@ -31,6 +32,7 @@ use App\Models\FiscalProfile;
 use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\Product;
+use App\Models\ProductionOrder;
 use App\Models\ProductStock;
 use App\Models\SaleTemplate;
 use App\Models\Service;
@@ -111,14 +113,13 @@ class QuickSalesTest extends TestCase
         return ['financial_policy' => $policy, 'payment_method' => Method::PIX->value, 'payment_condition' => Condition::DAYS_30_60_90->value];
     }
 
-    private function fillSaleWizard(Testable $page, array $data): Testable
+    private function fillSalePage(Testable $page, array $data): Testable
     {
-        foreach (array_diff_key($data, ['items' => true]) as $field => $value) {
-            $page->set('mountedActions.0.data.'.$field, $value);
+        foreach ($data as $field => $value) {
+            $page->set('data.'.$field, $value);
         }
-        $key = array_key_first($page->get('mountedActions.0.data.items'));
 
-        return $page->set("mountedActions.0.data.items.{$key}", $data['items'][0]);
+        return $page;
     }
 
     private function reportSale(float $price, bool $finalize = true, ?string $date = null, float $travel = 0): BpoSale
@@ -364,11 +365,12 @@ class QuickSalesTest extends TestCase
         $this->workflow->finalize($this->bpo, $this->company, $sale->id, $sale->revision, $this->payment());
     }
 
-    public function test_pages_and_new_sale_modal_render_in_the_bpo_shell(): void
+    public function test_sales_listing_links_to_the_sale_page_in_the_bpo_shell(): void
     {
         $this->get(Sales::getUrl(panel: 'bpo', tenant: $this->company))->assertOk()->assertSee('bpo-shell', false);
         $this->get(SaleTemplates::getUrl(panel: 'bpo', tenant: $this->company))->assertOk();
-        Livewire::test(Sales::class)->mountAction('newSale')->assertActionMounted('newSale');
+        Livewire::test(Sales::class)->assertActionHasUrl('newSale', SaleEditor::getUrl());
+        $this->get(SaleEditor::getUrl())->assertOk()->assertSee('Conteúdo da nota fiscal');
     }
 
     public function test_product_and_service_catalogs_are_available_in_the_bpo_shell(): void
@@ -396,21 +398,18 @@ class QuickSalesTest extends TestCase
 
     public function test_catalog_shortcut_tracks_sale_type_and_create_permission(): void
     {
-        $catalog = TestAction::make('catalog')->schemaComponent('saleCatalogActions', 'mountedActionSchema0');
-        $page = Livewire::test(Sales::class)->mountAction('newSale')
-            ->set('mountedActions.0.data.sale_template_id', $this->template->id)
-            ->assertActionVisible($catalog);
-        $page->assertActionHasUrl($catalog, ServiceResource::getUrl('create'))->assertActionShouldOpenUrlInNewTab($catalog);
+        $page = Livewire::test(SaleEditor::class)->set('data.sale_template_id', $this->template->id);
+        $page->assertActionHasUrl('catalog', ServiceResource::getUrl('create'))->assertActionShouldOpenUrlInNewTab('catalog');
 
         $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Venda de produtos', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
-        $page->set('mountedActions.0.data.sale_template_id', $template->id)
-            ->assertActionVisible($catalog)->assertActionHasUrl($catalog, ProductResource::getUrl('create'));
+        $page->set('data.sale_template_id', $template->id)
+            ->assertActionVisible('catalog')->assertActionHasUrl('catalog', ProductResource::getUrl('create'));
 
         $role = CompanyRoleAssignment::where('user_id', $this->bpo->id)->sole()->role;
         $permissions = $role->permissions;
         unset($permissions['products.create'], $permissions['services.create']);
         $role->update(['permissions' => $permissions]);
-        $page->call('$refresh')->assertActionDoesNotExist($catalog);
+        $page->call('$refresh')->assertActionHidden('catalog');
         $this->get(ProductResource::getUrl('create'))->assertForbidden();
         $this->get(ServiceResource::getUrl('create'))->assertForbidden();
     }
@@ -426,46 +425,39 @@ class QuickSalesTest extends TestCase
         $this->get(ServiceResource::getUrl('edit', ['record' => $service]))->assertNotFound();
     }
 
-    public function test_livewire_creates_a_draft_and_finalizes_it_through_table_action(): void
+    public function test_livewire_saves_a_draft_and_table_action_links_to_its_review_page(): void
     {
-        $page = Livewire::test(Sales::class)->mountAction('newSale')
-            ->set('mountedActions.0.data.sale_template_id', $this->template->id)
-            ->set('mountedActions.0.data.customer_id', $this->customer->id);
-        $key = array_key_first($page->get('mountedActions.0.data.items'));
-        $page->set("mountedActions.0.data.items.{$key}", $this->payload()['items'][0])
-            ->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))->assertHasNoActionErrors();
+        $page = Livewire::test(SaleEditor::class);
+        $this->fillSalePage($page, $this->payload())->call('saveDraft')->assertHasNoFormErrors();
         $sale = BpoSale::sole();
-        Livewire::test(Sales::class)->callAction(TestAction::make('finalize')->table($sale), ['revision' => $sale->revision] + $this->payment())
-            ->assertHasNoActionErrors();
+        Livewire::test(Sales::class)->assertActionHasUrl(TestAction::make('finalize')->table($sale), SaleEditor::getUrl(['sale' => $sale->id]));
+        $page = Livewire::test(SaleEditor::class, ['sale' => $sale->id]);
+        $this->fillSalePage($page, $this->payment())->call('finalizeSale')->assertHasNoFormErrors();
         $this->assertNotNull($sale->fresh()->finalized_at);
         $this->assertDatabaseCount('account_receivables', 1);
     }
 
     public function test_service_selection_survives_reactive_model_and_item_updates(): void
     {
-        $page = Livewire::test(Sales::class)->mountAction('newSale')
-            ->set('mountedActions.0.data.sale_template_id', $this->template->id)
-            ->set('mountedActions.0.data.customer_id', $this->customer->id);
-        $key = array_key_first($page->get('mountedActions.0.data.items'));
-        $this->assertTrue(Str::isUuid((string) $key), 'Reactive item replacement must keep UUID keys so browser selects are remounted.');
-        $this->assertArrayHasKey('catalog_id', $page->get("mountedActions.0.data.items.{$key}"));
-        $this->assertArrayHasKey('unit_price', $page->get("mountedActions.0.data.items.{$key}"));
-
-        $page->set("mountedActions.0.data.items.{$key}.catalog_id", $this->service->id)
-            ->assertSet("mountedActions.0.data.items.{$key}.catalog_id", $this->service->id)
-            ->assertSet("mountedActions.0.data.items.{$key}.unit_price", '100,00')
-            ->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))->assertHasNoActionErrors();
+        $page = Livewire::test(SaleEditor::class)->set('data.sale_template_id', $this->template->id)
+            ->set('data.customer_id', $this->customer->id)->mountAction('addItem')
+            ->set('mountedActions.0.data.catalog_id', $this->service->id)
+            ->assertSet('mountedActions.0.data.unit_price', '100,00')
+            ->callMountedAction()->assertHasNoActionErrors();
+        $key = array_key_first($page->get('data.items'));
+        $this->assertTrue(Str::isUuid((string) $key));
+        $page->assertSet("data.items.{$key}.catalog_id", $this->service->id)
+            ->call('saveDraft')->assertHasNoFormErrors();
 
         $sale = BpoSale::sole();
         $this->assertSame($this->service->id, $sale->source()->items()->sole()->service_id);
     }
 
-    public function test_new_sale_can_be_finalized_in_the_same_wizard(): void
+    public function test_new_sale_can_be_finalized_on_the_page(): void
     {
-        $page = Livewire::test(Sales::class)->mountAction('newSale');
-        $this->assertTrue($page->instance()->getMountedAction()->isWizard());
-        $this->fillSaleWizard($page, $this->payload() + $this->payment())
-            ->callMountedAction()->assertHasNoActionErrors()->assertNotified('Venda finalizada');
+        $page = Livewire::test(SaleEditor::class);
+        $this->fillSalePage($page, $this->payload() + $this->payment())
+            ->call('finalizeSale')->assertHasNoFormErrors()->assertNotified('Venda finalizada');
 
         $sale = BpoSale::sole();
         $this->assertNotNull($sale->finalized_at);
@@ -475,6 +467,149 @@ class QuickSalesTest extends TestCase
         $this->assertDatabaseCount('account_receivable_installments', 3);
     }
 
+    public function test_sale_page_preserves_fiscal_content_in_draft_and_generates_the_nfse_with_it(): void
+    {
+        $page = Livewire::test(SaleEditor::class);
+        $this->fillSalePage($page, $this->payload() + [
+            'fiscal_description' => 'Consultoria referente a novembro. Contrato 123.',
+            'fiscal_additional_information' => 'Pedido do cliente: 456.',
+        ])->call('saveDraft')->assertHasNoFormErrors();
+        $sale = BpoSale::sole();
+        $page = Livewire::test(SaleEditor::class, ['sale' => $sale->id])
+            ->assertSet('data.fiscal_description', 'Consultoria referente a novembro. Contrato 123.')
+            ->assertSet('data.fiscal_additional_information', 'Pedido do cliente: 456.');
+        $this->fillSalePage($page, $this->payment('fiscal_only'))->call('finalizeSale')->assertHasNoFormErrors();
+        $document = $sale->fresh()->invoice->fiscalDocuments()->sole();
+        $this->assertSame('Consultoria referente a novembro. Contrato 123.', $document->items()->sole()->description);
+        $this->assertSame('Pedido do cliente: 456.', $document->items()->sole()->additional_information);
+        $this->assertNull($document->emission_requested_at);
+    }
+
+    public function test_sale_page_bills_an_existing_closed_os_without_recreating_its_items(): void
+    {
+        $draft = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $source = $draft->source();
+        DB::table('bpo_sales')->where('id', $draft->id)->delete();
+        $source->update(['status' => State::CLOSED]);
+        $itemId = $source->items()->sole()->id;
+        $page = Livewire::test(SaleEditor::class)->set('data.source_type', 'service_order')->set('data.source_id', $source->id)
+            ->set('data.sale_template_id', $this->template->id)->assertSet('data.customer_id', $this->customer->id)
+            ->assertSee($this->service->name);
+        $this->fillSalePage($page, $this->payment('fiscal_only') + ['fiscal_description' => 'Atendimento concluído, OS '.$source->number])
+            ->call('finalizeSale')->assertHasNoFormErrors();
+        $sale = BpoSale::sole();
+        $this->assertSame($source->id, $sale->service_order_id);
+        $this->assertSame($itemId, $source->items()->sole()->id);
+        $this->assertSame(190.0, (float) $sale->invoice->netValue);
+        $this->assertSame(State::INVOICED, $source->fresh()->status);
+    }
+
+    public function test_sale_page_bills_existing_requisitions_and_completed_production_orders(): void
+    {
+        $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Produtos', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
+        $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id]);
+        foreach (['requisition', 'production_order'] as $type) {
+            $payload = $this->payload();
+            $payload['sale_template_id'] = $template->id;
+            $payload['items'][0]['catalog_id'] = $product->id;
+            $draft = $this->workflow->save($this->bpo, $this->company, $payload, (string) Str::uuid());
+            $source = $draft->source();
+            DB::table('bpo_sales')->where('id', $draft->id)->delete();
+            $selected = $source;
+            if ($type === 'production_order') {
+                $selected = ProductionOrder::create(['company_id' => $this->company->id, 'customer_id' => $this->customer->id,
+                    'status' => 'completed', 'priority' => 'normal', 'destination_type' => 'direct_delivery', 'created_by' => $this->bpo->id]);
+                $selected->items()->create(['product_id' => $product->id, 'quantity' => 2, 'quantity_produced' => 2, 'quantity_approved' => 2, 'unit_price' => 100]);
+                $source->update(['production_order_id' => $selected->id]);
+            }
+            $itemId = $source->items()->sole()->id;
+            $page = Livewire::test(SaleEditor::class)->set('data.source_type', $type)->set('data.source_id', $selected->id)
+                ->set('data.sale_template_id', $template->id);
+            $this->fillSalePage($page, $this->payment('fiscal_only') + ['fiscal_additional_information' => 'Contrato 789.'])
+                ->call('finalizeSale')->assertHasNoFormErrors();
+            $sale = BpoSale::where('requisition_id', $source->id)->sole();
+            $this->assertSame($itemId, $source->items()->sole()->id);
+            $this->assertSame('Contrato 789.', $sale->invoice->fiscalDocuments()->sole()->additional_taxpayer_information);
+            if ($type === 'production_order') {
+                $this->assertSame($sale->invoice_id, $selected->fresh()->invoice_id);
+                $this->assertSame('invoiced', $selected->fresh()->status->value);
+            }
+        }
+    }
+
+    public function test_existing_source_cannot_be_bound_twice_or_rewritten_as_a_new_sale(): void
+    {
+        $draft = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $source = $draft->source();
+        DB::table('bpo_sales')->where('id', $draft->id)->delete();
+        $payload = ['source_type' => 'service_order', 'source_id' => $source->id, 'sale_template_id' => $this->template->id];
+        $sale = $this->workflow->saveExisting($this->bpo, $this->company, $payload, (string) Str::uuid());
+        $itemId = $source->items()->sole()->id;
+        foreach (['duplicate', 'rewrite'] as $attempt) {
+            try {
+                if ($attempt === 'duplicate') {
+                    $this->workflow->saveExisting($this->bpo, $this->company, $payload, (string) Str::uuid());
+                } else {
+                    $this->workflow->save($this->bpo, $this->company, $this->payload(), $sale->request_id, $sale->id, $sale->revision);
+                }
+                $this->fail('A origem deve permanecer vinculada a uma única venda.');
+            } catch (ValidationException $exception) {
+                $this->assertNotEmpty($exception->errors());
+            }
+        }
+        $this->assertSame($itemId, $source->items()->sole()->id);
+        $this->assertDatabaseCount('bpo_sales', 1);
+    }
+
+    public function test_existing_os_includes_linked_products_and_generates_both_fiscal_documents(): void
+    {
+        $serviceDraft = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $order = $serviceDraft->source();
+        DB::table('bpo_sales')->where('id', $serviceDraft->id)->delete();
+        $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Produtos vinculados', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
+        $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id]);
+        $payload = $this->payload();
+        $payload['sale_template_id'] = $template->id;
+        $payload['items'][0]['catalog_id'] = $product->id;
+        $productDraft = $this->workflow->save($this->bpo, $this->company, $payload, (string) Str::uuid());
+        $requisition = $productDraft->source();
+        DB::table('bpo_sales')->where('id', $productDraft->id)->delete();
+        $requisition->update(['service_order_id' => $order->id]);
+        $page = Livewire::test(SaleEditor::class)->set('data.source_type', 'service_order')->set('data.source_id', $order->id)
+            ->set('data.sale_template_id', $this->template->id)->assertSee($product->name)->assertSee($this->service->name);
+        $this->fillSalePage($page, $this->payment() + ['fiscal_description' => 'Serviço completo.', 'fiscal_additional_information' => 'Contrato comum.'])
+            ->call('finalizeSale')->assertHasNoFormErrors();
+        $sale = BpoSale::sole();
+        $this->assertSame($requisition->id, $sale->requisition_id);
+        $this->assertSame(380.0, (float) $sale->invoice->netValue);
+        $this->assertSame(2, $sale->invoice->fiscalDocuments()->count());
+        $this->assertSame($sale->invoice_id, $requisition->fresh()->invoice_id);
+        $this->assertSame(380.0, (float) $sale->invoice->accountReceivables()->get()->sum('due_amount'));
+        $this->assertSame('Contrato comum.', $sale->invoice->fiscalDocuments()->where('document_type', 'nfe')->sole()->additional_taxpayer_information);
+        $this->assertSame('Serviço completo.', $sale->invoice->fiscalDocuments()->where('document_type', 'nfse')->sole()->items()->sole()->description);
+        Livewire::test(Sales::class)->assertCanSeeTableRecords([$sale])->assertSee('380,00');
+        $summary = Livewire::test(Sales::class)->mountAction(TestAction::make('details')->table($sale));
+        $html = $summary->instance()->getMountedAction()->getModalContent()->render();
+        $this->assertStringContainsString($product->name, $html);
+        $this->assertStringContainsString('380,00', $html);
+    }
+
+    public function test_sale_page_cannot_open_a_draft_from_another_company_or_finalize_without_approval(): void
+    {
+        $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
+        $other = Company::factory()->create();
+        DB::table('bpo_sales')->where('id', $sale->id)->update(['company_id' => $other->id]);
+        $this->get(SaleEditor::getUrl(['sale' => $sale->id]))->assertNotFound();
+        $this->get(Sales::getUrl())->assertOk();
+
+        $role = CompanyRoleAssignment::where('user_id', $this->bpo->id)->sole()->role;
+        $permissions = $role->permissions;
+        unset($permissions['bpo_sales.approve']);
+        $role->update(['permissions' => $permissions]);
+        Livewire::test(SaleEditor::class)->call('finalizeSale')->assertForbidden();
+        $this->assertDatabaseCount('invoices', 0);
+    }
+
     public function test_operator_without_approval_can_still_save_a_draft_from_items(): void
     {
         $role = CompanyRoleAssignment::where('user_id', $this->bpo->id)->sole()->role;
@@ -482,11 +617,9 @@ class QuickSalesTest extends TestCase
         unset($permissions['bpo_sales.approve']);
         $role->update(['permissions' => $permissions]);
 
-        $page = Livewire::test(Sales::class)->mountAction('newSale');
-        $this->assertFalse($page->instance()->getMountedAction()->getModalSubmitAction()->isVisible());
-        $this->fillSaleWizard($page, $this->payload())
-            ->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))
-            ->assertHasNoActionErrors()->assertActionNotMounted('newSale')->assertNotified('Rascunho salvo');
+        $page = Livewire::test(SaleEditor::class)->assertDontSee('Finalizar venda');
+        $this->fillSalePage($page, $this->payload())
+            ->call('saveDraft')->assertHasNoFormErrors()->assertNotified('Rascunho salvo');
 
         $this->assertNull(BpoSale::sole()->finalized_at);
         $this->assertDatabaseCount('invoices', 0);
@@ -497,27 +630,28 @@ class QuickSalesTest extends TestCase
         $data = $this->payload();
         $data['items'][0]['unit_price'] = '1.234,56';
         $data['items'][0]['discount_amount'] = '10,50';
-        $page = Livewire::test(Sales::class)->mountAction('newSale');
-        $this->fillSaleWizard($page, $data)->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))->assertHasNoActionErrors();
+        $page = Livewire::test(SaleEditor::class)->set('data.sale_template_id', $this->template->id)
+            ->set('data.customer_id', $this->customer->id);
+        $page->callAction('addItem', $data['items'][0])->assertHasNoActionErrors()->call('saveDraft')->assertHasNoFormErrors();
 
         $sale = BpoSale::sole();
         $this->assertSame(2458.62, (float) $sale->source()->total_amount);
-        $page->mountAction(TestAction::make('editSale')->table($sale));
-        $key = array_key_first($page->get('mountedActions.0.data.items'));
-        $page->assertSet("mountedActions.0.data.items.{$key}.unit_price", '1.234,56')
-            ->assertSet("mountedActions.0.data.items.{$key}.discount_amount", '10,50')
-            ->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))->assertHasNoActionErrors();
+        $page = Livewire::test(SaleEditor::class, ['sale' => $sale->id]);
+        $key = array_key_first($page->get('data.items'));
+        $page->mountAction('editItem', ['key' => $key])->assertSet('mountedActions.0.data.unit_price', '1.234,56')
+            ->assertSet('mountedActions.0.data.discount_amount', '10,50')->callMountedAction()->assertHasNoActionErrors()
+            ->call('saveDraft')->assertHasNoFormErrors();
         $this->assertSame(2458.62, (float) $sale->fresh()->source()->total_amount);
     }
 
-    public function test_existing_draft_can_be_edited_and_finalized_in_the_same_wizard(): void
+    public function test_existing_draft_can_be_edited_and_finalized_on_the_page(): void
     {
         $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
         $data = $this->payload() + $this->payment('fiscal_only');
         $data['items'][0]['quantity'] = 3;
 
-        $page = Livewire::test(Sales::class)->mountAction(TestAction::make('editSale')->table($sale));
-        $this->fillSaleWizard($page, $data)->callMountedAction()->assertHasNoActionErrors()->assertNotified('Venda finalizada');
+        $page = Livewire::test(SaleEditor::class, ['sale' => $sale->id]);
+        $this->fillSalePage($page, $data)->call('finalizeSale')->assertHasNoFormErrors()->assertNotified('Venda finalizada');
 
         $this->assertNotNull($sale->fresh()->finalized_at);
         $this->assertSame(290.0, (float) $sale->fresh()->invoice->netValue);
@@ -529,44 +663,44 @@ class QuickSalesTest extends TestCase
     {
         $target = app(AccountReceivableService::class)->create(['company_id' => $this->company->id, 'customer_id' => $this->customer->id,
             'description' => 'Recebível com valor incompatível', 'due_date' => today()->addDays(30), 'due_amount' => 10, 'payment_method' => 'pix', 'installment_count' => 1], $this->bpo->id);
-        $page = Livewire::test(Sales::class)->mountAction('newSale');
-        $this->fillSaleWizard($page, $this->payload() + $this->payment('link_existing') + [
+        $page = Livewire::test(SaleEditor::class);
+        $this->fillSalePage($page, $this->payload() + $this->payment('link_existing') + [
             'financial_target_id' => $target->id]);
-        $page->callMountedAction()->assertHasActionErrors(['items'])->assertActionMounted('newSale')
+        $page->call('finalizeSale')->assertHasFormErrors(['items'])
             ->assertNotified('Não foi possível finalizar a venda');
         $this->assertDatabaseCount('bpo_sales', 0);
         $this->assertDatabaseCount('service_orders', 0);
         $this->assertDatabaseCount('invoices', 0);
         $this->assertDatabaseCount('account_receivables', 1);
 
-        $page->set('mountedActions.0.data.financial_policy', 'create_receivable')->callMountedAction()->assertHasNoActionErrors();
+        $page->set('data.financial_policy', 'create_receivable')->call('finalizeSale')->assertHasNoFormErrors();
         $this->assertNotNull(BpoSale::sole()->finalized_at);
     }
 
-    public function test_inline_finalization_can_request_emission_without_leaving_the_modal(): void
+    public function test_page_finalization_can_request_emission(): void
     {
         $this->mock(NfseDocumentService::class, function ($mock): void {
             $mock->shouldReceive('emitir')->once()->andReturn(true);
             $mock->shouldReceive('hasError')->andReturn(false);
         });
 
-        $page = Livewire::test(Sales::class)->mountAction('newSale');
-        $this->fillSaleWizard($page, $this->payload() + $this->payment() + ['request_emission' => true])
-            ->callMountedAction()->assertHasNoActionErrors()->assertNotified('Emissão solicitada');
+        $page = Livewire::test(SaleEditor::class);
+        $this->fillSalePage($page, $this->payload() + $this->payment() + ['request_emission' => true])
+            ->call('finalizeSale')->assertHasNoFormErrors()->assertNotified('Emissão solicitada');
 
         $this->assertNotNull(BpoSale::sole()->finalized_at);
         $this->assertDatabaseCount('invoices', 1);
     }
 
-    public function test_emission_failure_keeps_inline_sale_finalized_and_closes_the_wizard(): void
+    public function test_emission_failure_preserves_finalized_sale_and_returns_to_listing(): void
     {
         $this->mock(NfseDocumentService::class, function ($mock): void {
             $mock->shouldReceive('emitir')->once()->andThrow(ValidationException::withMessages(['emission' => 'Emissão indisponível.']));
         });
 
-        $page = Livewire::test(Sales::class)->mountAction('newSale');
-        $this->fillSaleWizard($page, $this->payload() + $this->payment() + ['request_emission' => true])
-            ->callMountedAction()->assertHasNoActionErrors()->assertActionNotMounted('newSale')
+        $page = Livewire::test(SaleEditor::class);
+        $this->fillSalePage($page, $this->payload() + $this->payment() + ['request_emission' => true])
+            ->call('finalizeSale')->assertHasNoFormErrors()
             ->assertNotified('Venda finalizada, mas a emissão não foi solicitada');
 
         $this->assertNotNull(BpoSale::sole()->finalized_at);
@@ -579,25 +713,21 @@ class QuickSalesTest extends TestCase
         $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Venda NF-e', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
         $first = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id, 'sale_price_value' => 100]);
         $second = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id, 'sale_price_value' => 75]);
-        $page = Livewire::test(Sales::class)->mountAction('newSale')
-            ->set('mountedActions.0.data.sale_template_id', $template->id)
-            ->set('mountedActions.0.data.customer_id', $this->customer->id);
-        $key = array_key_first($page->get('mountedActions.0.data.items'));
-        $page->set("mountedActions.0.data.items.{$key}.catalog_id", $first->id)
-            ->callAction(TestAction::make('add')->schemaComponent('items', 'mountedActionSchema0'));
-        $keys = array_keys($page->get('mountedActions.0.data.items'));
+        $page = Livewire::test(SaleEditor::class)->set('data.sale_template_id', $template->id)
+            ->set('data.customer_id', $this->customer->id)
+            ->callAction('addItem', ['catalog_id' => $first->id, 'quantity' => 1, 'unit_price' => '100,00', 'discount_amount' => 0])
+            ->callAction('addItem', ['catalog_id' => $second->id, 'quantity' => 1, 'unit_price' => '75,00', 'discount_amount' => 0])->assertHasNoActionErrors();
+        $keys = array_keys($page->get('data.items'));
+        $key = $keys[0];
         $this->assertCount(2, $keys);
-        $page->set("mountedActions.0.data.items.{$keys[1]}.catalog_id", $second->id)
-            ->set("mountedActions.0.data.items.{$key}.quantity", 1000000)
-            ->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))->assertHasErrors(["mountedActions.0.data.items.{$key}.quantity"])
-            ->set("mountedActions.0.data.items.{$key}.quantity", 1)
-            ->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))->assertHasNoActionErrors();
+        $page->set("data.items.{$key}.quantity", 1000000)->call('saveDraft')->assertHasFormErrors(['items.0.quantity'])
+            ->set("data.items.{$key}.quantity", 1)->call('saveDraft')->assertHasNoFormErrors();
         $sale = BpoSale::sole();
         $this->assertSame(2, $sale->source()->items()->count());
         $this->assertSame(175.0, (float) $sale->source()->total_amount);
-        $page->mountAction(TestAction::make('editSale')->table($sale));
-        $key = array_key_first($page->get('mountedActions.0.data.items'));
-        $page->set("mountedActions.0.data.items.{$key}.quantity", 2)->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))->assertHasNoActionErrors();
+        $page = Livewire::test(SaleEditor::class, ['sale' => $sale->id]);
+        $key = array_key_first($page->get('data.items'));
+        $page->set("data.items.{$key}.quantity", 2)->call('saveDraft')->assertHasNoFormErrors();
         $this->assertSame(275.0, (float) $sale->fresh()->source()->total_amount);
     }
 
@@ -606,35 +736,31 @@ class QuickSalesTest extends TestCase
         $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'Venda NF-e', 'document_type' => 'nfe', 'stock_control_enabled' => false, 'is_active' => true]);
         $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id,
             'name' => 'Produto com mínimo', 'sale_price_value' => 50, 'min_sale_price' => 100]);
-        $page = Livewire::test(Sales::class)->mountAction('newSale')
-            ->set('mountedActions.0.data.sale_template_id', $template->id)
-            ->set('mountedActions.0.data.customer_id', $this->customer->id);
-        $key = array_key_first($page->get('mountedActions.0.data.items'));
-        $page->set("mountedActions.0.data.items.{$key}.catalog_id", $product->id)
-            ->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))
-            ->assertActionMounted('newSale')
-            ->assertHasErrors(['mountedActions.0.data.items'])
+        $page = Livewire::test(SaleEditor::class)->set('data.sale_template_id', $template->id)
+            ->set('data.customer_id', $this->customer->id)
+            ->callAction('addItem', ['catalog_id' => $product->id, 'quantity' => 1, 'unit_price' => '50,00', 'discount_amount' => 0]);
+        $key = array_key_first($page->get('data.items'));
+        $page->call('saveDraft')->assertHasFormErrors(['items'])
             ->assertNotified('Não foi possível salvar o rascunho')
-            ->assertSet("mountedActions.0.data.items.{$key}.catalog_id", $product->id);
+            ->assertSet("data.items.{$key}.catalog_id", $product->id);
         $this->assertDatabaseCount('bpo_sales', 0);
         $this->assertDatabaseCount('requisitions', 0);
-        $page->set("mountedActions.0.data.items.{$key}.unit_price", 100)->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))->assertHasNoActionErrors();
+        $page->set("data.items.{$key}.unit_price", 100)->call('saveDraft')->assertHasNoFormErrors();
         $this->assertDatabaseCount('bpo_sales', 1);
     }
 
-    public function test_nfe_missing_stock_is_reported_in_the_modal_without_losing_items(): void
+    public function test_nfe_missing_stock_is_reported_on_the_page_without_losing_items(): void
     {
         $template = SaleTemplate::create(['company_id' => $this->company->id, 'name' => 'NF-e com estoque', 'document_type' => 'nfe', 'stock_control_enabled' => true, 'is_active' => true]);
         $product = Product::factory()->create(['company_id' => $this->company->id, 'created_by' => $this->bpo->id, 'has_stock_control' => true, 'sale_price_value' => 100]);
-        $page = Livewire::test(Sales::class)->mountAction('newSale')
-            ->set('mountedActions.0.data.sale_template_id', $template->id)
-            ->set('mountedActions.0.data.customer_id', $this->customer->id);
-        $key = array_key_first($page->get('mountedActions.0.data.items'));
-        $page->set("mountedActions.0.data.items.{$key}.catalog_id", $product->id)->callAction(TestAction::make('saveDraft')->schemaComponent('saleDraftActions', 'mountedActionSchema0'))
-            ->assertHasErrors(['mountedActions.0.data.items'])->assertActionMounted('newSale')
+        $page = Livewire::test(SaleEditor::class)->set('data.sale_template_id', $template->id)
+            ->set('data.customer_id', $this->customer->id)
+            ->callAction('addItem', ['catalog_id' => $product->id, 'quantity' => 1, 'unit_price' => '100,00', 'discount_amount' => 0]);
+        $key = array_key_first($page->get('data.items'));
+        $page->call('saveDraft')->assertHasFormErrors(['items'])
             ->assertNotified(Notification::make()->title('Não foi possível salvar o rascunho')
                 ->body('Cadastre o estoque do produto antes de usar um modelo com controle de estoque.')->danger())
-            ->assertSet("mountedActions.0.data.items.{$key}.catalog_id", $product->id);
+            ->assertSet("data.items.{$key}.catalog_id", $product->id);
         $this->assertDatabaseCount('requisitions', 0);
         $this->assertDatabaseCount('stock_movements', 0);
     }
@@ -813,11 +939,12 @@ class QuickSalesTest extends TestCase
         $this->assertDatabaseCount('cash_movements', 0);
     }
 
-    public function test_finalization_modal_initializes_dates_and_keeps_the_financial_choice_explicit(): void
+    public function test_review_page_initializes_dates_and_keeps_the_financial_choice_explicit(): void
     {
         $sale = $this->workflow->save($this->bpo, $this->company, $this->payload(), (string) Str::uuid());
-        Livewire::test(Sales::class)->mountAction(TestAction::make('finalize')->table($sale))
-            ->assertActionDataSet(['payment_date' => today()->toDateString(), 'received_at' => today()->toDateString(), 'financial_policy' => 'create_receivable']);
+        Livewire::test(SaleEditor::class, ['sale' => $sale->id])
+            ->assertSet('data.payment_date', today()->toDateString())->assertSet('data.received_at', today()->toDateString())
+            ->assertSet('data.financial_policy', 'create_receivable');
     }
 
     public function test_explicit_receipt_generates_real_payments_and_cash_once(): void

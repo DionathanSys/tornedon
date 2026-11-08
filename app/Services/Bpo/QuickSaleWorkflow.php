@@ -18,19 +18,24 @@ use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
 use App\Models\Invoice;
 use App\Models\Product;
+use App\Models\ProductionOrder;
 use App\Models\ProductStock;
+use App\Models\Requisition;
 use App\Models\SaleTemplate;
 use App\Models\Service;
 use App\Models\ServiceOrder;
 use App\Models\User;
 use App\Services\Access\CompanyAuthorization;
+use App\Services\Access\RoleRecordScope;
 use App\Services\Access\UserAccessService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Invoice\Actions\ConfirmInvoiceAction;
+use App\Services\ProductionOrder\ProductionOrderService;
 use App\Services\Requisition\RequisitionService;
 use App\Services\RequisitionItem\RequisitionItemService;
+use App\Services\ServiceOrder\InvoiceServiceOrderWorkflow;
 use App\Services\ServiceOrder\ServiceOrderService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use App\Support\Financial\PaymentTerms;
@@ -70,6 +75,8 @@ class QuickSaleWorkflow
             'items.*.unit_price' => 'required|numeric|min:0.01|max:999999999',
             'items.*.discount_amount' => 'nullable|numeric|min:0|max:999999999',
             'description' => 'nullable|string|max:1000',
+            'fiscal_description' => 'nullable|string|max:10000',
+            'fiscal_additional_information' => 'nullable|string|max:2000',
         ])->validate();
 
         return DB::transaction(function () use ($user, $company, $data, $requestId, $id, $revision): BpoSale {
@@ -82,6 +89,9 @@ class QuickSaleWorkflow
             }
             if ($sale) {
                 $sale = BpoSale::whereKey($sale->id)->lockForUpdate()->firstOrFail();
+                if ($sale->payment_settings['existing_source'] ?? false) {
+                    $this->fail('Esta venda utiliza uma origem existente. Edite os itens no documento de origem.');
+                }
                 if ($sale->finalized_at || $sale->revision !== $revision) {
                     $this->fail('Venda finalizada ou alterada em outra sessão. Reabra o registro.');
                 }
@@ -161,7 +171,7 @@ class QuickSaleWorkflow
                 $itemService = app($isService ? ServiceOrderItemService::class : RequisitionItemService::class);
                 $this->requireResult($itemService->create($itemData, $user->id), $itemService);
             }
-            $attributes = ['payment_settings' => Arr::only($data, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id', 'description']),
+            $attributes = ['payment_settings' => Arr::only($data, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id', 'description', 'fiscal_description', 'fiscal_additional_information']),
                 'revision' => $sale ? $sale->revision + 1 : 1];
             if ($sale) {
                 $sale->update($attributes);
@@ -172,6 +182,102 @@ class QuickSaleWorkflow
             }
 
             app(AuditRecorder::class)->recordModelEvent($sale, $before ? 'bpo_sale.updated' : 'bpo_sale.created', 'Rascunho de venda rápida salvo',
+                $before, app(AuditRecorder::class)->snapshot($sale), $user->id);
+
+            return $sale->fresh();
+        });
+    }
+
+    public function saveExisting(User $user, Company $company, array $data, string $requestId, ?int $id = null, int $revision = 0): BpoSale
+    {
+        $this->authorize($user, $company, 'bpo_sales.'.($id ? 'update' : 'create'));
+        Validator::make($data + ['request_id' => $requestId], [
+            'request_id' => 'required|uuid', 'sale_template_id' => 'required|integer',
+            'source_type' => ['required', Rule::in(['service_order', 'requisition', 'production_order'])],
+            'source_id' => 'required|integer', 'fiscal_description' => 'nullable|string|max:10000',
+            'fiscal_additional_information' => 'nullable|string|max:2000',
+        ])->validate();
+
+        return DB::transaction(function () use ($user, $company, $data, $requestId, $id, $revision): BpoSale {
+            Company::whereKey($company->id)->lockForUpdate()->firstOrFail();
+            $sale = $id ? $this->find($user, $company, $id, 'update') : null;
+            if ($sale && ($sale->finalized_at || $sale->revision !== $revision)) {
+                $this->fail('Venda finalizada ou alterada em outra sessão. Reabra o registro.');
+            }
+            if (! $id && BpoSale::where('company_id', $company->id)->where('request_id', $requestId)->exists()) {
+                $this->fail('Esta solicitação já foi salva. Abra a venda existente para continuar.');
+            }
+            $template = SaleTemplate::where('company_id', $company->id)->findOrFail($data['sale_template_id']);
+            $this->authorize($user, $company, 'sale_templates.view', $template);
+            if (! $template->is_active) {
+                $this->fail('O modelo de venda está inativo.');
+            }
+            [$model, $module] = match ($data['source_type']) {
+                'service_order' => [ServiceOrder::class, 'service_orders'],
+                'requisition' => [Requisition::class, 'requisitions'],
+                'production_order' => [ProductionOrder::class, 'production_orders'],
+            };
+            $selected = $model::where('company_id', $company->id)->lockForUpdate()->findOrFail($data['source_id']);
+            foreach (['view', 'update'] as $action) {
+                $this->authorize($user, $company, $module.'.'.$action, $selected);
+            }
+            $source = $selected instanceof ProductionOrder ? $selected->requisition()->first() : $selected;
+            if (! $source || (int) $source->company_id !== (int) $company->id || ($selected instanceof ProductionOrder && ! $selected->isCompleted())) {
+                $this->fail('A OP deve estar concluída e possuir uma requisição gerada pela produção.');
+            }
+            $isService = $source instanceof ServiceOrder;
+            if ($selected instanceof ProductionOrder && (int) $selected->customer_id !== (int) $source->customer_id) {
+                $this->fail('A OP e a requisição precisam pertencer ao mesmo cliente.');
+            }
+            foreach (['view', 'update'] as $action) {
+                $this->authorize($user, $company, ($isService ? 'service_orders' : 'requisitions').'.'.$action, $source);
+            }
+            if ($source->invoice_id || $selected->invoice_id || ! in_array($source->status, $isService ? [State::OPEN, State::CLOSED] : [Status::OPEN, Status::CLOSED], true)) {
+                $this->fail('A origem está cancelada ou já foi faturada.');
+            }
+            if (! $source->items()->exists()) {
+                $this->fail('A origem precisa possuir itens antes de preparar a venda.');
+            }
+            if ($source instanceof Requisition && $source->service_order_id) {
+                $this->fail('Esta requisição pertence a uma OS. Selecione a ordem de serviço para faturar serviços e produtos juntos.');
+            }
+            $linked = $isService ? $source->requisition()->first() : null;
+            if ($linked) {
+                if ((int) $linked->company_id !== (int) $company->id || (int) $linked->customer_id !== (int) $source->customer_id) {
+                    $this->fail('A requisição vinculada não pertence à mesma empresa e cliente da OS.');
+                }
+                foreach (['view', 'update'] as $action) {
+                    $this->authorize($user, $company, 'requisitions.'.$action, $linked);
+                }
+                if ($linked->invoice_id || $linked->status === Status::CANCELLED) {
+                    $this->fail('A requisição vinculada está cancelada ou já foi faturada.');
+                }
+            }
+            if (($template->document_type === DocumentModel::NFSE) !== $isService) {
+                $this->fail('Escolha um modelo compatível com a origem: NFS-e para OS e NF-e para requisição/OP.');
+            }
+            $column = $isService ? 'service_order_id' : 'requisition_id';
+            if ($sale && ((int) $sale->{$column} !== $source->id || $sale->sale_template_id !== $template->id)) {
+                $this->fail('A origem e o modelo de um rascunho existente não podem ser trocados.');
+            }
+            if (BpoSale::withoutGlobalScope(RoleRecordScope::class)->where('company_id', $company->id)->where($column, $source->id)->when($id, fn ($query) => $query->whereKeyNot($id))->exists()) {
+                $this->fail('Esta origem já está vinculada a uma venda. Continue a venda existente.');
+            }
+            $before = $sale ? app(AuditRecorder::class)->snapshot($sale) : null;
+            $settings = Arr::only($data, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id', 'fiscal_description', 'fiscal_additional_information']);
+            $settings += ['existing_source' => true, 'source_type' => $data['source_type'], 'source_id' => $selected->id];
+            $attributes = ['payment_settings' => $settings, 'revision' => $sale ? $sale->revision + 1 : 1];
+            if ($isService) {
+                $attributes['requisition_id'] = $linked?->id;
+            }
+            if ($sale) {
+                $sale->update($attributes);
+            } else {
+                $sale = BpoSale::create($attributes + ['company_id' => $company->id, 'request_id' => $requestId,
+                    'sale_template_id' => $template->id, 'template_snapshot' => Arr::only($template->toArray(), ['name', 'document_type', 'operation_nature', 'stock_control_enabled', 'additional_information']),
+                    $column => $source->id, ...($linked ? ['requisition_id' => $linked->id] : []), 'created_by' => $user->id]);
+            }
+            app(AuditRecorder::class)->recordModelEvent($sale, $before ? 'bpo_sale.updated' : 'bpo_sale.created', 'Venda vinculada à origem operacional',
                 $before, app(AuditRecorder::class)->snapshot($sale), $user->id);
 
             return $sale->fresh();
@@ -193,12 +299,19 @@ class QuickSaleWorkflow
             }
             $source = $sale->source();
             $isService = $source instanceof ServiceOrder;
-            if ($isService && $source->items()->count() !== 1) {
+            if ($isService && $source->items()->count() !== 1 && ! ($sale->payment_settings['existing_source'] ?? false)) {
                 $this->fail('A venda de serviço deve possuir um item. Revise a OS antes de finalizar.');
             }
             $module = $isService ? 'service_orders' : 'requisitions';
             foreach (['view', 'update', 'issue'] as $action) {
                 $this->authorize($user, $company, $module.'.'.$action, $source);
+            }
+            $linked = $isService && ($sale->payment_settings['existing_source'] ?? false) ? $source->requisition()->first() : null;
+            if ($linked) {
+                abort_unless((int) $linked->company_id === (int) $company->id && (int) $linked->customer_id === (int) $source->customer_id, 403);
+                foreach (['view', 'update', 'issue'] as $action) {
+                    $this->authorize($user, $company, 'requisitions.'.$action, $linked);
+                }
             }
             $this->authorize($user, $company, 'invoices.create');
             $this->authorize($user, $company, 'invoices.update');
@@ -208,6 +321,9 @@ class QuickSaleWorkflow
             $settings = Arr::only($paymentData, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id', 'financial_policy', 'financial_target_id',
                 'card_payment_profile_id', 'payment_date', 'auto_bank_slip_issuance', 'auto_pix_charge_issuance', 'mark_as_received', 'received_at', 'financial_account_id']) + ($sale->payment_settings ?? []);
             $policy = $settings['financial_policy'] ?? 'create_receivable';
+            if ($linked?->items()->exists() && $policy === 'link_existing') {
+                $this->fail('OS com serviços e produtos gera dois documentos fiscais. Utilize gerar contas a receber ou somente emitir nota.');
+            }
             Validator::make($settings + ['financial_policy' => $policy], [
                 'financial_policy' => ['required', Rule::in(['create_receivable', 'link_existing', 'fiscal_only'])],
                 'payment_method' => ['required', Rule::enum(Method::class)],
@@ -266,18 +382,40 @@ class QuickSaleWorkflow
             if ($source->invoice_id) {
                 $this->fail('Este registro já foi faturado fora da bancada.');
             }
-            $source = $this->requireResult($sourceService->close($source, $user->id, false), $sourceService);
-            $invoice = $this->requireResult($sourceService->invoice($source, $user->id), $sourceService);
+            $production = ! $isService && $source->production_order_id
+                ? ProductionOrder::where('company_id', $company->id)->lockForUpdate()->findOrFail($source->production_order_id) : null;
+            if ($production) {
+                foreach (['view', 'update', 'approve'] as $action) {
+                    $this->authorize($user, $company, 'production_orders.'.$action, $production);
+                }
+                $productionService = app(ProductionOrderService::class);
+                $invoice = $this->requireResult($productionService->invoice($production, $user->id), $productionService);
+            } else {
+                if ($source->status === ($isService ? State::OPEN : Status::OPEN)) {
+                    $source = $this->requireResult($sourceService->close($source, $user->id, false), $sourceService);
+                }
+                if ($linked && $linked->items()->exists()) {
+                    $billing = app(InvoiceServiceOrderWorkflow::class);
+                    $this->requireResult($billing->execute($source, $user->id), $billing);
+                    $invoice = $billing->invoice();
+                } else {
+                    $invoice = $this->requireResult($sourceService->invoice($source, $user->id), $sourceService);
+                }
+            }
             $this->authorize($user, $company, 'invoices.update', $invoice);
             $invoice->update(['financial_policy' => $policy, 'invoice_date' => $isService ? $source->order_date : $source->sale_date]);
             $confirmation = new ConfirmInvoiceAction($invoice->fresh(), $user->id);
             $this->requireResult($confirmation->execute([
                 ...Arr::only($settings, ['payment_method', 'payment_condition', 'payment_condition_details', 'financial_category_id',
                     'card_payment_profile_id', 'payment_date', 'financial_account_id', 'received_at', 'mark_as_received', 'auto_bank_slip_issuance', 'auto_pix_charge_issuance']),
-                'nfse_item_description' => $settings['description'] ?? null,
+                'nfse_item_description' => array_key_exists('fiscal_description', $settings) ? $settings['fiscal_description'] : ($settings['description'] ?? null),
                 'sale_operation_nature' => $sale->template_snapshot['operation_nature'] ?? null,
-                'nfse_additional_information' => $sale->template_snapshot['additional_information'] ?? null,
+                'nfse_additional_information' => array_key_exists('fiscal_additional_information', $settings) ? $settings['fiscal_additional_information'] : ($sale->template_snapshot['additional_information'] ?? null),
             ]), $confirmation);
+            if (array_key_exists('fiscal_additional_information', $settings)) {
+                $invoice->fiscalDocuments()->where('document_type', DocumentModel::NFE->value)
+                    ->each(fn ($document) => $document->update(['additional_taxpayer_information' => $settings['fiscal_additional_information']]));
+            }
             if ($policy === 'link_existing') {
                 $target = AccountReceivable::where('company_id', $company->id)->lockForUpdate()->findOrFail($settings['financial_target_id'] ?? 0);
                 $this->authorize($user, $company, 'account_receivables.update', $target);
@@ -309,12 +447,22 @@ class QuickSaleWorkflow
         if ($invoice->canceled) {
             $this->fail('A fatura está cancelada.');
         }
-        $document = $invoice->fiscalDocuments()->where('company_id', $company->id)->sole();
-        foreach (['view', 'update', 'issue'] as $action) {
-            $this->authorize($user, $company, 'fiscal_documents.'.$action, $document);
+        $documents = $invoice->fiscalDocuments()->where('company_id', $company->id)->get();
+        if ($documents->isEmpty()) {
+            $this->fail('Esta venda ainda não possui documento fiscal preparado.');
         }
-        $service = app($document->isNfse() ? NfseDocumentService::class : NfeDocumentService::class);
-        $this->requireResult($service->emitir($document, $user->id), $service);
+        foreach ($documents as $document) {
+            foreach (['view', 'update', 'issue'] as $action) {
+                $this->authorize($user, $company, 'fiscal_documents.'.$action, $document);
+            }
+        }
+        foreach ($documents as $document) {
+            if ($document->isNfse() ? $document->blocksNfseResubmission() : $document->blocksNfeResubmission()) {
+                continue;
+            }
+            $service = app($document->isNfse() ? NfseDocumentService::class : NfeDocumentService::class);
+            $this->requireResult($service->emitir($document, $user->id), $service);
+        }
     }
 
     private function requireResult(mixed $result, object $service): mixed
