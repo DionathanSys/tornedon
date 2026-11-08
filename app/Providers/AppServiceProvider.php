@@ -4,9 +4,6 @@ namespace App\Providers;
 
 use App\Events\Quote\QuoteApproved;
 use App\Events\Quote\QuoteReopened;
-use App\Events\RequisitionItem\RequisitionItemCreated;
-use App\Events\RequisitionItem\RequisitionItemDeleted;
-use App\Events\RequisitionItem\RequisitionItemUpdated;
 use App\Filament\Operation\Resources\ProductionRequests\Widgets\ProductionRequestOverview;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Forms\Components\Livewire\AutoSubmitTableSelectLivewireComponent;
@@ -16,9 +13,6 @@ use App\Listeners\Quote\CreateRequisitionFromApprovedQuoteListener;
 use App\Listeners\Quote\CreateServiceOrderFromApprovedQuoteListener;
 use App\Listeners\Quote\UpdateQuoteItemsStatusListener;
 use App\Listeners\Quote\UpdateQuoteItemsStatusOnReopenListener;
-use App\Listeners\RequisitionItem\HandleStockReservationCreated;
-use App\Listeners\RequisitionItem\HandleStockReservationDeleted;
-use App\Listeners\RequisitionItem\HandleStockReservationUpdated;
 use App\Models\AuditEntry;
 use App\Models\CommitmentBilling;
 use App\Models\CommitmentBillingBatch;
@@ -161,10 +155,8 @@ class AppServiceProvider extends ServiceProvider
         Invoice::observe(InvoiceObserver::class);
         FiscalDocument::observe(FiscalDocumentObserver::class);
 
-        // Eventos de item de requisição → atualização da quantidade reservada no estoque
-        Event::listen(RequisitionItemCreated::class, HandleStockReservationCreated::class);
-        Event::listen(RequisitionItemUpdated::class, HandleStockReservationUpdated::class);
-        Event::listen(RequisitionItemDeleted::class, HandleStockReservationDeleted::class);
+        // Os listeners de itens de requisição são registrados pela descoberta automática.
+        // Registrá-los também aqui duplica os ajustes de reserva de estoque.
 
         // Eventos de orçamento aprovado
         Event::listen(QuoteApproved::class, UpdateQuoteItemsStatusListener::class);

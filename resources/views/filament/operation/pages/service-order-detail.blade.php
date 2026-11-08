@@ -34,6 +34,40 @@
             </div>
         </x-operation.panel>
 
+        <x-operation.panel :title="'Produtos ('.count($order['products']).')'" :subtitle="$order['requisition_label']">
+            <div class="space-y-3">
+                @if ($order['can_edit_products'])
+                    <x-mary-button label="Adicionar produto" icon="o-plus" class="btn-primary btn-sm" wire:click="openAddProduct" />
+                @endif
+                @forelse ($order['products'] as $product)
+                    <div class="rounded-box bg-base-200 p-4" wire:key="service-order-product-{{ $product['id'] }}">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="font-semibold">[{{ $product['code'] }}] {{ $product['name'] }}</p>
+                                <p class="mt-1 text-sm">{{ $product['quantity'] }} {{ $product['unit'] }} × {{ $product['unit_price'] }} · Desconto: {{ $product['discount'] }}</p>
+                                <p class="font-semibold">Total: {{ $product['total'] }}</p>
+                            </div>
+                            @if ($order['can_edit_products'])
+                                <div class="flex shrink-0">
+                                    <x-mary-button icon="o-pencil-square" class="btn-ghost btn-sm btn-circle" :wire:click="'openEditProduct('.$product['id'].')'" aria-label="Editar produto" tooltip="Editar produto" />
+                                    <x-mary-button icon="o-trash" class="btn-ghost btn-sm btn-circle text-error" :wire:click="'deleteProduct('.$product['id'].')'" wire:confirm="Excluir este produto da requisição vinculada?" aria-label="Excluir produto" tooltip="Excluir produto" />
+                                </div>
+                            @endif
+                        </div>
+                        @if ($product['observations'])
+                            <p class="mt-2 whitespace-pre-wrap text-sm text-base-content/60">{{ $product['observations'] }}</p>
+                        @endif
+                    </div>
+                @empty
+                    <p class="text-sm text-base-content/60">Nenhum produto adicionado.</p>
+                @endforelse
+                <div class="grid grid-cols-2 gap-3">
+                    <x-operation.stat title="Serviços e deslocamento" :value="$order['services_total']" />
+                    <x-operation.stat title="Produtos" :value="$order['products_total']" />
+                </div>
+            </div>
+        </x-operation.panel>
+
         @if ($order['can_edit'])
             <x-mary-form wire:submit="save" no-separator class="space-y-6">
                 <x-operation.panel title="Responsáveis e equipamento">
@@ -106,6 +140,25 @@
         </x-mary-form>
     </x-mary-modal>
     @include('filament.operation.signature-modals')
+    <x-mary-modal wire:model="showProductModal" :title="$editingProductId ? 'Editar produto' : 'Adicionar produto'" box-class="max-w-2xl" class="backdrop-blur-sm">
+        <x-mary-form wire:submit="saveProduct" no-separator>
+            <x-operation.search-select label="Produto em estoque" wire:model.live="productData.product_stock_id" :options="$products" search-function="searchProducts" placeholder="Buscar nome ou código" debounce="300ms" />
+            <p class="text-sm text-base-content/60">{{ $this->productHint }}</p>
+            <div class="grid grid-cols-2 gap-4">
+                <x-mary-select label="Unidade" wire:model.live="productData.unit_of_measure" :options="$this->productUnits" placeholder="Selecione" />
+                <x-mary-input label="Quantidade" wire:model.blur="productData.quantity" inputmode="decimal" />
+                <x-mary-input label="Preço unitário" wire:model.blur="productData.unit_price" prefix="R$" inputmode="decimal" />
+                <x-mary-input label="Desconto (%)" wire:model.blur="productData.discount_percentage" suffix="%" inputmode="decimal" />
+                <x-mary-input label="Desconto (R$)" wire:model.blur="productData.discount_amount" prefix="R$" inputmode="decimal" />
+            </div>
+            <x-operation.stat title="Total do produto" :value="$this->productTotal" class="bg-base-200" />
+            <x-mary-textarea label="Observações" wire:model="productData.observations" rows="2" />
+            <x-slot:actions>
+                <x-mary-button label="Voltar" @click="$wire.showProductModal = false" />
+                <x-mary-button label="Salvar produto" class="btn-primary" type="submit" spinner="saveProduct" />
+            </x-slot:actions>
+        </x-mary-form>
+    </x-mary-modal>
     <x-mary-modal wire:model="showPdfModal" title="PDF da ordem de serviço" box-class="max-w-5xl" class="backdrop-blur-sm">
         <x-mary-checkbox label="Incluir fotos do serviço no PDF" wire:model.live="includeServicePhotos" />
         <p class="my-3 text-sm text-base-content/60">Inclui somente imagens dos anexos do tipo Foto do Serviço ao final do documento.</p>

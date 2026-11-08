@@ -4,14 +4,15 @@ namespace App\Filament\Bpo\Resources;
 
 use App\Enum\Invoice\Status;
 use App\Filament\Bpo\Resources\Invoices\Pages;
+use App\Filament\Bpo\Resources\Invoices\RelationManagers;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesPdfAction;
-use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InvoiceSourcesRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\Schemas\InvoiceForm;
 use App\Models\Invoice;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\UserAccessService;
 use Filament\Facades\Filament;
-use Filament\Infolists\Components\TextEntry;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -35,11 +36,7 @@ class InvoiceResource extends Resource
 
     public static function infolist(Schema $schema): Schema
     {
-        return $schema->columns(2)->components([TextEntry::make('invoice_number')->label('Fatura'), TextEntry::make('customer.name')->label('Cliente'),
-            TextEntry::make('invoice_date')->label('Data')->date('d/m/Y'), TextEntry::make('netValue')->label('Valor líquido')->money('BRL'),
-            TextEntry::make('status')->label('Situação')->formatStateUsing(fn (Invoice $record) => $record->statusLabel()),
-            TextEntry::make('accountReceivables.document_number')->label('Recebíveis gerados')->listWithLineBreaks(),
-            TextEntry::make('fiscalDocuments.document_number')->label('Documentos fiscais')->listWithLineBreaks()]);
+        return InvoiceForm::configure($schema->operation('view'));
     }
 
     public static function table(Table $table): Table
@@ -71,6 +68,17 @@ class InvoiceResource extends Resource
 
     public static function getRelations(): array
     {
-        return [InvoiceSourcesRelationManager::class];
+        return [
+            RelationGroup::make('Contas', [
+                RelationManagers\AccountReceivablesRelationManager::class,
+                RelationManagers\InstallmentsRelationManager::class,
+            ]),
+            RelationGroup::make('Itens', [
+                RelationManagers\RequisitionsRelationManager::class,
+                RelationManagers\ServiceOrdersRelationManager::class,
+            ]),
+            RelationManagers\AttachmentsRelationManager::class,
+            RelationManagers\InvoiceSourcesRelationManager::class,
+        ];
     }
 }

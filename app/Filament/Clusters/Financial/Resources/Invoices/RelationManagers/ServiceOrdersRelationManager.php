@@ -117,6 +117,7 @@ class ServiceOrdersRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('items'))
             ->recordTitleAttribute('number')
             ->recordUrl(fn ($record) => ServiceOrderResource::getUrl('edit', ['record' => $record]), true)
             ->columns([

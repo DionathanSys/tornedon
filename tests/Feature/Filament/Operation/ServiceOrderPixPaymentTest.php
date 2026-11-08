@@ -85,12 +85,10 @@ class ServiceOrderPixPaymentTest extends TestCase
         $this->right = CompanyEntitlement::create(['company_id' => $this->company->id, 'feature' => ServiceOrderPixPayment::FEATURE, 'enabled' => true, 'metadata' => ['user_access' => 'selected', 'user_ids' => [$this->user->id], 'financial_account_id' => $account->id, 'financial_category_id' => $category->id]]);
     }
 
-    public function test_one_click_saves_closes_invoices_and_prepares_one_pix_without_fiscal_documents(): void
+    public function test_workflow_closes_invoices_and_prepares_one_pix_without_fiscal_documents(): void
     {
-        Livewire::test(ServiceOrderDetail::class, ['record' => $this->order->id])
-            ->set('formData.solution', 'Serviço executado')->call('generatePixPayment')->assertHasNoErrors();
+        app(ServiceOrderPixPaymentWorkflow::class)->execute($this->order, $this->user);
         $this->assertSame(State::INVOICED, $this->order->fresh()->status);
-        $this->assertSame('Serviço executado', $this->order->fresh()->solution);
         $invoice = $this->order->fresh()->invoice;
         $this->assertTrue($invoice->confirmed);
         $this->assertSame(270.0, (float) $invoice->netValue);
@@ -125,13 +123,12 @@ class ServiceOrderPixPaymentTest extends TestCase
         $this->assertDatabaseCount('cash_movements', 1);
     }
 
-    public function test_company_right_and_selected_user_are_required_even_for_direct_calls(): void
+    public function test_operation_does_not_offer_pix_generation_even_with_entitlement(): void
     {
+        Livewire::test(ServiceOrderDetail::class, ['record' => $this->order->id])->assertDontSee('Gerar cobrança PIX')->assertDontSee('Receber no atendimento');
+        $this->assertFalse(method_exists(ServiceOrderDetail::class, 'generatePixPayment'));
         $this->right->update(['enabled' => false]);
         Livewire::test(OperationServiceOrderPix::class, ['orderId' => $this->order->id])->assertDontSee('Gerar cobrança PIX');
-        Livewire::test(ServiceOrderDetail::class, ['record' => $this->order->id])->call('generatePixPayment')->assertForbidden();
-        $this->right->update(['enabled' => true, 'metadata' => [...$this->right->metadata, 'user_ids' => []]]);
-        Livewire::test(ServiceOrderDetail::class, ['record' => $this->order->id])->call('generatePixPayment')->assertForbidden();
         $this->assertDatabaseCount('invoices', 0);
     }
 
@@ -161,7 +158,7 @@ class ServiceOrderPixPaymentTest extends TestCase
     {
         $other = Company::factory()->create();
         $this->order->update(['company_id' => $other->id]);
-        Livewire::test(ServiceOrderDetail::class, ['record' => $this->order->id])->call('generatePixPayment')->assertNotFound();
+        Livewire::test(ServiceOrderDetail::class, ['record' => $this->order->id])->assertSee('Ordem de serviço não encontrada.');
         Livewire::test(OperationServiceOrderPix::class, ['orderId' => $this->order->id])->assertNotFound();
     }
 

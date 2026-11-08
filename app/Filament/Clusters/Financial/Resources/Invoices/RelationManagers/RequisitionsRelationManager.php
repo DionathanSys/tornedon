@@ -85,6 +85,7 @@ class RequisitionsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('items'))
             ->recordTitleAttribute('number')
             ->recordUrl(fn ($record) => RequisitionResource::getUrl('edit', ['record' => $record]), true)
             ->columns([

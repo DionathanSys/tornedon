@@ -3,13 +3,14 @@
 namespace App\Filament\Clusters\Financial\Resources\Invoices\Schemas;
 
 use App\Enum\Invoice\Status;
+use App\Filament\Bpo\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager as BpoFiscalDocumentsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
-use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
 use App\Models\CompanyPartner;
 use App\Models\CompanyPreference;
 use App\Models\Invoice;
+use App\Support\Financial\PaymentTerms;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
@@ -101,21 +102,21 @@ class InvoiceForm
                         TextEntry::make('payment_condition')
                             ->label('Condição de Pagamento')
                             ->columnSpan(['md' => 2])
-                            ->state(fn (Invoice $record): string => \App\Support\Financial\PaymentTerms::description($record->payment_condition, $record->payment_condition_details)),
+                            ->state(fn (Invoice $record): string => PaymentTerms::description($record->payment_condition, $record->payment_condition_details)),
                         SelectFinancialCategory::make('financial_category_id', 'receivable')
                             ->label('Categoria Financeira')
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->default(fn (): ?int => CompanyPreference::getDefaultReceivableFinancialCategoryId(Filament::getTenant()?->id))
                             ->visible(function (?Invoice $record, string $operation): bool {
                                 return $operation === 'create'
-                                    || ($record instanceof Invoice && $record->status === Status::PENDING);
+                                    || ($operation === 'edit' && $record instanceof Invoice && $record->status === Status::PENDING);
                             })
                             ->helperText('Usada como padrão para as parcelas e movimentações financeiras do contas a receber desta fatura.'),
                         TextEntry::make('financial_category_label')
                             ->label('Categoria Financeira')
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->state(fn (Invoice $record): string => $record->financialCategory?->full_name ?? 'Não definida')
-                            ->visible(fn (?Invoice $record, string $operation): bool => $operation === 'edit' && $record instanceof Invoice && $record->status !== Status::PENDING),
+                            ->visible(fn (?Invoice $record, string $operation): bool => $record instanceof Invoice && ($operation === 'view' || ($operation === 'edit' && $record->status !== Status::PENDING))),
                         TextEntry::make('services_amount')
                             ->label('Valor de Serviços')
                             ->columnStart(1)
@@ -141,14 +142,14 @@ class InvoiceForm
                     ->hiddenLabel()
                     ->columnSpanFull()
                     ->columns(1)
-                    ->visible(fn (?Invoice $record): bool => $record->fiscalDocuments()->exists())
+                    ->visible(fn (?Invoice $record): bool => $record?->fiscalDocuments()->exists() ?? false)
                     ->contained(false)
                     ->schema([
-                        Livewire::make(FiscalDocumentsRelationManager::class, fn (Invoice $record) => [
+                        Livewire::make(Filament::getCurrentPanel()?->getId() === 'bpo' ? BpoFiscalDocumentsRelationManager::class : FiscalDocumentsRelationManager::class, fn (Invoice $record, $livewire) => [
                             'ownerRecord' => $record,
-                            'pageClass' => EditInvoice::class,
+                            'pageClass' => $livewire::class,
                         ])
-
+                            ->lazy()
                             ->columnSpanFull(),
                     ]),
 

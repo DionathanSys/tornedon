@@ -19,6 +19,11 @@ class ViewInvoice extends ViewRecord
 
     protected static string $layout = 'components.bpo.layout';
 
+    public function getSubheading(): ?string
+    {
+        return "Fatura # {$this->record->invoice_number} - {$this->record->statusLabel()}";
+    }
+
     protected function getHeaderActions(): array
     {
         return [$this->secureBpoAction(PreviewInvoicePdfAction::make()->modalSubmitAction(false), 'invoices.view'),

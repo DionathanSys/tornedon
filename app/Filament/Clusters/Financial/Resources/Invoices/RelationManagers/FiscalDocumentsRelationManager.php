@@ -42,10 +42,7 @@ class FiscalDocumentsRelationManager extends RelationManager
 
     public function isAutoRefreshEnabled(): bool
     {
-        return $this->getOwnerRecord()
-            ->fiscalDocuments()
-            ->get()
-            ->contains(fn ($document): bool => $document->isNfeQueued() || $document->isNfeInProcessing() || $document->isNfseQueued() || $document->isNfseInProcessing());
+        return $this->getOwnerRecord()->hasProcessingFiscalDocuments();
     }
 
     public function table(Table $table): Table

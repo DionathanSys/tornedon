@@ -47,10 +47,7 @@ class EditInvoice extends EditRecord
 
     public function isAutoRefreshEnabled(): bool
     {
-        return $this->getRecord()
-            ->fiscalDocuments()
-            ->get()
-            ->contains(fn ($document): bool => $document->isNfeQueued() || $document->isNfeInProcessing() || $document->isNfseQueued() || $document->isNfseInProcessing());
+        return $this->getRecord()->hasProcessingFiscalDocuments();
     }
 
     public function refreshInvoiceState(): void

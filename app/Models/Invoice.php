@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\Invoice\CancellationReason;
 use App\Enum\Invoice\Status;
 use App\Enum\Payment\Condition as PaymentCondition;
@@ -169,6 +170,16 @@ class Invoice extends Model
     public function fiscalDocuments(): HasMany
     {
         return $this->hasMany(FiscalDocument::class);
+    }
+
+    public function hasProcessingFiscalDocuments(): bool
+    {
+        return $this->fiscalDocuments()
+            ->where(function ($query): void {
+                $statuses = [NfeStatus::QUEUED, NfeStatus::IN_PROCESSING];
+                $query->whereIn('nfe_status', $statuses)->orWhereIn('nfse_status', $statuses);
+            })
+            ->exists();
     }
 
     public function confirmations(): HasMany

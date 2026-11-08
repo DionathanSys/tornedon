@@ -5,6 +5,7 @@ namespace App\Filament\Operation\Pages\ServiceOrders;
 use App\Enum\ServiceOrder\State;
 use App\Exceptions\ServiceOrderSignatureException;
 use App\Filament\Operation\Concerns\HasOperationActions;
+use App\Filament\Operation\Concerns\HasServiceOrderProducts;
 use App\Filament\Operation\OperationPage;
 use App\Models\Equipment;
 use App\Models\Service;
@@ -13,20 +14,17 @@ use App\Models\User;
 use App\Services\ServiceDiscount\ServiceDiscountService;
 use App\Services\ServiceOrder\CloseServiceOrderWorkflow;
 use App\Services\ServiceOrder\OperationalSheetPdfService;
-use App\Services\ServiceOrder\ServiceOrderPixPaymentWorkflow;
 use App\Services\ServiceOrder\ServiceOrderService;
 use App\Services\ServiceOrder\ServiceOrderSignatureLinkService;
 use App\Services\ServiceOrderItem\ServiceOrderItemService;
 use App\Support\OperationMoney;
 use App\Support\ServiceOrderOperationalSheet;
-use App\Support\ServiceOrderPixPayment;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
 use Mary\Traits\Toast;
@@ -34,7 +32,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ServiceOrderDetail extends OperationPage
 {
-    use HasOperationActions, Toast;
+    use HasOperationActions, HasServiceOrderProducts, Toast;
 
     protected static ?string $title = 'Detalhe da OS';
 
@@ -132,7 +130,7 @@ class ServiceOrderDetail extends OperationPage
 
     public function loadOrder(bool $preserveForm = false): void
     {
-        $order = $this->tenantOrder()?->load(['customer', 'technician', 'equipment', 'items.service', 'requisition.items']);
+        $order = $this->tenantOrder()?->load(['customer', 'technician', 'equipment', 'items.service', 'requisition.items.product']);
 
         if (! $order) {
             $this->order = null;
@@ -169,6 +167,21 @@ class ServiceOrderDetail extends OperationPage
                 'observations' => $item->observations,
             ])->all(),
             'total' => 'R$ '.number_format((float) $order->grand_total_amount, 2, ',', '.'),
+            'services_total' => 'R$ '.number_format((float) $order->services_total_amount, 2, ',', '.'),
+            'products_total' => 'R$ '.number_format((float) $order->requisition_total_amount, 2, ',', '.'),
+            'can_edit_products' => $order->state()->canEdit() && (! $order->requisition || ($order->requisition->company_id === $order->company_id && $order->requisition->state()->canEdit())),
+            'requisition_label' => $order->requisition ? 'Requisição #'.$order->requisition->number.' · '.$order->requisition->status->description() : null,
+            'products' => $order->requisition?->items->map(fn ($item): array => [
+                'id' => $item->id,
+                'name' => $item->product?->name ?? '-',
+                'code' => $item->product?->product_code ?? '-',
+                'quantity' => number_format((float) $item->quantity, 3, ',', '.'),
+                'unit' => $item->unit_of_measure,
+                'unit_price' => 'R$ '.number_format((float) $item->unit_price, 2, ',', '.'),
+                'discount' => 'R$ '.number_format((float) $item->discount_amount, 2, ',', '.'),
+                'total' => 'R$ '.number_format((float) $item->total_amount, 2, ',', '.'),
+                'observations' => $item->observations,
+            ])->all() ?? [],
             'can_edit' => in_array($order->status, [State::OPEN, State::CLOSED], true),
             'is_open' => $order->status === State::OPEN,
             'signature_present' => filled($order->customer_signature),
@@ -469,35 +482,6 @@ class ServiceOrderDetail extends OperationPage
         $this->success($service->getMessage());
 
         return true;
-    }
-
-    public function generatePixPayment(): void
-    {
-        $order = $this->tenantOrder();
-        abort_unless($order, 404);
-        abort_unless(ServiceOrderPixPayment::allows(Auth::user(), (int) $order->company_id), 403);
-
-        if (in_array($order->status, [State::OPEN, State::CLOSED], true) && ! $this->save()) {
-            return;
-        }
-
-        try {
-            app(ServiceOrderPixPaymentWorkflow::class)->execute($order->fresh(), Auth::user());
-        } catch (ValidationException $exception) {
-            $this->error(collect($exception->errors())->flatten()->first());
-            $this->loadOrder(preserveForm: true);
-
-            return;
-        } catch (\Throwable $exception) {
-            report($exception);
-            $this->error('Não foi possível preparar a cobrança. Tente novamente para retomar a operação.');
-
-            return;
-        }
-
-        $this->loadOrder();
-        $this->dispatch('service-order-pix-updated');
-        $this->success('Cobrança solicitada. Acompanhe o pagamento nesta ordem.');
     }
 
     public function openAddService(): void

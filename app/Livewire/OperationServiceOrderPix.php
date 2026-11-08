@@ -3,7 +3,6 @@
 namespace App\Livewire;
 
 use App\Enum\Financial\PixChargeStatus;
-use App\Enum\ServiceOrder\State;
 use App\Filament\Operation\OperationModules;
 use App\Models\PixCharge;
 use App\Models\ServiceOrder;
@@ -56,9 +55,8 @@ class OperationServiceOrderPix extends Component
         $qrCode = $payable ? $charge->qr_code : null;
 
         return view('livewire.operation-service-order-pix', [
-            'visible' => $allowed || $charge !== null,
+            'visible' => $charge !== null,
             'allowed' => $allowed,
-            'canGenerate' => $allowed && ! $charge && $order->status !== State::CANCELLED,
             'poll' => $allowed && $charge && in_array($charge->status, [PixChargeStatus::PENDING_REGISTRATION, PixChargeStatus::PROCESSING, PixChargeStatus::UNCERTAIN, PixChargeStatus::REGISTERED, PixChargeStatus::NEEDS_REVIEW], true),
             'paid' => $paid,
             'payable' => $payable,

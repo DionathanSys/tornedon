@@ -10,10 +10,6 @@
                 @if($paid)
                     <p>Recebimento registrado. {{ $paidAt }}</p>
                 @endif
-                @if($canGenerate)
-                    <p class="text-sm text-base-content/60">Ao gerar, os dados serão salvos e a ordem será encerrada e faturada.</p>
-                    <x-mary-button label="Gerar cobrança PIX" icon="o-qr-code" class="btn-primary w-full" wire:click="$parent.generatePixPayment()" wire:loading.attr="disabled" />
-                @endif
                 @if($qrCode)
                     <img src="{{ $qrCode }}" alt="QR Code para pagamento PIX" class="mx-auto w-64 max-w-full rounded-box bg-white p-3" />
                 @endif

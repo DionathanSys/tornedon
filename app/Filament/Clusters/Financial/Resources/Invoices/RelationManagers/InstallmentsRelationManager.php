@@ -44,6 +44,7 @@ class InstallmentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with(['accountReceivable', 'latestBankSlip', 'latestPixCharge']))
             ->recordTitleAttribute('sequence_number')
             ->columns([
                 TextColumn::make('sequence_number')
