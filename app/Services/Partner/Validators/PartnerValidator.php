@@ -34,7 +34,7 @@ class PartnerValidator
                     }
                 },
             ],
-            'state_tax_id'          => 'nullable|integer',
+            'state_tax_id'          => 'nullable|string|max:255',
             'state_tax_indicator'   => 'required|int|in:' . implode(',', array_map(fn($case) => $case->value, Enum\Tax\StateTaxIndicator::cases())),
             'municipal_tax_id'      => 'nullable|integer',
         ];
@@ -46,6 +46,8 @@ class PartnerValidator
             'document_type.required'    => 'O tipo de documento é obrigatório.',
             'document_number.required'  => 'O número do documento é obrigatório.',
             'document_number.unique'    => 'Este documento já está cadastrado.',
+            'state_tax_id.string'       => 'A inscrição estadual deve ser informada como texto.',
+            'state_tax_id.max'          => 'A inscrição estadual deve ter no máximo 255 caracteres.',
             'state_tax_indicator.in'    => 'O indicador de inscrição estadual informado é inválido.',
             'state_tax_indicator.required'=> 'O indicador de inscrição estadual é obrigatório.',
         ];

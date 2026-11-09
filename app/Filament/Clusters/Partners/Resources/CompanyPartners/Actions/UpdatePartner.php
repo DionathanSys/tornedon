@@ -77,7 +77,7 @@ class UpdatePartner
                             ->columnStart(1)
                             ->columnSpan(['md' => 2, 'lg' => 2])
                             ->autocomplete(false)
-                            ->numeric(),
+                            ->maxLength(255),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscrição Municipal')
                             ->placeholder('Não definido')

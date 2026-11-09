@@ -113,7 +113,7 @@ class CompanyPartnerForm
                             ->columnStart(1)
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->autocomplete(false)
-                            ->numeric()
+                            ->maxLength(255)
                             ->disabledOn('edit'),
                         TextInput::make('municipal_tax_id')
                             ->label('Inscricao Municipal')
