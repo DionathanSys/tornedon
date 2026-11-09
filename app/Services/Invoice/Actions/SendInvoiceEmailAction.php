@@ -13,6 +13,7 @@ use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\DTO\EmailAttachment;
 use App\Services\Email\DTO\EmailMessage;
 use App\Services\FiscalDocument\Actions\ConsultNfeAction;
+use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
@@ -44,6 +45,7 @@ class SendInvoiceEmailAction
 
             if ($invoice->fiscalDocuments->isEmpty()) {
                 $this->setError('A fatura não possui documento fiscal vinculado para envio.');
+
                 return false;
             }
 
@@ -65,18 +67,21 @@ class SendInvoiceEmailAction
 
             if ($fiscalDocuments->isEmpty()) {
                 $this->setError('A fatura não possui documento fiscal autorizado apto para envio por e-mail.');
+
                 return false;
             }
 
             $companyPartner = $this->resolveCompanyPartner($invoice);
             if (! $companyPartner instanceof CompanyPartner) {
                 $this->setError('Nenhum vínculo ativo entre empresa e cliente foi encontrado para o envio.');
+
                 return false;
             }
 
             [$to, $cc, $bcc] = $this->resolveRecipients($companyPartner);
             if ($to === []) {
                 $this->setError('Nenhum destinatário válido foi encontrado para o cliente desta fatura.');
+
                 return false;
             }
 
@@ -93,6 +98,7 @@ class SendInvoiceEmailAction
                 fromEmail: (string) config('mail.from.address'),
                 fromName: (string) config('mail.from.name'),
                 attachments: $attachments,
+                bcc: $bcc,
             );
 
             $providerResult = $this->emailProvider->send($message);
@@ -120,7 +126,7 @@ class SendInvoiceEmailAction
                 'user_id' => $userId,
             ]);
 
-            $this->setError('Erro ao enviar e-mail da fatura: ' . $e->getMessage());
+            $this->setError('Erro ao enviar e-mail da fatura: '.$e->getMessage());
 
             return false;
         }
@@ -214,6 +220,8 @@ class SendInvoiceEmailAction
         }
 
         if ($fiscalDocument->isNfse()) {
+            app(ConsultNfseAction::class)->execute($fiscalDocument);
+
             return;
         }
 
@@ -465,7 +473,7 @@ class SendInvoiceEmailAction
     }
 
     /**
-     * @param string[] ...$lists
+     * @param  string[]  ...$lists
      * @return string[]
      */
     private function mergeEmails(array ...$lists): array

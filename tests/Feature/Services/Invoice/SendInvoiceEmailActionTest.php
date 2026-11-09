@@ -20,14 +20,18 @@ use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\Requisition;
 use App\Models\ServiceOrder;
+use App\Models\User;
 use App\Services\Email\Contracts\EmailProviderInterface;
 use App\Services\Email\DTO\EmailMessage;
+use App\Services\Email\Providers\ResendEmailProvider;
+use App\Services\FiscalDocument\Actions\ConsultNfseAction;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\Invoice\Actions\PrintInvoicePdfAction;
 use App\Services\Invoice\Actions\SendInvoiceEmailAction;
 use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
 use App\Services\ServiceOrder\Actions\PrintServiceOrderPdfAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Mockery;
 use Tests\TestCase;
 
@@ -54,6 +58,7 @@ class SendInvoiceEmailActionTest extends TestCase
 
                 $this->assertSame(['cliente@example.com'], $message->to);
                 $this->assertSame(['financeiro@example.com'], $message->cc);
+                $this->assertSame(['auditoria@example.com'], $message->bcc);
                 $this->assertSame('Assunto manual', $message->subject);
                 $this->assertSame('Mensagem manual', $message->text);
                 $this->assertCount(5, $message->attachments);
@@ -171,6 +176,50 @@ class SendInvoiceEmailActionTest extends TestCase
         $this->assertTrue($action->execute($invoice->fresh(), 'Assunto', 'Mensagem', 10), (string) $action->getMessage());
     }
 
+    public function test_it_refreshes_nfse_and_sends_returned_xml_pdf_and_blind_copies_to_resend(): void
+    {
+        [$invoice] = $this->createInvoiceContext();
+        $document = $invoice->fiscalDocuments()->firstOrFail();
+        $document->update([
+            'document_type' => DocumentModel::NFSE->value,
+            'document_key' => 'nfse-consultation-key',
+            'nfse_status' => NfeStatus::IN_PROCESSING->value,
+        ]);
+        $document->payload()->update(['nfe_payload' => null]);
+
+        $consultation = Mockery::mock(ConsultNfseAction::class);
+        $consultation->shouldReceive('execute')->once()
+            ->withArgs(fn (FiscalDocument $record): bool => $record->is($document))
+            ->andReturnUsing(function (FiscalDocument $record): bool {
+                $record->update(['nfse_status' => NfeStatus::AUTHORIZED->value]);
+                $record->payload()->update([
+                    'nfse_payload' => [
+                        'pdf_base64' => base64_encode('nfse-pdf'),
+                        'xml_base64' => base64_encode('<xml>nfse</xml>'),
+                    ],
+                ]);
+
+                return true;
+            });
+        $this->app->instance(ConsultNfseAction::class, $consultation);
+        $this->mockInvoicePdf('invoice-pdf');
+        $this->app->instance(EmailProviderInterface::class, new ResendEmailProvider);
+        config(['services.resend.key' => 'test-key']);
+        Http::preventStrayRequests();
+        Http::fake([
+            config('email_notifications.resend.endpoint') => Http::response(['id' => 'nfse-email-id']),
+        ]);
+
+        $action = app(SendInvoiceEmailAction::class);
+
+        $this->assertTrue($action->execute($invoice->fresh(), 'Assunto NFS-e', 'Mensagem', 10), (string) $action->getMessage());
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request): bool => $request['to'] === ['cliente@example.com']
+            && $request['bcc'] === ['auditoria@example.com']
+            && $request['attachments'][1]['content'] === base64_encode('nfse-pdf')
+            && $request['attachments'][2]['content'] === base64_encode('<xml>nfse</xml>'));
+    }
+
     public function test_it_fails_when_company_partner_is_missing(): void
     {
         [$invoice] = $this->createInvoiceContext(createCompanyPartner: false);
@@ -242,7 +291,7 @@ class SendInvoiceEmailActionTest extends TestCase
         bool $createCompanyPartner = true,
         bool $createContact = true,
     ): array {
-        $owner = \App\Models\User::factory()->create();
+        $owner = User::factory()->create();
 
         $company = Company::query()->create([
             'name' => 'Empresa Teste '.str()->uuid(),

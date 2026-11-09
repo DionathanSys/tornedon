@@ -5,9 +5,10 @@ namespace App\Services\Email\DTO;
 final readonly class EmailMessage
 {
     /**
-     * @param string[] $to
-     * @param string[] $cc
-     * @param EmailAttachment[] $attachments
+     * @param  string[]  $to
+     * @param  string[]  $cc
+     * @param  string[]  $bcc
+     * @param  EmailAttachment[]  $attachments
      */
     public function __construct(
         public array $to,
@@ -18,6 +19,6 @@ final readonly class EmailMessage
         public ?string $fromEmail = null,
         public ?string $fromName = null,
         public array $attachments = [],
+        public array $bcc = [],
     ) {}
 }
-

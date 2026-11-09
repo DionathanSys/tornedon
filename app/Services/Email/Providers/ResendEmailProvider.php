@@ -41,6 +41,10 @@ class ResendEmailProvider implements EmailProviderInterface
             $payload['cc'] = array_values($message->cc);
         }
 
+        if ($message->bcc !== []) {
+            $payload['bcc'] = array_values($message->bcc);
+        }
+
         if ($message->attachments !== []) {
             $payload['attachments'] = array_map(
                 fn ($attachment): array => [
@@ -62,7 +66,7 @@ class ResendEmailProvider implements EmailProviderInterface
             );
 
         if ($response->failed()) {
-            throw new RuntimeException('Erro ao enviar e-mail via Resend: ' . $response->body());
+            throw new RuntimeException('Erro ao enviar e-mail via Resend: '.$response->body());
         }
 
         /** @var array<string,mixed>|null $body */
