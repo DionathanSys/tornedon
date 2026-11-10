@@ -458,6 +458,185 @@ class SaleNfeStockFlowTest extends TestCase
         $this->assertNull($document->items()->sole()->requisition_item_id);
     }
 
+    public function test_legacy_exit_can_be_adopted_and_authorized_without_a_second_physical_exit(): void
+    {
+        [$document, $source, $stock, $movement] = $this->legacyNote();
+        $this->artisan('fiscal:recover-requisition-links', ['document' => $document->id, '--reuse-legacy-stock' => true])
+            ->expectsOutputToContain('1 saída(s) antiga(s) validada(s)')->assertSuccessful();
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+        $this->assertSame(0, $document->stockEffects()->count());
+
+        $this->artisan('fiscal:recover-requisition-links', ['document' => $document->id, '--reuse-legacy-stock' => true, '--apply' => true])
+            ->expectsOutputToContain('Nenhuma nova baixa gerada')->assertSuccessful();
+        $effect = $document->stockEffects()->sole();
+        $this->assertNull($effect->processed_at);
+        $this->assertSame($source->id, $document->items()->sole()->requisition_item_id);
+        $this->assertSame($movement->id, $effect->stock_movement_id);
+        $this->assertSame($movement->id, $effect->snapshot['reuse_movement_id']);
+
+        // Repeated recovery/previews are stable; no balance is required for an already completed exit.
+        $this->artisan('fiscal:recover-requisition-links', ['document' => $document->id, '--reuse-legacy-stock' => true, '--apply' => true])->assertSuccessful();
+        $stock->update(['quantity_total' => 0]);
+        app(SaleNfeStockService::class)->prepare($document);
+        app(SaleNfeStockService::class)->prepare($document);
+        $this->authorize($document);
+        $service = app(SaleNfeStockService::class);
+        $this->assertTrue($service->apply($document), (string) $service->getMessage());
+        $this->assertTrue($service->apply($document));
+        $this->assertSame(0.0, (float) $stock->fresh()->quantity_total);
+        $this->assertSame(0.0, (float) $stock->fresh()->quantity_reserved);
+        $this->assertSame(1, StockMovement::where('type', Type::EXIT)->count());
+        $this->assertSame($movement->id, $document->stockEffects()->sole()->stock_movement_id);
+        $this->assertNotNull($document->stockEffects()->sole()->processed_at);
+        $this->assertSame('requisition', $movement->fresh()->source_type);
+
+        // A reissue after a confirmed cancellation uses the existing fiscal reuse flow.
+        $document->update(['status' => FiscalStatus::CANCELLED, 'nfe_status' => NfeStatus::CANCELED]);
+        $new = $this->note($source->requisition, [$source]);
+        $this->authorize($new);
+        $this->assertTrue($service->apply($new), (string) $service->getMessage());
+        $this->assertSame($movement->id, $new->stockEffects()->sole()->stock_movement_id);
+        $this->assertSame(1, StockMovement::where('type', Type::EXIT)->count());
+    }
+
+    public function test_legacy_reuse_requires_matching_units_quantities_stock_and_complete_snapshots(): void
+    {
+        [, , $otherStock] = $this->context();
+        foreach ([['base_quantity' => 2], ['base_unit' => 'JG'], ['operational_quantity' => 2],
+            ['conversion_factor_snapshot' => 2], ['base_quantity' => null], ['product_stock_id' => $otherStock->id]] as $changes) {
+            [$document, , , $movement] = $this->legacyNote();
+            $movement->update($changes);
+            $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true, true);
+            $this->assertNotEmpty($report['errors'], json_encode($changes));
+            $this->assertNull($document->items()->sole()->requisition_item_id);
+            $this->assertSame(0, $document->stockEffects()->count());
+        }
+    }
+
+    public function test_legacy_reuse_rejects_a_return_or_another_physical_movement_in_the_same_origin(): void
+    {
+        [$document, , , $movement] = $this->legacyNote();
+        $return = $movement->replicate();
+        $return->type = Type::RETURN;
+        $return->save();
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true, true);
+        $this->assertNotEmpty($report['errors']);
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+        $this->assertSame(0, $document->stockEffects()->count());
+    }
+
+    public function test_legacy_reuse_cannot_claim_an_exit_already_reserved_for_another_note(): void
+    {
+        [$document, $source, , $movement] = $this->legacyNote();
+        $other = $this->note($source->requisition, [$source]);
+        $service = app(RecoverNfeRequisitionLinksService::class);
+        $this->assertTrue($service->execute($document->id, $document->company_id, true, true)['applied']);
+        $report = $service->execute($other->id, $other->company_id, true, true);
+        $this->assertStringContainsString('outro efeito fiscal', implode(' ', $report['errors']));
+        $this->assertSame(0, $other->stockEffects()->count());
+        $this->assertSame($movement->id, $document->stockEffects()->sole()->stock_movement_id);
+    }
+
+    public function test_recovered_legacy_exit_is_protected_even_before_authorization(): void
+    {
+        [$document, , , $movement] = $this->legacyNote();
+        app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true, true);
+        $this->expectException(\LogicException::class);
+        $movement->update(['quantity' => 2]);
+    }
+
+    public function test_legacy_reuse_is_revalidated_after_a_fiscal_item_changes(): void
+    {
+        [$document] = $this->legacyNote();
+        app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true, true);
+        $document->items()->sole()->update(['quantity' => 2]);
+        $this->expectException(ValidationException::class);
+        app(SaleNfeStockService::class)->prepare($document);
+    }
+
+    public function test_legacy_reuse_cannot_be_bypassed_by_disabling_product_stock_control(): void
+    {
+        [$document] = $this->legacyNote();
+        app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true, true);
+        $document->items()->sole()->product->update(['has_stock_control' => false]);
+        // The source policy snapshot may still require control; change the requisition policy as well.
+        $document->invoice->requisitions()->update(['stock_control_enabled' => false]);
+        $this->expectException(ValidationException::class);
+        app(SaleNfeStockService::class)->prepare($document);
+    }
+
+    public function test_legacy_recovery_rolls_back_links_and_effects_if_stock_preparation_fails(): void
+    {
+        [$document, $source, $legacyStock] = $this->legacyNote();
+        // The unique new line is recoverable but requires unavailable stock.
+        $source->requisition->update(['stock_consumed' => false]);
+        $product = Product::factory()->create(['company_id' => $document->company_id, 'has_stock_control' => true, 'unit' => Unit::UN]);
+        $otherSource = $source->replicate(['total_amount', 'gross_amount', 'commission_amount']);
+        $otherSource->fill(['product_id' => $product->id, 'stock_consumed' => false, 'stock_consumed_at' => null]);
+        $otherSource->save();
+        $stock = $legacyStock->replicate(['quantity_available', 'total_cost']);
+        $stock->fill(['product_id' => $product->id, 'quantity_total' => 0, 'quantity_reserved' => 0]);
+        $stock->save();
+        $document->items()->create([
+            'product_id' => $product->id, 'description' => $product->name, 'item_number' => 2,
+            'quantity' => 3, 'unit_of_measure' => Unit::UN->value, 'unit_price' => 10, 'total_price' => 30,
+        ]);
+        $report = null;
+        try {
+            $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true, true);
+            $this->fail('Saldo insuficiente deve desfazer a recuperação inteira.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('Saldo insuficiente', $exception->getMessage());
+        }
+        $this->assertNull($report);
+        $this->assertSame(0, $document->items()->whereNotNull('requisition_item_id')->count());
+        $this->assertSame(0, $document->stockEffects()->count());
+    }
+
+    public function test_legacy_reuse_recovers_alternative_unit_conversion_without_repeating_the_base_exit(): void
+    {
+        [$owner, $product, $stock, $requisition] = $this->context(quantity: 0);
+        $product->alternativeUnitConversions()->create(['unit' => Unit::PC->value, 'conversion_factor' => 2]);
+        $source = app(RequisitionItemService::class)->create([
+            ...$this->itemData($requisition, $product, 2), 'unit_of_measure' => Unit::PC->value,
+        ], $owner->id);
+        $document = $this->note($requisition, [$source]);
+        $document->items()->sole()->update(['requisition_item_id' => null]);
+        app(RequisitionItemReservationService::class)->sync($source, $owner->id, true);
+        $stock->update(['quantity_total' => 6]);
+        $movement = StockMovement::create([
+            'company_id' => $document->company_id, 'product_id' => $product->id, 'product_stock_id' => $stock->id,
+            'type' => Type::EXIT, 'quantity' => 4, 'base_quantity' => 4, 'base_unit' => Unit::UN->value,
+            'operational_quantity' => 2, 'operational_unit' => Unit::PC->value, 'conversion_factor_snapshot' => 2,
+            'unit_price' => 10, 'source_type' => 'requisition', 'source_id' => $requisition->id, 'created_by' => $owner->id,
+        ]);
+        $service = app(RecoverNfeRequisitionLinksService::class);
+        $this->assertTrue($service->execute($document->id, $document->company_id, true, true)['applied']);
+        $this->authorize($document);
+        $this->assertTrue(app(SaleNfeStockService::class)->apply($document));
+        $this->assertSame(6.0, (float) $stock->fresh()->quantity_total);
+        $this->assertSame($movement->id, $document->stockEffects()->sole()->stock_movement_id);
+    }
+
+    private function legacyNote(): array
+    {
+        [$owner, $product, $stock, $requisition, $source] = $this->context();
+        $document = $this->note($requisition, [$source]);
+        $document->items()->sole()->update(['requisition_item_id' => null]);
+        app(RequisitionItemReservationService::class)->sync($source, $owner->id, true);
+        $stock->update(['quantity_total' => 7]);
+        $source->newQuery()->whereKey($source->id)->update(['stock_consumed' => true, 'stock_consumed_at' => now()]);
+        $requisition->update(['stock_consumed' => true]);
+        $movement = StockMovement::create([
+            'company_id' => $document->company_id, 'product_id' => $product->id, 'product_stock_id' => $stock->id,
+            'type' => Type::EXIT, 'quantity' => 3, 'base_quantity' => 3, 'base_unit' => Unit::UN->value,
+            'operational_quantity' => 3, 'operational_unit' => Unit::UN->value, 'conversion_factor_snapshot' => 1,
+            'unit_price' => 10, 'source_type' => 'requisition', 'source_id' => $requisition->id, 'created_by' => $owner->id,
+        ]);
+
+        return [$document, $source->fresh(), $stock->fresh(), $movement];
+    }
+
     private function context(float $quantity = 3, bool $controlled = true, bool $hasStock = true, bool $negative = false): array
     {
         $owner = User::factory()->create();

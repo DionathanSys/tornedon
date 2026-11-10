@@ -68,6 +68,12 @@ class SaleNfeStockService
                 if ($controlled && ! $source) {
                     throw ValidationException::withMessages(['stock' => 'Item fiscal sem vínculo rastreado à requisição. Revise a origem antes de baixar estoque.']);
                 }
+                if (! $controlled && ($existing?->snapshot['legacy_movement_id'] ?? null)) {
+                    throw ValidationException::withMessages(['stock' => 'A política de estoque mudou após o vínculo da saída antiga. Regularize o vínculo antes de emitir.']);
+                }
+                if (($existing?->snapshot['legacy_movement_id'] ?? null) && (int) $existing->requisition_item_id !== (int) $source?->id) {
+                    throw ValidationException::withMessages(['stock' => 'A origem comercial mudou após o vínculo da saída antiga. Regularize o vínculo antes de emitir.']);
+                }
                 if ($controlled && $source) {
                     $reservedUnit = StockMovement::withoutGlobalScope(RoleRecordScope::class)->where('company_id', $document->company_id)
                         ->where('source_type', 'requisition_item')->where('source_id', $source->id)->where('type', Type::RESERVATION->value)->latest('id')->value('base_unit');
@@ -114,14 +120,16 @@ class SaleNfeStockService
                             throw ValidationException::withMessages(['stock' => 'A requisição já possui saída física com produto/quantidade diferente. Regularize o estoque antes de emitir outra nota.']);
                         }
                         $reuse = $prior->stock_movement_id;
-                    } elseif ($source->stock_consumed_at || StockMovement::withoutGlobalScope(RoleRecordScope::class)->where('company_id', $document->company_id)->where('source_type', 'requisition_item')->where('source_id', $source->id)->where('type', Type::EXIT->value)->exists()) {
+                    } elseif ($legacyId = ($existing?->snapshot['legacy_movement_id'] ?? null)) {
+                        $reuse = app(LegacyNfeStockReuseService::class)->validate($document, $item, $source, (int) $legacyId, $quantity, $baseUnit)->id;
+                    } elseif ($source->stock_consumed_at || $source->stock_consumed || app(LegacyNfeStockReuseService::class)->movements($document, $item, $source)->where('type', Type::EXIT->value)->exists()) {
                         throw ValidationException::withMessages(['stock' => 'Existe baixa legada na requisição sem vínculo fiscal validado. Não será gerada outra saída automaticamente.']);
                     }
                 }
                 FiscalStockEffect::updateOrCreate(['fiscal_document_item_id' => $item->id], [
                     'company_id' => $document->company_id, 'fiscal_document_id' => $document->id, 'requisition_item_id' => $source?->id,
                     'product_id' => $product->id, 'product_stock_id' => $stock?->id, 'stock_control_enabled' => $controlled,
-                    'base_quantity' => $quantity, 'base_unit' => $baseUnit, 'snapshot' => ['signature' => $signature, 'factor' => $factor, 'reuse_movement_id' => $reuse],
+                    'base_quantity' => $quantity, 'base_unit' => $baseUnit, 'snapshot' => ['signature' => $signature, 'factor' => $factor, 'reuse_movement_id' => $reuse, 'legacy_movement_id' => $existing?->snapshot['legacy_movement_id'] ?? null],
                     'status' => 'prepared', 'last_error' => null,
                 ]);
             }

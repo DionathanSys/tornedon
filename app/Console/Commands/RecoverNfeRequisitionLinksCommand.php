@@ -13,6 +13,7 @@ class RecoverNfeRequisitionLinksCommand extends Command
     protected $signature = 'fiscal:recover-requisition-links
         {document : ID do documento fiscal}
         {--company= : ID da empresa; se informado, exige que a nota pertença a ela}
+        {--reuse-legacy-stock : Valida o reaproveitamento de saídas antigas, sem gerar nova baixa}
         {--apply : Grava os vínculos quando não houver pendências no diagnóstico}';
 
     protected $description = 'Diagnostica e recupera vínculos de itens de NF-e antiga com a requisição da fatura';
@@ -31,7 +32,7 @@ class RecoverNfeRequisitionLinksCommand extends Command
                 ->when($this->option('company') !== null, fn ($query) => $query->where('company_id', (int) $this->option('company')))
                 ->findOrFail((int) $this->argument('document'));
             $this->info("NF-e #{$document->id} | Empresa #{$document->company_id} | Fatura #{$document->invoice_id}");
-            $report = $service->execute($document->id, $document->company_id, (bool) $this->option('apply'));
+            $report = $service->execute($document->id, $document->company_id, (bool) $this->option('apply'), (bool) $this->option('reuse-legacy-stock'));
         } catch (ModelNotFoundException) {
             $this->error('Documento ou fatura não encontrado na empresa informada.');
 
@@ -54,10 +55,16 @@ class RecoverNfeRequisitionLinksCommand extends Command
 
         if ($report['applied']) {
             $this->info("{$report['missing']} vínculo(s) recuperado(s). Gere o preview novamente na tela da nota.");
-        } elseif ($report['missing'] === 0) {
+            if ($report['legacy'] > 0) {
+                $this->info("{$report['legacy']} saída(s) antiga(s) vinculada(s) para reaproveitamento fiscal. Nenhuma nova baixa gerada.");
+            }
+        } elseif ($report['missing'] === 0 && $report['legacy'] === 0) {
             $this->info('Todos os itens já possuem vínculos compatíveis.');
         } else {
             $this->info("Diagnóstico concluído: {$report['missing']} vínculo(s) recuperável(is). Nenhuma alteração gravada. Execute com --apply para aplicar.");
+            if ($report['legacy'] > 0) {
+                $this->info("{$report['legacy']} saída(s) antiga(s) validada(s). Mantenha --reuse-legacy-stock ao executar com --apply.");
+            }
         }
 
         return self::SUCCESS;

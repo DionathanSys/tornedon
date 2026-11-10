@@ -5,11 +5,10 @@ namespace App\Services\FiscalDocument;
 use App\Enum\FiscalDocument\Status;
 use App\Enum\StockMovement\Type;
 use App\Models\FiscalDocument;
+use App\Models\FiscalStockEffect;
 use App\Models\Invoice;
 use App\Models\Requisition;
 use App\Models\RequisitionItem;
-use App\Models\StockMovement;
-use App\Services\Access\RoleRecordScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -17,9 +16,9 @@ use Illuminate\Validation\ValidationException;
 class RecoverNfeRequisitionLinksService
 {
     /** Diagnose first; apply all missing links only when the entire document is unambiguous. */
-    public function execute(int $documentId, int $companyId, bool $apply = false): array
+    public function execute(int $documentId, int $companyId, bool $apply = false, bool $reuseLegacyStock = false): array
     {
-        return DB::transaction(function () use ($documentId, $companyId, $apply): array {
+        return DB::transaction(function () use ($documentId, $companyId, $apply, $reuseLegacyStock): array {
             $document = FiscalDocument::where('company_id', $companyId)->findOrFail($documentId);
             // Same lock order as fiscal stock preparation/authorization.
             $invoice = Invoice::where('company_id', $companyId)->lockForUpdate()->findOrFail($document->invoice_id);
@@ -43,6 +42,8 @@ class RecoverNfeRequisitionLinksService
             $rows = [];
             $errors = $items->isEmpty() ? ['A NF-e não possui itens.'] : [];
             $proposals = [];
+            $legacyMovements = [];
+            $legacyService = app(LegacyNfeStockReuseService::class);
 
             foreach ($items as $item) {
                 $candidates = $sources->filter(fn ($source) => (int) $source->product_id === (int) $item->product_id
@@ -68,17 +69,23 @@ class RecoverNfeRequisitionLinksService
                 }
 
                 if ($source) {
-                    $movements = StockMovement::withoutGlobalScope(RoleRecordScope::class)->where('company_id', $companyId)
-                        ->where(function ($query) use ($source, $item): void {
-                            $query->where(fn ($query) => $query->where('source_type', 'requisition_item')->where('source_id', $source->id))
-                                ->orWhere(fn ($query) => $query->where('source_type', 'requisition')->where('source_id', $source->requisition_id)->where('product_id', $source->product_id))
-                                ->orWhere(fn ($query) => $query->where('source_type', 'fiscal_document_item')->where('source_id', $item->id));
-                        })
+                    $movements = $legacyService->movements($document, $item, $source)
                         ->where('type', Type::EXIT->value)->orderBy('id')->lockForUpdate()->pluck('id');
                     $requisition = $requisitions->firstWhere('id', $source->requisition_id);
                     if ($source->stock_consumed || $source->stock_consumed_at || $requisition->stock_consumed || $movements->isNotEmpty()) {
-                        $message .= '; baixa anterior: conferir estoque (movimentos: '.($movements->implode(', ') ?: 'sem movimento rastreado').')';
-                        $errors[] = "Item #{$item->id}: existe consumo anterior na requisição #{$source->requisition_id}, item #{$source->id}. Regularização fiscal do estoque necessária antes da recuperação.";
+                        if ($reuseLegacyStock) {
+                            try {
+                                $movement = $legacyService->validate($document, $item, $source, (int) $movements->first());
+                                $legacyMovements[$item->id] = $movement;
+                                $message .= "; saída antiga #{$movement->id} validada para reaproveitamento";
+                            } catch (ValidationException $exception) {
+                                $message .= '; saída antiga incompatível';
+                                $errors = array_merge($errors, $exception->validator->errors()->all());
+                            }
+                        } else {
+                            $message .= '; baixa anterior: conferir estoque (movimentos: '.($movements->implode(', ') ?: 'sem movimento rastreado').')';
+                            $errors[] = "Item #{$item->id}: existe consumo anterior na requisição #{$source->requisition_id}, item #{$source->id}. Use --reuse-legacy-stock para validar o reaproveitamento da saída antiga.";
+                        }
                     }
                 }
                 $rows[] = [
@@ -96,20 +103,40 @@ class RecoverNfeRequisitionLinksService
             if (count($proposals) !== count(array_unique($proposals))) {
                 $errors[] = 'Dois ou mais itens fiscais disputam a mesma origem. Conferir manualmente.';
             }
+            if (count($legacyMovements) !== count(array_unique(array_map(fn ($movement) => $movement->id, $legacyMovements)))) {
+                $errors[] = 'Dois ou mais itens fiscais disputam o mesmo movimento de saída.';
+            }
 
             $applied = false;
-            if ($apply && $errors === [] && $proposals !== []) {
+            if ($apply && $errors === [] && ($proposals !== [] || $legacyMovements !== [])) {
                 foreach ($proposals as $itemId => $sourceId) {
                     $items->firstWhere('id', $itemId)->update(['requisition_item_id' => $sourceId]);
+                }
+                foreach ($legacyMovements as $itemId => $movement) {
+                    $item = $items->firstWhere('id', $itemId);
+                    $existing = $document->stockEffects()->where('fiscal_document_item_id', $itemId)->first();
+                    FiscalStockEffect::updateOrCreate(['fiscal_document_item_id' => $itemId], [
+                        'company_id' => $companyId, 'fiscal_document_id' => $documentId,
+                        'requisition_item_id' => $item->requisition_item_id, 'product_id' => $item->product_id,
+                        'product_stock_id' => $movement->product_stock_id, 'stock_control_enabled' => true,
+                        'stock_movement_id' => $movement->id, 'base_quantity' => $movement->base_quantity,
+                        'base_unit' => $movement->base_unit, 'status' => 'prepared',
+                        'snapshot' => [...($existing?->snapshot ?? []), 'legacy_movement_id' => $movement->id],
+                    ]);
+                }
+                if ($legacyMovements !== []) {
+                    // Reuse the real preflight validation, in the same transaction as link recovery.
+                    app(SaleNfeStockService::class)->prepare($document);
                 }
                 Log::info('Vínculos de requisição recuperados para NF-e antiga.', [
                     'company_id' => $companyId, 'fiscal_document_id' => $documentId,
                     'invoice_id' => $invoice->id, 'links' => $proposals,
+                    'legacy_movements' => array_map(fn ($movement) => $movement->id, $legacyMovements),
                 ]);
                 $applied = true;
             }
 
-            return ['rows' => $rows, 'errors' => $errors, 'missing' => count($proposals), 'applied' => $applied];
+            return ['rows' => $rows, 'errors' => $errors, 'missing' => count($proposals), 'legacy' => count($legacyMovements), 'applied' => $applied];
         });
     }
 }
