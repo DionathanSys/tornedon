@@ -14,7 +14,10 @@ use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\Requisition\Actions\CloseRequisitionAction;
+use App\Services\Requisition\Actions\ReopenRequisitionAction;
 use App\Services\Requisition\RequisitionStockWorkflow;
+use App\Services\RequisitionItem\Actions\CreateRequisitionItemAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -36,6 +39,103 @@ class RequisitionStockWorkflowTest extends TestCase
             'product_id' => $item->product_id,
             'type' => Type::RESERVATION_RELEASE->value,
         ]);
+    }
+
+    public function test_it_recloses_after_adding_an_item_without_reserving_it_twice(): void
+    {
+        [$user, $requisition, $item] = $this->makeContext();
+        $stock = ProductStock::where('product_id', $item->product_id)->firstOrFail();
+        $stock->update(['quantity_total' => 3]);
+        StockMovement::query()->where('source_id', $requisition->id)->update([
+            'source_type' => 'requisition_item',
+            'source_id' => $item->id,
+        ]);
+        $requisition->update(['status' => Status::CLOSED]);
+
+        $reopen = new ReopenRequisitionAction($user->id);
+        $this->assertNotNull($reopen->execute($requisition), (string) $reopen->getMessage());
+        $this->assertEquals(0, $stock->fresh()->quantity_reserved);
+
+        $create = new CreateRequisitionItemAction($user->id);
+        $newItem = $create->execute([
+            'requisition_id' => $requisition->id,
+            'product_id' => $item->product_id,
+            'unit_of_measure' => Unit::UN->value,
+            'quantity' => 1,
+            'unit_price' => 50,
+        ]);
+        $this->assertNotNull($newItem, (string) $create->getMessage());
+        $this->assertEquals(1, $stock->fresh()->quantity_reserved);
+
+        $close = new CloseRequisitionAction($user->id);
+        $this->assertNotNull($close->execute($requisition->fresh()), (string) $close->getMessage());
+        $this->assertSame(Status::CLOSED, $requisition->fresh()->status);
+        $this->assertEquals(3, $stock->fresh()->quantity_reserved);
+        $this->assertEquals(3, $stock->fresh()->quantity_total);
+
+        // Another full cycle must neither lose nor duplicate reservations.
+        $this->assertNotNull($reopen->execute($requisition->fresh()), (string) $reopen->getMessage());
+        $this->assertEquals(0, $stock->fresh()->quantity_reserved);
+        $this->assertNotNull($close->execute($requisition->fresh()), (string) $close->getMessage());
+        $this->assertEquals(3, $stock->fresh()->quantity_reserved);
+    }
+
+    public function test_it_restores_legacy_reservations_even_when_release_and_reservation_totals_cancel_out(): void
+    {
+        [$user, $requisition, $item] = $this->makeContext();
+        $stock = ProductStock::where('product_id', $item->product_id)->firstOrFail();
+        $stock->update(['quantity_total' => 2]);
+        $requisition->update(['status' => Status::CLOSED]);
+
+        $reopen = new ReopenRequisitionAction($user->id);
+        $this->assertNotNull($reopen->execute($requisition), (string) $reopen->getMessage());
+        $this->assertEquals(0, $stock->fresh()->quantity_reserved);
+
+        $close = new CloseRequisitionAction($user->id);
+        $this->assertNotNull($close->execute($requisition->fresh()), (string) $close->getMessage());
+        $this->assertEquals(2, $stock->fresh()->quantity_reserved);
+    }
+
+    public function test_it_reserves_only_the_missing_base_quantity_for_an_alternative_unit(): void
+    {
+        [$user, $requisition, $item] = $this->makeContext();
+        $stock = ProductStock::where('product_id', $item->product_id)->firstOrFail();
+        $stock->update(['quantity_total' => 4]);
+        $item->update([
+            'unit_of_measure' => Unit::PC->value,
+            'quantity' => 8,
+            'quantity_in_base_unit' => 4,
+            'conversion_factor_snapshot' => 0.5,
+        ]);
+
+        $workflow = app(RequisitionStockWorkflow::class);
+        $this->assertTrue($workflow->recreateReservationsIfNeeded($requisition, $user->id));
+        $this->assertEquals(4, $stock->fresh()->quantity_reserved);
+        $movement = StockMovement::latest('id')->firstOrFail();
+        $this->assertEquals(2, $movement->base_quantity);
+        $this->assertEquals(4, $movement->operational_quantity);
+        $this->assertEquals(0.5, $movement->conversion_factor_snapshot);
+
+        $count = StockMovement::count();
+        $this->assertTrue($workflow->recreateReservationsIfNeeded($requisition, $user->id));
+        $this->assertSame($count, StockMovement::count());
+    }
+
+    public function test_insufficient_stock_rolls_back_all_recreated_reservations_and_reports_the_reason(): void
+    {
+        [$user, $requisition, $item] = $this->makeContext();
+        $stock = ProductStock::where('product_id', $item->product_id)->firstOrFail();
+        $stock->update(['quantity_total' => 3, 'quantity_reserved' => 0]);
+        StockMovement::query()->delete();
+        $item->replicate()->save();
+
+        $close = new CloseRequisitionAction($user->id);
+        $this->assertNull($close->execute($requisition));
+        $this->assertStringContainsString('Saldo disponível insuficiente para reservar', $close->getMessage());
+        $this->assertSame(Status::OPEN, $requisition->fresh()->status);
+        $this->assertEquals(0, $stock->fresh()->quantity_reserved);
+        $this->assertEquals(3, $stock->fresh()->quantity_total);
+        $this->assertSame(0, StockMovement::count());
     }
 
     private function makeContext(): array

@@ -2,9 +2,7 @@
 
 namespace App\Services\Requisition;
 
-use App\Enum\StockMovement\Type;
 use App\Models\Requisition;
-use App\Models\StockMovement;
 use App\Services\ProductStock\ProductStockService;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\Log;
@@ -22,14 +20,22 @@ class RequisitionStockWorkflow
     {
         $this->resetResponse();
 
-        if (! $this->shouldRecreateReservations($requisition)) {
-            return true;
-        }
-
         $items = $this->stockService->pendingItems($requisition, withProduct: true);
+        $reservedByProduct = $this->stockService->reservedQuantitiesByProduct($requisition);
 
         foreach ($items as $item) {
             if (! $item->product_id || ! $item->product?->has_stock_control) {
+                continue;
+            }
+
+            // Allocate the existing balance once, including reservations made by
+            // items added after reopening. Only reserve the remaining deficit.
+            $requestedQuantity = $item->resolvedBaseQuantity();
+            $reservedQuantity = min($reservedByProduct[$item->product_id] ?? 0, $requestedQuantity);
+            $reservedByProduct[$item->product_id] = ($reservedByProduct[$item->product_id] ?? 0) - $reservedQuantity;
+            $missingQuantity = round($requestedQuantity - $reservedQuantity, 8);
+
+            if ($missingQuantity < 0.0001) {
                 continue;
             }
 
@@ -50,11 +56,12 @@ class RequisitionStockWorkflow
                 $item,
                 $userId,
                 'Reserva recriada por re-encerramento - requisição #'.$requisition->number,
+                baseQuantity: $missingQuantity,
             );
 
             Log::info('RequisitionStockWorkflow: Reserva recriada após reabertura', [
                 'product_id' => $item->product_id,
-                'quantity' => $item->quantity,
+                'quantity' => $missingQuantity,
                 'movement_id' => $movement->id,
                 'requisition_id' => $requisition->id,
             ]);
@@ -148,42 +155,5 @@ class RequisitionStockWorkflow
     public function syncFlags(Requisition $requisition): void
     {
         $this->stockService->syncConsumptionFlags($requisition);
-    }
-
-    private function shouldRecreateReservations(Requisition $requisition): bool
-    {
-        $netReleasedQuantity = (float) StockMovement::query()
-            ->where('source_type', 'requisition')
-            ->where('source_id', $requisition->id)
-            ->whereIn('type', [
-                Type::RESERVATION_RELEASE->value,
-                Type::RESERVATION->value,
-            ])
-            ->get(['type', 'quantity', 'base_quantity'])
-            ->sum(function (StockMovement $movement): float {
-                $quantity = $movement->resolvedBaseQuantity();
-
-                return $movement->type === Type::RESERVATION_RELEASE
-                    ? $quantity
-                    : -$quantity;
-            });
-
-        Log::debug('RequisitionStockWorkflow: Net released quantity', [
-            'metodo' => __METHOD__.'@'.__LINE__,
-            'requisition_id' => $requisition->id,
-            'net_released_quantity' => $netReleasedQuantity,
-        ]);
-
-        $shouldRecreate = $netReleasedQuantity > 0.0001;
-
-        if (! $shouldRecreate && $requisition->stock_reserved === false) {
-            Log::warning('RequisitionStockWorkflow: Flag indicava reabertura, mas nao ha liberacao pendente; recriacao ignorada', [
-                'requisition_id' => $requisition->id,
-                'stock_reserved' => $requisition->stock_reserved,
-                'net_released_quantity' => $netReleasedQuantity,
-            ]);
-        }
-
-        return $shouldRecreate;
     }
 }

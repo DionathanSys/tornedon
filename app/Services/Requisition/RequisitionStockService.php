@@ -7,6 +7,7 @@ use App\Models\ProductStock;
 use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Models\StockMovement;
+use App\Services\Access\RoleRecordScope;
 use App\Services\ProductStock\ProductStockService;
 use App\Services\StockMovement\StockMovementService;
 use Illuminate\Database\Eloquent\Collection;
@@ -93,6 +94,27 @@ class RequisitionStockService
         ]);
     }
 
+    public function reservedQuantitiesByProduct(Requisition $requisition): array
+    {
+        // Reopening releases reservations against the requisition, while item
+        // creation reserves against the item. Both origins belong to one balance.
+        return StockMovement::withoutGlobalScope(RoleRecordScope::class)
+            ->where('company_id', $requisition->company_id)
+            ->where(function ($query) use ($requisition) {
+                $query->where(fn ($query) => $query->where('source_type', 'requisition')->where('source_id', $requisition->id))
+                    ->orWhere(fn ($query) => $query->where('source_type', 'requisition_item')->whereIn('source_id', $requisition->items()->select('id')));
+            })
+            ->whereIn('type', [Type::RESERVATION->value, Type::RESERVATION_RELEASE->value])
+            ->get(['product_id', 'type', 'quantity', 'base_quantity'])
+            ->groupBy('product_id')
+            ->map(fn ($movements) => max(0, (float) $movements->sum(
+                fn (StockMovement $movement) => $movement->type === Type::RESERVATION
+                    ? $movement->resolvedBaseQuantity()
+                    : -$movement->resolvedBaseQuantity()
+            )))
+            ->all();
+    }
+
     public function syncConsumptionFlags(Requisition $requisition): void
     {
         $controlled = $requisition->items()->where(fn ($query) => $query->where('stock_control_snapshot', true)->orWhere(fn ($query) => $query->whereNull('stock_control_snapshot')->whereHas('product', fn ($query) => $query->where('has_stock_control', true))));
@@ -112,6 +134,7 @@ class RequisitionStockService
         string $reason,
         string $sourceType = 'requisition',
         ?int $sourceId = null,
+        ?float $baseQuantity = null,
     ): StockMovement {
         $productStock = $this->resolveProductStock($requisition, $item);
         $product = $item->product;
@@ -120,13 +143,21 @@ class RequisitionStockService
             throw new RuntimeException('Produto não encontrado para recriar reserva de estoque.');
         }
 
+        $requestedBaseQuantity = $item->resolvedBaseQuantity();
+        $reservedBaseQuantity = $baseQuantity ?? $requestedBaseQuantity;
+        $conversionFactor = (float) $item->quantity > 0 && $requestedBaseQuantity > 0
+            ? $requestedBaseQuantity / (float) $item->quantity
+            : 1;
+
         $movement = $this->stockMovementService->create(array_merge(
             $this->movementBaseData($requisition, $item, $productStock, $sourceType, $sourceId),
             [
                 'type' => Type::RESERVATION->value,
                 'base_unit' => $product->unit?->value,
-                'base_quantity' => $item->resolvedBaseQuantity(),
-                'quantity' => $item->resolvedBaseQuantity(),
+                'base_quantity' => $reservedBaseQuantity,
+                'quantity' => $reservedBaseQuantity,
+                'operational_quantity' => $reservedBaseQuantity / $conversionFactor,
+                'conversion_factor_snapshot' => $conversionFactor,
                 'reason' => $reason,
             ]
         ), $userId);
@@ -134,7 +165,7 @@ class RequisitionStockService
         if (! $movement) {
             throw new RuntimeException(
                 'Falha ao recriar reserva de estoque para produto #'.$item->product_id
-                .': '.$this->stockMovementService->getMessage()
+                .': '.(collect($this->stockMovementService->getErrors())->flatten()->implode(' ') ?: $this->stockMovementService->getMessage())
             );
         }
 
