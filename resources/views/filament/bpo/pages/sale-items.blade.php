@@ -10,8 +10,8 @@
     @else
         <p class="text-sm text-gray-500">Os itens e valores são mantidos no documento de origem. Confira-os antes de finalizar.</p>
     @endif
-    <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-        <table class="w-full text-sm">
+    <div class="bpo-sale-items-scroll overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+        <table class="bpo-sale-items-table w-full text-sm">
             <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr>
                     <th scope="col" class="px-5 py-4 text-left whitespace-nowrap">Produto / serviço</th>
@@ -19,7 +19,7 @@
                     <th scope="col" class="px-5 py-4 text-right whitespace-nowrap">Preço unitário</th>
                     <th scope="col" class="px-5 py-4 text-right whitespace-nowrap">Desconto</th>
                     <th scope="col" class="px-5 py-4 text-right whitespace-nowrap">Valor líquido</th>
-                    @if ($editable)<th scope="col" class="px-5 py-4 text-right">Ações</th>@endif
+                    @if ($editable)<th scope="col" class="bpo-sale-item-actions-cell px-5 py-4">Ações</th>@endif
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -35,8 +35,8 @@
                         <td class="px-5 py-3 align-middle text-right whitespace-nowrap">{{ $money($item['discount_amount'] ?? 0) }}</td>
                         <td class="px-5 py-3 align-middle text-right whitespace-nowrap font-semibold">{{ $money($amount) }}</td>
                         @if ($editable)
-                            <td class="px-5 py-3 align-middle text-right whitespace-nowrap">
-                                <div class="flex items-center justify-end gap-2">
+                            <td class="bpo-sale-item-actions-cell px-5 py-3 align-middle whitespace-nowrap">
+                                <div class="bpo-sale-item-actions">
                                     {{ ($this->editItemAction)(['key' => $key]) }}
                                     <x-filament::icon-button icon="heroicon-o-trash" color="danger" label="Remover item" tooltip="Remover item" wire:click="removeItem('{{ $key }}')" wire:confirm="Remover este item da venda?" />
                                 </div>
