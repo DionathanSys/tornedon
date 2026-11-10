@@ -34,6 +34,17 @@
 .bpo-shell .dre-report-table tbody tr:hover { background:var(--bpo-hover); }
 .bpo-shell .dre-report-table tbody .dre-summary-row { background:var(--bpo-icon-bg); color:var(--bpo-info-text); }
 
+/* Keep monetary values and row actions in distinct, consistently spaced columns. */
+.bpo-sale-items-scroll { min-width:0; max-width:100%; overflow-x:auto; }
+.bpo-shell .bpo-sale-items-table { width:100%; min-width:720px; border-collapse:collapse; }
+.bpo-shell .bpo-sale-items-table th,
+.bpo-shell .bpo-sale-items-table td { padding:14px 20px; vertical-align:middle; }
+.bpo-shell .bpo-sale-items-table thead th { padding-block:16px; white-space:nowrap; }
+.bpo-shell .bpo-sale-items-table .bpo-sale-item-actions-cell { width:112px; min-width:112px; box-sizing:border-box; text-align:center; border-left:1px solid var(--bpo-divider); }
+.bpo-sale-item-actions { display:flex; align-items:center; justify-content:center; gap:8px; }
+.bpo-shell .bpo-sale-item-actions > .fi-icon-btn { display:inline-flex; align-items:center; justify-content:center; flex:0 0 32px; width:32px; height:32px; margin:0; padding:6px; }
+.bpo-shell .bpo-sale-item-actions > .fi-icon-btn > svg { width:18px; height:18px; }
+
 @media (min-width:1600px) {
     .bpo-account-edit .bpo-account-top-grid { grid-template-columns:minmax(0,1fr) 320px; }
 }
