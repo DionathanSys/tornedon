@@ -7,6 +7,7 @@ use App\Enum\Payment\Method;
 use App\Filament\Clusters\Financial\Resources\Components\AutoReceiptFields;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
+use App\Filament\Forms\Components\PaymentConditionFields;
 use App\Models\CardInstitution;
 use App\Models\CompanyPreference;
 use App\Models\FinancialAccount;
@@ -21,6 +22,7 @@ use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Callout;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -56,6 +58,13 @@ final class ConfirmInvoiceAction
                                     ->label('Disparar emissão dos documentos fiscais gerados')
                                     ->helperText('Quando marcado, a NF-e e/ou NFS-e criada será enviada imediatamente para processamento.')
                                     ->default(false),
+
+                                Toggle::make('auto_bank_slip_issuance')
+                                    ->label('Emitir boletos automaticamente')
+                                    ->helperText('A preferência da empresa define o valor inicial. Altere para escolher se os boletos desta fatura devem ser emitidos após a confirmação.')
+                                    ->default(fn (Invoice $record): bool => CompanyPreference::getBankSlipAutoIssuanceDefault($record->company_id))
+                                    ->live()
+                                    ->visible(fn (Get $get): bool => (string) $get('payment_method') === Method::BANK_SLIP->value),
 
                                 Checkbox::make('auto_pix_charge_issuance')
                                     ->label('Gerar cobrança PIX automaticamente')
@@ -113,7 +122,7 @@ final class ConfirmInvoiceAction
                                     ->required(fn (Get $get): bool => (string) $get('payment_method') !== Method::CREDIT_CARD->value)
                                     ->helperText('Em cartão, o primeiro vencimento segue o prazo da instituição; as demais parcelas vencem a cada 30 dias.'),
 
-                                \App\Filament\Forms\Components\PaymentConditionFields::make(),
+                                PaymentConditionFields::make(),
 
                                 ...AutoReceiptFields::components(),
 
@@ -143,6 +152,8 @@ final class ConfirmInvoiceAction
                                     ->preload()
                                     ->native(false)
                                     ->nullable()
+                                    ->required(fn (Get $get): bool => (string) $get('payment_method') === Method::BANK_SLIP->value
+                                        && (bool) $get('auto_bank_slip_issuance'))
                                     ->visible(fn (Get $get): bool => (bool) $get('mark_as_received')
                                         || in_array((string) $get('payment_method'), [Method::BANK_SLIP->value, Method::PIX->value], true))
                                     ->helperText('Obrigatória para emissão automática de boleto ou cobrança PIX e para criar movimento de caixa na baixa.'),

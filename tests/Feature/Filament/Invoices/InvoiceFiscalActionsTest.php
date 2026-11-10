@@ -6,10 +6,13 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\Status;
 use App\Enum\Invoice\Status as InvoiceStatus;
+use App\Enum\Payment\Condition;
+use App\Enum\Payment\Method;
 use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\FiscalDocumentsRelationManager;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\EditFiscalDocument;
+use App\Models\CompanyPreference;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentPayload;
 use App\Models\Invoice;
@@ -19,6 +22,7 @@ use App\Models\ServiceOrderItem;
 use App\Models\User;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
+use App\Services\Invoice\InvoiceService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -27,6 +31,45 @@ use Tests\TestCase;
 class InvoiceFiscalActionsTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_confirmation_can_disable_bank_slip_issuance_despite_company_preference(): void
+    {
+        [$invoice] = $this->context();
+        $invoice->update(['confirmed' => false, 'status' => InvoiceStatus::PENDING, 'payment_method' => Method::BANK_SLIP, 'payment_condition' => Condition::DAYS_30]);
+        CompanyPreference::setBankSlipAutoIssuanceDefault(true, $invoice->company_id);
+
+        $service = $this->partialMock(InvoiceService::class);
+        $service->shouldReceive('confirm')->once()
+            ->withArgs(fn ($record, $data, $userId): bool => $record->id === $invoice->id
+                && $data['auto_bank_slip_issuance'] === false
+                && $userId === auth()->id())
+            ->andReturn(['documents_count' => 0, 'account_receivables_count' => 1]);
+        $service->shouldReceive('hasError')->andReturnFalse();
+
+        Livewire::test(EditInvoice::class, ['record' => $invoice->id])
+            ->mountAction('confirmInvoice')
+            ->assertActionDataSet(['auto_bank_slip_issuance' => true])
+            ->setActionData(['auto_bank_slip_issuance' => false, 'financial_account_id' => null])
+            ->callMountedAction()
+            ->assertHasNoActionErrors()
+            ->assertDispatched('invoice-confirmed');
+    }
+
+    public function test_enabling_bank_slip_issuance_requires_a_financial_account(): void
+    {
+        [$invoice] = $this->context();
+        $invoice->update(['confirmed' => false, 'status' => InvoiceStatus::PENDING, 'payment_method' => Method::BANK_SLIP, 'payment_condition' => Condition::DAYS_30]);
+        CompanyPreference::setBankSlipAutoIssuanceDefault(false, $invoice->company_id);
+
+        Livewire::test(EditInvoice::class, ['record' => $invoice->id])
+            ->mountAction('confirmInvoice')
+            ->assertActionDataSet(['auto_bank_slip_issuance' => false])
+            ->setActionData(['auto_bank_slip_issuance' => true, 'financial_account_id' => null])
+            ->callMountedAction()
+            ->assertHasActionErrors(['financial_account_id' => 'required']);
+
+        $this->assertFalse($invoice->fresh()->confirmed);
+    }
 
     public function test_nfe_correction_and_download_actions_have_the_same_visibility_in_header_and_invoice(): void
     {
