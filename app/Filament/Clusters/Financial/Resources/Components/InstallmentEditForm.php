@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\Components;
 
+use App\Enum\Payment\Method;
 use App\Models\CostCenter;
 use App\Models\ResultCenter;
 use Filament\Facades\Filament;
@@ -22,6 +23,14 @@ final class InstallmentEditForm
                 ->columnSpanFull()
                 ->columns(['default' => 1, 'md' => 3])
                 ->schema([
+                    Select::make('payment_method')
+                        ->label('Forma de pagamento')
+                        ->options(Method::toSelectArray())
+                        ->placeholder('Usar forma da conta de origem')
+                        ->native(false)
+                        ->searchable()
+                        ->helperText('A alteração se aplica somente a esta parcela.')
+                        ->columnSpanFull(),
                     Money::make('original_amount')
                         ->label($asAccount ? 'Valor da conta' : 'Valor da parcela')
                         ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))

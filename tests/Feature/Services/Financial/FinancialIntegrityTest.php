@@ -53,6 +53,31 @@ class FinancialIntegrityTest extends TestCase
     }
 
     #[DataProvider('domains')]
+    public function test_payment_method_changes_only_the_selected_installment(string $domain): void
+    {
+        [$service, $account, $installment] = $this->account($domain);
+        $other = $installment->replicate();
+        $other->sequence_number = '02';
+        $other->save();
+
+        $this->assertSame('pix', $installment->payment_method->value);
+        $updated = $service->updateInstallment($installment, ['payment_method' => 'boleto']);
+
+        $this->assertNotNull($updated, $service->getMessageUser());
+        $this->assertSame('boleto', $updated->payment_method->value);
+        $this->assertSame('pix', $other->fresh()->payment_method->value);
+        $this->assertSame('pix', $account->fresh()->payment_method->value);
+        $this->assertSame(1000.0, $updated->balance_amount);
+
+        $this->assertNull($service->updateInstallment($updated, ['payment_method' => 'invalid']));
+        $this->assertSame('boleto', $updated->fresh()->payment_method->value);
+
+        $restored = $service->updateInstallment($updated, ['payment_method' => null]);
+        $this->assertNotNull($restored, $service->getMessageUser());
+        $this->assertSame('pix', $restored->payment_method->value);
+    }
+
+    #[DataProvider('domains')]
     public function test_interest_and_discount_settle_the_adjusted_obligation(string $domain): void
     {
         [$service, $account, $installment] = $this->account($domain);

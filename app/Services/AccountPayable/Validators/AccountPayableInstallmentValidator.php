@@ -3,6 +3,7 @@
 namespace App\Services\AccountPayable\Validators;
 
 use App\Enum\AccountPayable\Status;
+use App\Enum\Payment\Method;
 use App\Models\ChartAccount;
 use App\Models\CostCenter;
 use App\Models\FinancialAccount;
@@ -45,6 +46,7 @@ class AccountPayableInstallmentValidator
             'account_payable_id' => ['required', 'integer', 'exists:account_payables,id'],
             'company_id' => ['required', 'integer', 'exists:companies,id'],
             'sequence_number' => ['required', 'string', 'max:3'],
+            'payment_method' => ['sometimes', 'nullable', Rule::enum(Method::class)],
             'due_date' => ['required', 'date'],
             'competence_date' => ['nullable', 'date'],
             'due_amount' => ['required', 'numeric', 'min:0'],

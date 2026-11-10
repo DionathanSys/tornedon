@@ -256,11 +256,14 @@ class FinancialTitleWorkspaceTest extends TestCase
         $this->assertStringContainsString('Editar conta #'.$first->id, $modal);
         $this->assertStringContainsString('Valor da conta', $modal);
         $this->assertStringNotContainsString('Valor da parcela', $modal);
-        $page->setActionData(['original_amount' => '125,50', 'description' => 'Conta revisada'])->callMountedAction()
+        $this->assertStringContainsString('Forma de pagamento', $modal);
+        $page->setActionData(['original_amount' => '125,50', 'description' => 'Conta revisada', 'payment_method' => 'boleto'])->callMountedAction()
             ->assertHasNoActionErrors();
 
         $this->assertSame(125.5, (float) $first->fresh()->original_amount);
         $this->assertSame(100.0, (float) $second->fresh()->original_amount);
+        $this->assertSame('boleto', $first->fresh()->payment_method->value);
+        $this->assertNull($second->fresh()->payment_method);
         $page->callAction(TestAction::make('delete_installment')->table($first))->assertHasNoActionErrors();
         $this->assertDatabaseMissing($first->getTable(), ['id' => $first->id]);
         $this->assertDatabaseHas($second->getTable(), ['id' => $second->id]);

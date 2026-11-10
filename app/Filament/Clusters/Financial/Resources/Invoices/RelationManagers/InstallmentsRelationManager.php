@@ -47,6 +47,10 @@ class InstallmentsRelationManager extends RelationManager
             ->modifyQueryUsing(fn ($query) => $query->with(['accountReceivable', 'latestBankSlip', 'latestPixCharge']))
             ->recordTitleAttribute('sequence_number')
             ->columns([
+                TextColumn::make('payment_method')
+                    ->label('Forma de pagamento')
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->toggleable(),
                 TextColumn::make('sequence_number')
                     ->label('Parcela')
                     ->badge()

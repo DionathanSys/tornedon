@@ -69,6 +69,9 @@ class InstallmentsRelationManager extends RelationManager
                 ])->from('md'),
                 Panel::make([
                     Stack::make([
+                        TextColumn::make('payment_method')
+                            ->label('Forma de pagamento')
+                            ->formatStateUsing(fn ($state) => $state?->description() ?? '-'),
                         TextColumn::make('due_date')
                             ->label('Vencimento')
                             ->date('d/m/Y'),

@@ -43,7 +43,7 @@ final class IssuePixChargeAction
                 if ($record->ignored_at) {
                     return false;
                 }
-                if ($record->accountReceivable?->payment_method !== PaymentMethod::PIX) {
+                if ($record->payment_method !== PaymentMethod::PIX) {
                     return false;
                 }
 

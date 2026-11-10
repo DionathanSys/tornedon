@@ -22,7 +22,7 @@ trait HasCompactFinancialRelationship
 
     protected function compactFinancialTable(Table $table, bool $payments): Table
     {
-        $visible = $payments ? ['installment.sequence_number', 'payment_date', 'amount', 'financialAccount.name'] : ['sequence_number', 'due_date', 'due_amount', 'status'];
+        $visible = $payments ? ['installment.sequence_number', 'payment_date', 'amount', 'financialAccount.name'] : ['sequence_number', 'payment_method', 'due_date', 'due_amount', 'status'];
         foreach ($table->getColumns() as $column) {
             $column->toggleable(isToggledHiddenByDefault: ! in_array($column->getName(), $visible, true));
             if (! $payments && $column->getName() === 'due_amount') {

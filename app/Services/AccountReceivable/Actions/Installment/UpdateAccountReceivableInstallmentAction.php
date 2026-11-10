@@ -4,6 +4,7 @@ namespace App\Services\AccountReceivable\Actions\Installment;
 
 use App\Models\AccountReceivableInstallment;
 use App\Services\AccountReceivable\Validators\AccountReceivableInstallmentValidator;
+use App\Support\Financial\InstallmentPaymentMethodGuard;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -19,6 +20,7 @@ class UpdateAccountReceivableInstallmentAction
     {
         try {
             $validated = AccountReceivableInstallmentValidator::validateUpdate($data);
+            InstallmentPaymentMethodGuard::validate($this->installment, $validated);
 
             $this->installment->update($validated);
 
@@ -27,12 +29,13 @@ class UpdateAccountReceivableInstallmentAction
             return $this->installment->fresh();
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados da parcela', $e->errors());
+
             return null;
         } catch (QueryException $e) {
             $this->setError('Erro ao atualizar parcela de conta a receber no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'installment_id' => $this->installment->id,
@@ -44,7 +47,7 @@ class UpdateAccountReceivableInstallmentAction
             $this->setError('Erro inesperado ao atualizar parcela de conta a receber');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

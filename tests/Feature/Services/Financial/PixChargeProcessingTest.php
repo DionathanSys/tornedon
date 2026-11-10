@@ -23,6 +23,7 @@ use App\Models\Partner;
 use App\Models\PixCharge;
 use App\Models\User;
 use App\Services\AccountReceivable\AccountReceivableService;
+use App\Services\Financial\Banking\BankSlipIssuanceService;
 use App\Services\Financial\Pix\PixChargeIssuanceService;
 use App\Services\Financial\Pix\PixChargePublicLinkService;
 use App\Services\Financial\Pix\PixProviderRegistry;
@@ -163,6 +164,50 @@ class PixChargeProcessingTest extends TestCase
 
         $this->assertNotNull($receivable, $service->getMessage());
         $this->assertTrue((bool) $receivable->fresh()->installments()->sole()->auto_pix_charge_issuance);
+    }
+
+    public function test_switching_pix_to_bank_slip_changes_issuance_eligibility(): void
+    {
+        CompanyEntitlement::create([
+            'company_id' => $this->company->id,
+            'feature' => 'bank_slip_issuance',
+            'enabled' => true,
+        ]);
+        $service = app(AccountReceivableService::class);
+        $updated = $service->updateInstallment($this->installment, ['payment_method' => 'boleto']);
+        $this->assertNotNull($updated, $service->getMessageUser());
+        $this->assertNull(app(PixChargeIssuanceService::class)->preparePixCharge($updated));
+        $this->assertNotNull(app(BankSlipIssuanceService::class)->prepareBankSlip($updated, false));
+        $this->assertSame(PaymentMethod::PIX, $updated->accountReceivable->payment_method);
+    }
+
+    public function test_active_pix_charge_must_be_resolved_before_switching_method(): void
+    {
+        $charge = app(PixChargeIssuanceService::class)->preparePixCharge($this->installment);
+        $this->assertNotNull($charge);
+        $service = app(AccountReceivableService::class);
+
+        $this->assertNull($service->updateInstallment($this->installment, ['payment_method' => 'boleto']));
+        $this->assertSame(PaymentMethod::PIX, $this->installment->fresh()->payment_method);
+
+        $charge->update(['status' => PixChargeStatus::CANCELED]);
+        $this->assertNotNull($service->updateInstallment($this->installment, ['payment_method' => 'boleto']), $service->getMessageUser());
+    }
+
+    public function test_automatic_pix_issuance_respects_installment_method_over_invoice_method(): void
+    {
+        Queue::fake();
+        $invoice = $this->installment->accountReceivable->invoice;
+        $invoice->update(['auto_pix_charge_issuance' => true]);
+        $this->installment->update(['payment_method' => 'boleto', 'auto_pix_charge_issuance' => true]);
+
+        $this->assertSame(0, app(PixChargeIssuanceService::class)->scheduleForInvoice($invoice->fresh()));
+        Queue::assertNotPushed(RegisterPixChargeJob::class);
+
+        $invoice->update(['payment_method' => 'boleto']);
+        $this->installment->update(['payment_method' => 'pix']);
+        $this->assertSame(1, app(PixChargeIssuanceService::class)->scheduleForInvoice($invoice->fresh()));
+        Queue::assertPushed(RegisterPixChargeJob::class, 1);
     }
 
     public function test_backfills_missing_automatic_flag_when_scheduling_an_invoice(): void

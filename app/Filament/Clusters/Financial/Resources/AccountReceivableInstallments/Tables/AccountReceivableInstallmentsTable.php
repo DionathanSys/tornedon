@@ -34,6 +34,10 @@ class AccountReceivableInstallmentsTable
         return $table
             ->recordTitleAttribute('sequence_number')
             ->columns([
+                TextColumn::make('payment_method')
+                    ->label('Forma de pagamento')
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->toggleable(),
                 TextColumn::make('accountReceivable.counterparty_label')
                     ->label('Cliente')
                     ->getStateUsing(fn (AccountReceivableInstallment $record): string => $record->accountReceivable?->counterparty_label ?? '-')

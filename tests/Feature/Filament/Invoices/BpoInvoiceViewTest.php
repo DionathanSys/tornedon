@@ -6,6 +6,7 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\Invoice\Status;
 use App\Filament\Bpo\Resources\Invoices\Pages\ViewInvoice;
+use App\Filament\Bpo\Resources\Invoices\RelationManagers\InstallmentsRelationManager;
 use App\Filament\Bpo\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
 use App\Models\Company;
 use App\Models\Invoice;
@@ -13,6 +14,8 @@ use App\Models\Partner;
 use App\Models\ServiceOrder;
 use App\Models\User;
 use App\Services\Access\CompanyTeamService;
+use App\Services\AccountReceivable\AccountReceivableService;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -128,6 +131,57 @@ class BpoInvoiceViewTest extends TestCase
             'ownerRecord' => $this->invoice,
             'pageClass' => ViewInvoice::class,
         ])->assertForbidden();
+    }
+
+    public function test_invoice_installment_payment_method_can_be_changed_with_financial_permission(): void
+    {
+        $this->actingAs($this->owner);
+        Filament::setCurrentPanel('admin');
+        $this->invoice->customer->companies()->attach($this->company, ['is_active' => true, 'type' => '["customer"]']);
+        $service = app(AccountReceivableService::class);
+        $account = $service->create([
+            'company_id' => $this->company->id,
+            'customer_id' => $this->invoice->customer_id,
+            'invoice_id' => $this->invoice->id,
+            'due_date' => today()->toDateString(),
+            'due_amount' => 100,
+            'payment_method' => 'pix',
+        ], $this->owner->id);
+        $this->assertNotNull($account, $service->getMessageUser());
+        $installment = $account->installments()->sole();
+        $params = ['ownerRecord' => $this->invoice, 'pageClass' => ViewInvoice::class];
+
+        $this->actingAs($this->bpo);
+        Filament::setCurrentPanel('bpo');
+
+        $teams = app(CompanyTeamService::class);
+        $readRole = $teams->saveRole($this->owner, $this->company, [
+            'name' => 'Consultar parcelas da fatura',
+            'permissions' => ['invoices.view' => 'company', 'account_receivables.view' => 'company'],
+            'panels' => ['bpo'],
+        ]);
+        $teams->authorizeBpo($this->owner, $this->company, $this->bpo, [$readRole->id], false, []);
+
+        Livewire::test(InstallmentsRelationManager::class, $params)
+            ->assertActionHidden(TestAction::make('edit_installment')->table($installment));
+
+        $role = $teams->saveRole($this->owner, $this->company, [
+            'name' => 'Alterar parcelas da fatura',
+            'permissions' => ['invoices.view' => 'company', 'account_receivables.view' => 'company', 'account_receivables.update' => 'company'],
+            'panels' => ['bpo'],
+        ]);
+        $teams->authorizeBpo($this->owner, $this->company, $this->bpo, [$role->id], false, []);
+
+        Livewire::test(InstallmentsRelationManager::class, $params)
+            ->assertTableColumnExists('payment_method')
+            ->mountAction(TestAction::make('edit_installment')->table($installment))
+            ->assertActionDataSet(['payment_method' => 'pix'])
+            ->setActionData(['payment_method' => 'boleto'])
+            ->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $this->assertSame('boleto', $installment->fresh()->payment_method->value);
+        $this->assertSame('pix', $account->fresh()->payment_method->value);
     }
 
     public function test_fiscal_polling_checks_status_without_loading_documents(): void

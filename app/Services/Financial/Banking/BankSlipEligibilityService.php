@@ -41,7 +41,7 @@ final class BankSlipEligibilityService
             ]);
         }
 
-        if ($receivable->payment_method !== PaymentMethod::BANK_SLIP) {
+        if ($installment->payment_method !== PaymentMethod::BANK_SLIP) {
             throw ValidationException::withMessages([
                 'payment_method' => ['A parcela nao utiliza boleto bancario.'],
             ]);

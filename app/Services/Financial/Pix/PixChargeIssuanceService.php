@@ -27,7 +27,6 @@ final class PixChargeIssuanceService
             ! $invoice->confirmed
             || $invoice->canceled
             || $invoice->operations()->where('active_slot', 1)->exists()
-            || $invoice->payment_method !== PaymentMethod::PIX
             || $invoice->auto_pix_charge_issuance !== true
         ) {
             return 0;
@@ -37,6 +36,10 @@ final class PixChargeIssuanceService
 
         foreach ($invoice->accountReceivables as $receivable) {
             foreach ($receivable->installments as $installment) {
+                if ($installment->payment_method !== PaymentMethod::PIX) {
+                    continue;
+                }
+
                 if ($installment->auto_pix_charge_issuance === null) {
                     $installment->update(['auto_pix_charge_issuance' => true]);
                 }

@@ -27,7 +27,6 @@ final class BankSlipIssuanceService
             ! $invoice->confirmed
             || $invoice->canceled
             || $invoice->operations()->where('active_slot', 1)->exists()
-            || $invoice->payment_method !== PaymentMethod::BANK_SLIP
             || $invoice->auto_bank_slip_issuance !== true
         ) {
             return 0;
@@ -37,7 +36,7 @@ final class BankSlipIssuanceService
 
         foreach ($invoice->accountReceivables as $receivable) {
             foreach ($receivable->installments as $installment) {
-                if ($installment->auto_bank_slip_issuance !== true) {
+                if ($installment->payment_method !== PaymentMethod::BANK_SLIP || $installment->auto_bank_slip_issuance !== true) {
                     continue;
                 }
 

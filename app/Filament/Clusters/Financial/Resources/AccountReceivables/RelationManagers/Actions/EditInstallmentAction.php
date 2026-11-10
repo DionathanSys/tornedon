@@ -23,6 +23,7 @@ final class EditInstallmentAction
             ->modalSubmitActionLabel('Salvar alterações')
             ->schema(InstallmentEditForm::components('receivable'))
             ->fillForm(fn (AccountReceivableInstallment $record): array => [
+                'payment_method' => $record->payment_method?->value,
                 'original_amount' => $record->original_amount,
                 'due_date' => $record->due_date?->format('Y-m-d'),
                 'competence_date' => $record->competence_date?->format('Y-m-d'),

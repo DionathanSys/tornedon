@@ -3,6 +3,7 @@
 namespace App\Services\AccountReceivable\Validators;
 
 use App\Enum\AccountReceivable\Status;
+use App\Enum\Payment\Method;
 use App\Models\BankingEvent;
 use App\Models\BankSlip;
 use App\Models\BankSlipEvent;
@@ -49,6 +50,7 @@ class AccountReceivableInstallmentValidator
             'account_receivable_id' => ['required', 'integer', 'exists:account_receivables,id'],
             'company_id' => ['required', 'integer', 'exists:companies,id'],
             'sequence_number' => ['required', 'string', 'max:3'],
+            'payment_method' => ['sometimes', 'nullable', Rule::enum(Method::class)],
             'due_date' => ['required', 'date'],
             'competence_date' => ['nullable', 'date'],
             'due_amount' => ['required', 'numeric', 'min:0'],

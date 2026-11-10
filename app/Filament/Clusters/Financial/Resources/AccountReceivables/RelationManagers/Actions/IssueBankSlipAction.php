@@ -49,7 +49,7 @@ final class IssueBankSlipAction
                 if ($record->ignored_at) {
                     return false;
                 }
-                if ($record->accountReceivable?->payment_method !== PaymentMethod::BANK_SLIP) {
+                if ($record->payment_method !== PaymentMethod::BANK_SLIP) {
                     return false;
                 }
 

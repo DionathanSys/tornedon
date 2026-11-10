@@ -43,7 +43,7 @@ final class PixEligibilityService
             ]);
         }
 
-        if ($receivable->payment_method !== PaymentMethod::PIX) {
+        if ($installment->payment_method !== PaymentMethod::PIX) {
             throw ValidationException::withMessages([
                 'payment_method' => ['A parcela não utiliza PIX.'],
             ]);
