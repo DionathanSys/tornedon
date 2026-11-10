@@ -22,6 +22,7 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CardReceivableCalculatorService;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
+use App\Services\Invoice\InvoiceReceiptReversalService;
 use App\Support\Financial\AccountEditGuard;
 use App\Support\Financial\InstallmentDescription;
 use App\Support\Financial\InstallmentPaymentGuard;
@@ -702,6 +703,12 @@ class AccountReceivableService
             return $this->financialTransaction(function () use ($payment) {
                 InstallmentPaymentGuard::lock($payment->installment);
                 $payment = AccountReceivableInstallmentPayment::query()->lockForUpdate()->findOrFail($payment->id);
+                if ($payment->installment->accountReceivable->invoiceLinks()->exists()) {
+                    app(InvoiceReceiptReversalService::class)->reverseManual($payment, auth()->id());
+                    $this->setSuccess('Recebimento estornado; histórico da fatura preservado.');
+
+                    return true;
+                }
                 if ((float) $payment->returned_amount > 0 || $payment->bank_confirmed_at !== null) {
                     throw ValidationException::withMessages(['payment' => ['Recebimentos confirmados pelo banco ou devolvidos não podem ser excluídos.']]);
                 }

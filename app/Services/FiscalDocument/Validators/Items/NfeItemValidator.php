@@ -141,6 +141,7 @@ class NfeItemValidator
     {
         return [
             'fiscal_document_id' => 'required|integer|exists:fiscal_documents,id',
+            'requisition_item_id' => 'nullable|integer|exists:requisition_items,id',
             'product_id' => 'required|integer|exists:products,id',
             'product_code' => 'required|string|max:60',
             'description' => 'required|string|max:255',

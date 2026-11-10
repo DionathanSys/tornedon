@@ -105,6 +105,7 @@ class FiscalDocuments extends Page implements HasTable
                 'authorized_at', 'created_at', 'operational_reset_at', 'confirmed', 'movement_at'])
             ->where('company_id', Filament::getTenant()->id)->with('customer:id,name')
             ->withSum('items as items_total', 'total_price')
+            ->withExists(['stockEffects as has_pending_stock_effect' => fn (Builder $query) => $query->where('status', 'blocked')])
             ->withExists(['fiscalIssues as has_open_fiscal_issue' => fn (Builder $query) => $query->where('active_slot', 1)])
             ->withExists(['payload as has_corrections' => fn (Builder $query) => $query->whereJsonLength('nfe_payload->correcoes', '>', 0)]))->columns([
                 TextColumn::make('document_number')->label('Número')->searchable()->placeholder('Em preparação'),
@@ -231,7 +232,7 @@ class FiscalDocuments extends Page implements HasTable
             $ability = match ($action->getName()) {
                 'emitir', 'emitir_nfse' => 'issue',
                 'cancelar_nfe', 'cancelar_nfse' => 'cancel',
-                'corrigir_nfe', 'consultar', 'consultar_nfse', 'tratar_pendencia_fiscal' => 'update',
+                'corrigir_nfe', 'consultar', 'consultar_nfse', 'tratar_pendencia_fiscal', 'reprocessar_estoque' => 'update',
                 'preview', 'preview_nfse', 'danfe', 'pdf_nfse', 'download_xml', 'baixar_carta_correcao_nfe' => 'view',
                 default => null,
             };

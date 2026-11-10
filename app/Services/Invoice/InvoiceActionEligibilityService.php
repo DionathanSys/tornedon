@@ -35,7 +35,7 @@ class InvoiceActionEligibilityService
                 $add('receivables', 'A fatura possui contas a receber vinculadas.');
             }
         }
-        if ($action === InvoiceAction::DELETE && ($invoice->confirmations()->exists() || $invoice->sources()->exists() || $invoice->operations()->exists())) {
+        if ($action === InvoiceAction::DELETE && ($invoice->confirmations()->exists() || $invoice->sources()->exists() || $invoice->operations()->exists() || $invoice->receivableLinks()->exists())) {
             $add('historical_records', 'Faturas com histórico devem ser preservadas.');
         }
         if ($action === InvoiceAction::RETURN_TO_DRAFT) {

@@ -12,10 +12,13 @@ final class DeletePaymentAction
     public static function make(): Action
     {
         return Action::make('delete_payment')
-            ->label('Excluir recebimento')
+            ->label(fn (AccountReceivableInstallmentPayment $record): string => $record->installment->accountReceivable->invoiceLinks()->exists() ? 'Estornar recebimento' : 'Excluir recebimento')
             ->icon('heroicon-o-trash')
             ->color('danger')
             ->requiresConfirmation()
+            ->modalDescription(fn (AccountReceivableInstallmentPayment $record): string => $record->installment->accountReceivable->invoiceLinks()->exists()
+                ? 'O recebimento e seu vínculo histórico serão preservados. O sistema registrará o estorno financeiro correspondente. Esta ação não envia devolução de dinheiro ao banco/provedor.'
+                : 'Excluir este recebimento e tratar seu movimento financeiro, conforme o estado da conciliação.')
             ->action(function (AccountReceivableInstallmentPayment $record): void {
                 $service = app(AccountReceivableService::class);
                 $deleted = $service->deleteInstallmentPayment($record);

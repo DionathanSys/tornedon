@@ -8,6 +8,8 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\ListInvoices;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\AccountReceivablesRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InstallmentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InvoiceFinancialHistoryRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InvoiceOperationsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InvoiceSourcesRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\RequisitionsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\ServiceOrdersRelationManager;
@@ -63,6 +65,8 @@ class InvoiceResource extends Resource
             ]),
             AttachmentsRelationManager::class,
             InvoiceSourcesRelationManager::class,
+            InvoiceFinancialHistoryRelationManager::class,
+            InvoiceOperationsRelationManager::class,
         ];
     }
 

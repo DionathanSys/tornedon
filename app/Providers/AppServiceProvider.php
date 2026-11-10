@@ -26,10 +26,12 @@ use App\Models\CommitmentSetting;
 use App\Models\Company;
 use App\Models\CustomerCommitment;
 use App\Models\FiscalDocument;
+use App\Models\FiscalDocumentItem;
 use App\Models\Invoice;
 use App\Models\ProductionOrder;
 use App\Models\Quote;
 use App\Models\Requisition;
+use App\Models\RequisitionItem;
 use App\Models\ServiceOrder;
 use App\Models\User;
 use App\Observers\FiscalDocumentObserver;
@@ -126,6 +128,8 @@ class AppServiceProvider extends ServiceProvider
             'quote' => Quote::class,
             'service_order' => ServiceOrder::class,
             'production_order' => ProductionOrder::class,
+            'requisition_item' => RequisitionItem::class,
+            'fiscal_document_item' => FiscalDocumentItem::class,
         ]);
 
         // Registrar policies

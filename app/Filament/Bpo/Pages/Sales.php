@@ -4,6 +4,7 @@ namespace App\Filament\Bpo\Pages;
 
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\Invoice\CancellationReason;
 use App\Enum\Invoice\Status as InvoiceStatus;
 use App\Filament\Bpo\Concerns\HasWorkbenchHeader;
 use App\Filament\Bpo\Resources\InvoiceResource;
@@ -222,7 +223,7 @@ class Sales extends Page implements HasTable
                         return round(((float) ($record->serviceOrder?->listing_items_amount ?? 0) + (float) ($record->requisition?->listing_items_amount ?? 0)) / 100 + (float) ($source instanceof ServiceOrder ? $source->travel_value : 0), 2);
                     })->money('BRL'),
                     TextColumn::make('invoice.invoice_number')->label('Fatura')->placeholder('Rascunho')->searchable(),
-                    TextColumn::make('commercial_status')->label('Venda')->state(fn (BpoSale $record) => ($record->invoice?->canceled || $record->invoice?->status === InvoiceStatus::CANCELLED) ? 'Cancelada' : ($record->finalized_at ? 'Finalizada' : 'Rascunho'))->badge(),
+                    TextColumn::make('commercial_status')->label('Venda')->state(fn (BpoSale $record) => $record->invoice?->cancellation_reason === CancellationReason::REBILLING ? 'Revertida para refaturamento' : (($record->invoice?->canceled || $record->invoice?->status === InvoiceStatus::CANCELLED) ? 'Cancelada' : ($record->finalized_at ? 'Finalizada' : 'Rascunho')))->badge(),
                     TextColumn::make('finalized_at')->label('Finalizada em')->dateTime('d/m/Y H:i')->sortable()->toggleable(isToggledHiddenByDefault: true),
                     TextColumn::make('fiscal_status')->label('Fiscal')->state(function (BpoSale $record) {
                         $document = $record->invoice?->fiscalDocuments?->first();

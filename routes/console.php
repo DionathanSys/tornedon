@@ -1,5 +1,8 @@
 <?php
 
+use App\Enum\Invoice\OperationType;
+use App\Jobs\ProcessInvoiceReversalJob;
+use App\Models\InvoiceOperation;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -9,6 +12,16 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('emails:alert-failures')->everyFiveMinutes();
+
+Schedule::call(function (): void {
+    InvoiceOperation::where('type', OperationType::REVERSE_BILLING->value)
+        ->whereIn('status', ['requested', 'running', 'awaiting_external'])
+        ->chunkById(100, function ($operations): void {
+            foreach ($operations as $operation) {
+                ProcessInvoiceReversalJob::dispatch($operation->id);
+            }
+        });
+})->everyMinute()->name('invoice-reversals:resume')->withoutOverlapping();
 Schedule::command('account-payables:process-auto-payments')
     ->dailyAt('00:10')
     ->withoutOverlapping()

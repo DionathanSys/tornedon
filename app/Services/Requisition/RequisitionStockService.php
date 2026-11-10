@@ -25,7 +25,8 @@ class RequisitionStockService
         if ($requisition->stock_control_enabled === false) {
             return new Collection;
         }
-        $query = $requisition->items()->whereNull('stock_consumed_at');
+        $query = $requisition->items()->whereNull('stock_consumed_at')
+            ->where(fn ($query) => $query->where('stock_control_snapshot', true)->orWhere(fn ($query) => $query->whereNull('stock_control_snapshot')->whereHas('product', fn ($query) => $query->where('has_stock_control', true))));
 
         if ($withProduct) {
             $query->with('product');
@@ -94,12 +95,12 @@ class RequisitionStockService
 
     public function syncConsumptionFlags(Requisition $requisition): void
     {
-        $hasPendingItems = $requisition->items()
-            ->whereNull('stock_consumed_at')
-            ->exists();
+        $controlled = $requisition->items()->where(fn ($query) => $query->where('stock_control_snapshot', true)->orWhere(fn ($query) => $query->whereNull('stock_control_snapshot')->whereHas('product', fn ($query) => $query->where('has_stock_control', true))));
+        $hasControlled = $requisition->stock_control_enabled !== false && $controlled->exists();
+        $hasPendingItems = $hasControlled && (clone $controlled)->whereNull('stock_consumed_at')->exists();
 
         $requisition->update([
-            'stock_consumed' => ! $hasPendingItems,
+            'stock_consumed' => $hasControlled && ! $hasPendingItems,
             'stock_reserved' => $hasPendingItems ? $requisition->stock_reserved : false,
         ]);
     }

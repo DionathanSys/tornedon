@@ -7,6 +7,7 @@ use App\Services\StockMovement\Actions\CreateStockMovementAction;
 use App\Services\StockMovement\Actions\DeleteStockMovementAction;
 use App\Services\StockMovement\Actions\UpdateStockMovementAction;
 use App\Traits\HandlesServiceResponse;
+use App\Traits\RunsFinancialTransactions;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 class StockMovementService
 {
     use HandlesServiceResponse;
+    use RunsFinancialTransactions;
 
     /* ==============================
      |  Consultas
@@ -21,17 +23,13 @@ class StockMovementService
 
     /**
      * Lista todas as movimentacoes de estoque de uma empresa.
-     *
-     * @param int $companyId
-     * @param array $filters
-     * @return Collection
      */
     public function list(int $companyId, array $filters = []): Collection
     {
         Log::debug('StockMovementService: Listando movimentacoes de estoque', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'company_id' => $companyId,
-            'filters'    => $filters,
+            'filters' => $filters,
         ]);
 
         $query = StockMovement::where('company_id', $companyId);
@@ -70,10 +68,6 @@ class StockMovementService
 
     /**
      * Busca uma movimentacao pelo ID.
-     *
-     * @param int $id
-     * @param int|null $companyId
-     * @return StockMovement|null
      */
     public function find(int $id, ?int $companyId = null): ?StockMovement
     {
@@ -95,10 +89,6 @@ class StockMovementService
 
     /**
      * Lista movimentacoes de um produto especifico.
-     *
-     * @param int $productId
-     * @param int $companyId
-     * @return Collection
      */
     public function listByProduct(int $productId, int $companyId): Collection
     {
@@ -119,17 +109,13 @@ class StockMovementService
 
     /**
      * Cria uma nova movimentacao de estoque.
-     *
-     * @param array $data
-     * @param int $createdBy
-     * @return StockMovement|null
      */
     public function create(array $data, int $createdBy): ?StockMovement
     {
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($data, $createdBy) {
+            return $this->financialTransaction(function () use ($data, $createdBy) {
                 $action = new CreateStockMovementAction($createdBy);
                 $movement = $action->execute($data);
 
@@ -142,9 +128,9 @@ class StockMovementService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'  => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'message' => $action->getMessage(),
-                        'errors'  => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
@@ -158,10 +144,10 @@ class StockMovementService
             $this->setError('Erro ao criar movimentacao de estoque');
 
             Log::error('StockMovementService: Erro ao criar movimentacao', [
-                'metodo'    => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'exception' => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
-                'data'      => $data,
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
             ]);
 
             return null;
@@ -170,11 +156,6 @@ class StockMovementService
 
     /**
      * Atualiza uma movimentacao de estoque.
-     *
-     * @param StockMovement $movement
-     * @param array $data
-     * @param int $updatedBy
-     * @return StockMovement|null
      */
     public function update(StockMovement $movement, array $data, int $updatedBy): ?StockMovement
     {
@@ -194,10 +175,10 @@ class StockMovementService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
-                        'stock_movement_id'  => $movement->id,
-                        'message'            => $action->getMessage(),
-                        'errors'             => $action->getErrors(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'stock_movement_id' => $movement->id,
+                        'message' => $action->getMessage(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
@@ -211,11 +192,11 @@ class StockMovementService
             $this->setError('Erro ao atualizar movimentacao de estoque');
 
             Log::error('StockMovementService: Erro ao atualizar movimentacao', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
-                'data'               => $data,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
             ]);
 
             return null;
@@ -224,9 +205,6 @@ class StockMovementService
 
     /**
      * Exclui uma movimentacao de estoque.
-     *
-     * @param StockMovement $movement
-     * @return bool
      */
     public function delete(StockMovement $movement): bool
     {
@@ -234,7 +212,7 @@ class StockMovementService
 
         try {
             return DB::transaction(function () use ($movement) {
-                $action = new DeleteStockMovementAction();
+                $action = new DeleteStockMovementAction;
                 $result = $action->execute($movement);
 
                 if ($action->hasError()) {
@@ -246,9 +224,9 @@ class StockMovementService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
-                        'stock_movement_id'  => $movement->id,
-                        'message'            => $action->getMessage(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'stock_movement_id' => $movement->id,
+                        'message' => $action->getMessage(),
                     ]);
 
                     return false;
@@ -257,8 +235,8 @@ class StockMovementService
                 $this->setSuccess('Movimentação de estoque excluída com sucesso');
 
                 Log::info('StockMovementService: Movimentacao de estoque excluida com sucesso', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'stock_movement_id'  => $movement->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'stock_movement_id' => $movement->id,
                 ]);
 
                 return $result;
@@ -267,10 +245,10 @@ class StockMovementService
             $this->setError('Erro ao excluir movimentacao de estoque');
 
             Log::error('StockMovementService: Erro ao excluir movimentacao', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -279,9 +257,6 @@ class StockMovementService
 
     /**
      * Exclui permanentemente (force delete) uma movimentacao de estoque.
-     *
-     * @param StockMovement $movement
-     * @return bool
      */
     public function forceDelete(StockMovement $movement): bool
     {
@@ -289,7 +264,7 @@ class StockMovementService
 
         try {
             return DB::transaction(function () use ($movement) {
-                $action = new DeleteStockMovementAction();
+                $action = new DeleteStockMovementAction;
                 $result = $action->forceDelete($movement);
 
                 if ($action->hasError()) {
@@ -301,9 +276,9 @@ class StockMovementService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'             => __METHOD__ . '@' . __LINE__,
-                        'stock_movement_id'  => $movement->id,
-                        'message'            => $action->getMessage(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'stock_movement_id' => $movement->id,
+                        'message' => $action->getMessage(),
                     ]);
 
                     return false;
@@ -312,8 +287,8 @@ class StockMovementService
                 $this->setSuccess('Movimentacao de estoque removida permanentemente com sucesso');
 
                 Log::info('StockMovementService: Movimentacao removida permanentemente', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'stock_movement_id'  => $movement->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'stock_movement_id' => $movement->id,
                 ]);
 
                 return $result;
@@ -322,10 +297,10 @@ class StockMovementService
             $this->setError('Erro ao remover permanentemente movimentacao de estoque');
 
             Log::error('StockMovementService: Erro ao remover permanentemente', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;

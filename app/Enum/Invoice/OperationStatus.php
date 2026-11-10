@@ -15,4 +15,12 @@ enum OperationStatus: string
     {
         return ! in_array($this, [self::COMPLETED, self::ABORTED], true);
     }
+
+    public function description(): string
+    {
+        return match ($this) {
+            self::REQUESTED => 'Solicitada', self::RUNNING => 'Em execução', self::AWAITING_EXTERNAL => 'Aguardando confirmação externa',
+            self::NEEDS_INTERVENTION => 'Requer intervenção', self::COMPLETED => 'Concluída', self::ABORTED => 'Abortada',
+        };
+    }
 }

@@ -69,6 +69,11 @@ class AccountReceivableGenerationService
 
                 return false;
             }
+            if ($invoice->operations()->where('active_slot', 1)->exists()) {
+                $this->setError('A fatura possui uma reversão em andamento. Não gerar novos títulos pelo retorno fiscal.');
+
+                return false;
+            }
 
             // Quick sales define their financial outcome at commercial finalization.
             // Fiscal callbacks must never infer a new obligation from an absent title.

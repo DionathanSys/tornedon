@@ -7,7 +7,6 @@ use App\Enum\ServiceOrder\State;
 use App\Models\Invoice;
 use App\Models\Requisition;
 use App\Models\RequisitionSequence;
-use App\Services\Requisition\RequisitionBillingService;
 use App\Services\Requisition\Actions\CancelRequisitionAction;
 use App\Services\Requisition\Actions\CloseRequisitionAction;
 use App\Services\Requisition\Actions\CreateRequisitionAction;
@@ -15,8 +14,6 @@ use App\Services\Requisition\Actions\DeleteRequisitionAction;
 use App\Services\Requisition\Actions\PrintRequisitionPdfAction;
 use App\Services\Requisition\Actions\ReopenRequisitionAction;
 use App\Services\Requisition\Actions\UpdateRequisitionAction;
-use App\Services\Requisition\RequisitionStockService;
-use App\Services\Requisition\RequisitionStockWorkflow;
 use App\Services\Shared\CommercialItemDiscountService;
 use App\Support\Email\DocumentNotificationDecisionContext;
 use App\Traits\HandlesServiceResponse;
@@ -38,9 +35,9 @@ class RequisitionService
     public function list(int $companyId, array $filters = []): Collection
     {
         Log::debug('Listando requisições', [
-            'metodo'     => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'company_id' => $companyId,
-            'filters'    => $filters,
+            'filters' => $filters,
         ]);
 
         $query = Requisition::where('company_id', $companyId);
@@ -90,9 +87,9 @@ class RequisitionService
     public function find(int $id, ?int $companyId = null): ?Requisition
     {
         Log::debug('Buscando requisição', [
-            'metodo'         => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'requisition_id' => $id,
-            'company_id'     => $companyId,
+            'company_id' => $companyId,
         ]);
 
         $query = Requisition::where('id', $id);
@@ -118,7 +115,7 @@ class RequisitionService
     public function findByQuoteId(int $quoteId): ?Requisition
     {
         Log::debug('Buscando requisição por quote_id', [
-            'metodo'   => __METHOD__ . '@' . __LINE__,
+            'metodo' => __METHOD__.'@'.__LINE__,
             'quote_id' => $quoteId,
         ]);
 
@@ -156,13 +153,13 @@ class RequisitionService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
                         'action_message' => $action->getMessage(),
-                        'errors'         => $action->getErrors(),
-                        'data'           => $data,
-                        'user_id'        => $createdBy,
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $createdBy,
                     ]);
 
                     return null;
@@ -171,9 +168,9 @@ class RequisitionService
                 $this->setSuccess('Requisição criada com sucesso');
 
                 Log::info('Requisição criada com sucesso via service', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'requisition_id' => $requisition->id,
-                    'number'         => $requisition->number,
+                    'number' => $requisition->number,
                 ]);
 
                 return $requisition;
@@ -184,12 +181,12 @@ class RequisitionService
             $this->setError('Erro ao criar requisição');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
-                'message'    => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
-                'user_id'    => $createdBy,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $createdBy,
             ]);
 
             return null;
@@ -217,13 +214,13 @@ class RequisitionService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'requisition_id' => $requisition->id,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
-                        'errors'         => $action->getErrors(),
-                        'data'           => $data,
-                        'user_id'        => $updatedBy,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors' => $action->getErrors(),
+                        'data' => $data,
+                        'user_id' => $updatedBy,
                     ]);
 
                     return null;
@@ -232,9 +229,9 @@ class RequisitionService
                 $this->setSuccess('Requisição atualizada com sucesso');
 
                 Log::info('Requisição atualizada com sucesso via service', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'requisition_id' => $requisition->id,
-                    'number'         => $requisition->number,
+                    'number' => $requisition->number,
                 ]);
 
                 return $updated;
@@ -243,13 +240,13 @@ class RequisitionService
             $this->setError('Erro ao atualizar requisição');
 
             Log::error($this->getMessage(), [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'error_code'     => $this->getErrorCode(),
-                'message'        => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
-                'data'           => $data,
-                'user_id'        => $updatedBy,
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $updatedBy,
             ]);
 
             return null;
@@ -277,11 +274,11 @@ class RequisitionService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'requisition_id' => $requisition->id,
-                        'message'        => $action->getMessage(),
-                        'error_code'     => $action->getErrorCode(),
-                        'errors'         => $action->getErrors(),
+                        'message' => $action->getMessage(),
+                        'error_code' => $action->getErrorCode(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return false;
@@ -290,9 +287,9 @@ class RequisitionService
                 $this->setSuccess('Requisição excluída com sucesso');
 
                 Log::info('Requisição excluída com sucesso via service', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'requisition_id' => $requisition->id,
-                    'number'         => $requisition->number,
+                    'number' => $requisition->number,
                 ]);
 
                 return $result;
@@ -301,11 +298,11 @@ class RequisitionService
             $this->setError('Erro ao excluir requisição');
 
             Log::error('Erro ao excluir requisição via service', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'error_code'     => $this->getErrorCode(),
-                'message'        => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -342,7 +339,7 @@ class RequisitionService
         try {
             return DB::transaction(function () use ($requisition, $updatedBy): Requisition {
                 Log::info('RequisitionService: desvinculando ordem de serviço da requisição', [
-                    'metodo' => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'requisition_id' => $requisition->id,
                     'service_order_id' => $requisition->service_order_id,
                     'user_id' => $updatedBy,
@@ -361,7 +358,7 @@ class RequisitionService
             $this->setError('Erro ao desvincular requisição da ordem de serviço.');
 
             Log::error('RequisitionService: erro ao desvincular ordem de serviço da requisição', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
                 'service_order_id' => $requisition->service_order_id,
                 'user_id' => $updatedBy,
@@ -403,28 +400,29 @@ class RequisitionService
                     );
 
                     Log::error($action->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
                         'requisition_id' => $requisition->id,
-                        'errors'         => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Requisição encerrada com sucesso');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao encerrar requisição');
 
             Log::error('Erro ao encerrar requisição via service', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'error_code'     => $this->getErrorCode(),
-                'exception'      => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -437,7 +435,7 @@ class RequisitionService
      *
      * @param  Requisition|Collection  $records  Uma requisição ou coleção de requisições
      */
-    public function invoice(Requisition|Collection $records, int $userId): ?\App\Models\Invoice
+    public function invoice(Requisition|Collection $records, int $userId): ?Invoice
     {
         $this->resetResponse();
         $billing = app(RequisitionBillingService::class);
@@ -490,27 +488,11 @@ class RequisitionService
         return $updatedInvoice;
     }
 
-    /**
-     * Para cada item ainda não consumido:
-     *  1. Cria movimentação EXIT (saída física decrementa quantity_total)
-     *  2. Cria movimentação RESERVATION_RELEASE (libera a reserva, decrementa quantity_reserved)
-     *  3. Marca o item como consumido
-     * Ao final, marca a requisição como stock_consumed.
-     */
-    private function processStockExits(Requisition $requisition, int $userId): void
-    {
-        $workflow = app(RequisitionStockWorkflow::class);
-
-        if (! $workflow->processStockExits($requisition, $userId)) {
-            throw new \RuntimeException($workflow->getMessage());
-        }
-    }
-
     private function attachRecordsToInvoice(Collection $records, Invoice $invoice, int $userId): void
     {
         foreach ($records as $record) {
             $record->state()->invoice($record, $userId, $invoice->id);
-            $this->processStockExits($record, $userId);
+            // Physical stock leaves only when the NF-e is authorized. Keep the reservation.
         }
     }
 
@@ -535,28 +517,29 @@ class RequisitionService
                     );
 
                     Log::error($action->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'requisition_id' => $requisition->id,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
-                        'errors'         => $action->getErrors(),
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Requisição cancelada com sucesso');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao cancelar requisição');
 
             Log::error('Erro ao cancelar requisição via service', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'error_code'     => $this->getErrorCode(),
-                'exception'      => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -584,28 +567,29 @@ class RequisitionService
                     );
 
                     Log::error($action->getMessage(), [
-                        'metodo'         => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'requisition_id' => $requisition->id,
-                        'message'        => $this->getMessage(),
-                        'error_code'     => $this->getErrorCode(),
-                        'errors'         => $action->getErrors(),
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Requisição reaberta com sucesso');
+
                 return $result;
             });
         } catch (\Exception $e) {
             $this->setError('Erro ao reabrir requisição');
 
             Log::error('Erro ao reabrir requisição via service', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'error_code'     => $this->getErrorCode(),
-                'exception'      => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -620,10 +604,6 @@ class RequisitionService
      * Aplica valor de desconto distribuído igualmente entre os itens da requisição.
      * O desconto é igualmente distribuído e, se o item já possuir desconto,
      * o valor será incrementado. O discount_percentage também será calculado.
-     *
-     * @param  Requisition  $requisition
-     * @param  float        $discountAmount
-     * @return bool
      */
     public function applyDiscount(Requisition $requisition, float $discountAmount): bool
     {
@@ -641,21 +621,21 @@ class RequisitionService
 
                 foreach ($items as $item) {
                     Log::debug('Desconto aplicado ao item de requisição', [
-                        'metodo'                    => __METHOD__ . '@' . __LINE__,
-                        'requisition_item_id'       => $item->id,
-                        'requisition_id'            => $requisition->id,
-                        'new_discount_amount'       => (float) $item->discount_amount,
-                        'discount_percentage'       => (float) $item->discount_percentage,
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'requisition_item_id' => $item->id,
+                        'requisition_id' => $requisition->id,
+                        'new_discount_amount' => (float) $item->discount_amount,
+                        'discount_percentage' => (float) $item->discount_percentage,
                     ]);
                 }
 
                 $this->setSuccess('Desconto aplicado com sucesso aos itens.');
 
                 Log::info('Desconto aplicado com sucesso na requisição', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'requisition_id' => $requisition->id,
                     'total_discount' => $discountAmount,
-                    'item_count'     => $result['item_count'],
+                    'item_count' => $result['item_count'],
                 ]);
 
                 return true;
@@ -664,11 +644,11 @@ class RequisitionService
             $this->setError('Erro ao aplicar desconto na requisição.');
 
             Log::error('Erro ao aplicar desconto na requisição', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'discount_amount'   => $discountAmount,
-                'error_message'     => $e->getMessage(),
-                'trace'             => $e->getTraceAsString(),
+                'discount_amount' => $discountAmount,
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -677,9 +657,6 @@ class RequisitionService
 
     /**
      * Remove todos os descontos dos itens da requisição, zerando discount_amount e discount_percentage.
-     *
-     * @param  Requisition  $requisition
-     * @return bool
      */
     public function clearDiscount(Requisition $requisition): bool
     {
@@ -696,18 +673,18 @@ class RequisitionService
 
                 foreach ($items as $item) {
                     Log::debug('Desconto removido do item de requisição', [
-                        'metodo'              => __METHOD__ . '@' . __LINE__,
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'requisition_item_id' => $item->id,
-                        'requisition_id'      => $requisition->id,
+                        'requisition_id' => $requisition->id,
                     ]);
                 }
 
                 $this->setSuccess('Descontos removidos com sucesso.');
 
                 Log::info('Descontos removidos com sucesso da requisição', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'requisition_id' => $requisition->id,
-                    'item_count'     => $itemCount,
+                    'item_count' => $itemCount,
                 ]);
 
                 return true;
@@ -716,10 +693,10 @@ class RequisitionService
             $this->setError('Erro ao remover descontos da requisição.');
 
             Log::error('Erro ao remover descontos da requisição', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'error_message'  => $e->getMessage(),
-                'trace'          => $e->getTraceAsString(),
+                'error_message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -735,30 +712,31 @@ class RequisitionService
 
         try {
             $action = app(PrintRequisitionPdfAction::class);
-            $pdf    = $action->execute($requisition);
+            $pdf = $action->execute($requisition);
 
             if ($pdf === null || $action->hasError()) {
                 $this->setError($action->getMessage());
+
                 return null;
             }
 
             $this->setSuccess('PDF da requisição gerado.');
 
             Log::info('RequisitionService: PDF gerado com sucesso', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'user_id'        => $userId,
+                'user_id' => $userId,
             ]);
 
             return $pdf;
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar PDF da requisição: ' . $e->getMessage());
+            $this->setError('Erro ao gerar PDF da requisição: '.$e->getMessage());
 
             Log::error('RequisitionService::pdf', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'user_id'        => $userId,
-                'exception'      => $e->getMessage(),
+                'user_id' => $userId,
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
@@ -783,13 +761,13 @@ class RequisitionService
 
             return ['pdf' => $pdf];
         } catch (\Exception $e) {
-            $this->setError('Erro ao gerar preview da requisição: ' . $e->getMessage());
+            $this->setError('Erro ao gerar preview da requisição: '.$e->getMessage());
 
             Log::error('RequisitionService::preview', [
-                'metodo'         => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'requisition_id' => $requisition->id,
-                'user_id'        => $userId,
-                'exception'      => $e->getMessage(),
+                'user_id' => $userId,
+                'exception' => $e->getMessage(),
             ]);
 
             return null;

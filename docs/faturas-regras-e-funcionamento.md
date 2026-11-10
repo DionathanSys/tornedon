@@ -36,19 +36,36 @@ O nome aprovado da operação é **Reverter Faturamento**. Ela é diferente de *
 - Registro e tratamento administrativo de pendências por prazo, recusa ou resultado incerto, com histórico, referência externa e comprovantes.
 - Comprovante manual não altera a situação fiscal; consulta/webhook confirmam o cancelamento e resolvem a pendência.
 
+### Entregue — rastreabilidade financeira e reversão integral de serviços
+
+- Origem explícita dos títulos: gerado pela fatura ou preexistente vinculado, com histórico preservado.
+- Recebimentos de títulos rastreados são estornados com preservação do pagamento original e do movimento compensatório correspondente.
+- Ação **Reverter Faturamento**, para administrador da empresa, no administrativo e no BPO.
+- Reversão integral de serviços sem produtos/produção, com processamento em fila, etapas persistidas, espera por confirmação bancária e retomada.
+- Fatura/venda anterior preservada; OS liberadas para Encerrada apenas na conclusão. Nenhuma nova fatura é criada automaticamente.
+- Abas **Histórico financeiro** e **Operações da fatura** nos dois painéis.
+
+### Entregue — reserva e saída pela autorização da NF-e
+
+- Reserva criada/ajustada ao incluir/alterar o item da requisição, com rollback do item quando a reserva falhar.
+- Faturar não baixa estoque e não libera a reserva.
+- Saída da venda vinculada à fatura processada exclusivamente pela autorização da NF-e, com referência ao item fiscal e à requisição de origem.
+- Validação de disponibilidade na reserva e antes do envio fiscal, respeitando a opção de saldo negativo do estoque.
+- Produto sem controle de estoque não exige saldo/registro de estoque e não gera reserva ou saída.
+- Pendência de estoque após autorização preserva o resultado fiscal e permite reprocessamento pelo administrador.
+
 ### Planejado — próximas entregas
 
-- Workflow completo e ação **Reverter Faturamento**.
+- Ampliação de **Reverter Faturamento** para produtos, após definição do ciclo de estoque e das exceções de produção.
 - Workflow completo e ação **Cancelar Venda**.
-- Acompanhamento por etapa, retomada e conciliação das operações fiscais/bancárias.
+- Ampliação da coordenação de operações para cancelamento definitivo da venda.
 - Evolução da visualização da cobertura fiscal por item, caso seja necessária. Não haverá vínculo obrigatório de substituição entre notas.
 - Resumos fiscais/financeiros consolidados na interface.
 - Eventual parametrização adicional das regras fiscais por órgão/provedor, preservando a definição atual de NFS-e sem limite local.
-- Classificação persistida da origem de cada vínculo financeiro: criado pela fatura ou título preexistente vinculado.
 - Histórico de faturamento apresentado diretamente na tela de cada ordem.
 - Revisão e migração assistida das faturas legadas sem retrato de confirmação.
 
-As tabelas de operações são a fundação dessas próximas entregas; não executam cancelamentos externos nem disponibilizam os novos workflows nesta etapa.
+O executor atual atende à reversão de serviços descrita na seção 15. Cancelamento definitivo da venda, produtos e produção permanecem nas próximas entregas.
 
 ## 3. Estado comercial da fatura
 
@@ -78,7 +95,7 @@ Rascunho ── confirmar ──> Confirmada
     ^                        |
     └── desfazer confirmação ─┘  (somente quando elegível)
 
-Confirmada ── Reverter Faturamento ──> Cancelada / rebilling [workflow planejado]
+Confirmada ── Reverter Faturamento ──> Cancelada / rebilling [serviços implementados]
 Confirmada ── Cancelar Venda ────────> Cancelada / sale_cancelled [workflow planejado]
 ```
 
@@ -189,9 +206,9 @@ Após uma remoção registrada, a fatura tem histórico e não pode ser excluíd
 | Desfazer confirmação | Confirmada; sem operação ativa, decisão financeira de venda rápida, comunicação fiscal impeditiva, recebimentos registrados ou cobranças externas |
 | Excluir | Rascunho sem documentos fiscais, recebíveis, confirmações, histórico de composição ou operações |
 
-Uma nota que já teve comunicação fiscal não se torna elegível para retorno simples ao rascunho só porque foi cancelada. O caminho planejado é **Reverter Faturamento**, preservando o registro anterior.
+Uma nota que já teve comunicação fiscal não se torna elegível para retorno simples ao rascunho só porque foi cancelada. O caminho é **Reverter Faturamento**, preservando o registro anterior, respeitado o escopo de serviços desta entrega.
 
-O retorno existente a rascunho permanece conservador: recebimentos históricos e cobranças externas também impedem essa ação. A análise de recebimentos já estornados para a reversão completa será implementada com o workflow financeiro específico.
+O retorno existente a rascunho permanece conservador: recebimentos históricos e cobranças externas também impedem essa ação. Já a reversão de serviços aceita recebimentos integralmente estornados quando pagamento, parcela, conta e movimento compensatório estão consistentes.
 
 ## 9. Operações em andamento
 
@@ -214,7 +231,7 @@ Estados previstos em `OperationStatus`:
 
 `invoice_operations` guarda empresa, fatura, tipo, estado, justificativa, solicitante e `request_id` único. O `active_slot` é preenchido pelo modelo, com restrição única de banco para impedir duas operações ativas na mesma fatura.
 
-Nesta entrega não há executor dessas operações nem transições automáticas entre esses estados. Etapas individuais, resultados externos, condições de aborto e retomada pertencem à próxima implementação. Não marcar uma operação como concluída/abortada manualmente para contornar pendências.
+`ProcessInvoiceReversalJob` executa a reversão de serviços. As etapas ficam em `steps`, com estado, mensagem e horário; `last_message` resume o andamento. Uma rotina agendada a cada minuto retoma solicitações, execuções interrompidas e operações aguardando retorno externo. Operações que requerem intervenção dependem de retomada explícita pelo administrador. Não há ação de aborto após efeitos externos: não marcar operações manualmente como concluídas/abortadas para contornar pendências.
 
 ## 10. Regras aprovadas para os próximos workflows
 
@@ -232,8 +249,8 @@ Se a intenção é manter as ordens e refaturar:
 2. Resolver todas as notas fiscais e cobranças aplicáveis.
 3. Preservar o retrato histórico da fatura.
 4. Cancelar a fatura pelo motivo `rebilling`.
-5. Liberar ordens para Encerrada / OP para Concluída.
-6. Permitir outra fatura com nova composição.
+5. Liberar OS para Encerrada; produtos e OP aguardam o estudo de estoque/produção.
+6. Permitir que o usuário crie outra fatura posteriormente, sem criação automática.
 
 Se houve autorização fiscal e a composição precisa mudar, criar outra fatura, preservando a anterior. Não reabrir a fatura cancelada.
 
@@ -243,7 +260,7 @@ Encerrar definitivamente a operação comercial, tratando notas, financeiro, cob
 
 ### Origem do financeiro
 
-Um título criado pela fatura é diferente de um título preexistente apenas associado a ela. O segundo não deve ser cancelado automaticamente. Antes dos workflows destrutivos, persistir essa origem e definir a liberação da associação.
+Um título criado pela fatura é diferente de um título preexistente apenas associado a ela. A origem é persistida em `invoice_receivable_links`. O segundo é preservado, incluindo parcelas e cobranças próprias, liberando somente os vínculos criados pelo faturamento. Não se infere origem pela descrição, valor ou data.
 
 ### Prazos fiscais
 
@@ -260,7 +277,7 @@ A migration é aditiva e não reconstrói automaticamente confirmações antigas
 - Novas confirmações pelos fluxos implementados geram histórico.
 - Registros legados sem histórico mantêm o cálculo anterior e precisam de revisão antes de qualquer liberação destrutiva futura.
 - O bloqueio de itens comerciais considera confirmações persistidas para manter compatibilidade com esses registros legados.
-- Os futuros workflows devem impedir a liberação de uma fatura confirmada legada sem um retrato validado.
+- A reversão implementada bloqueia faturas legadas sem retrato e títulos sem origem financeira rastreada. Não há reconstrução ou classificação presumida automática.
 - Atualizações em massa por query builder não executam eventos Eloquent. Código de negócio deve usar os serviços; migrações/importações precisam observar essas regras explicitamente.
 
 ## 12. Implantação e arquivos principais
@@ -372,3 +389,207 @@ php artisan test tests/Feature/Services/FiscalDocument tests/Feature/Services/In
 ```
 
 Laravel Pint aplicado aos arquivos PHP desta entrega. As integrações externas foram simuladas nos testes; a migration foi exercitada no SQLite dos testes. A regressão também identificou e corrigiu a leitura de contas a pagar quando o formulário de criação da nota ainda não possui registro persistido.
+
+## 15. Rastreabilidade financeira e Reverter Faturamento de serviços
+
+### 15.1. Decisões aprovadas
+
+- Reversão sempre integral, sem selecionar apenas algumas OS, parcelas ou notas da fatura.
+- Nova fatura fica a cargo do usuário, em outro momento.
+- Fatura e venda BPO anteriores são preservadas, com identificação de reversão para refaturamento.
+- OS ficam vinculadas até concluir todos os cancelamentos necessários; ao final retornam para **Encerrada**.
+- Recebimentos vigentes precisam de estorno prévio; recebimento surgido durante a execução interrompe o progresso.
+- Operação permitida ao administrador da empresa, sem aprovação adicional, nos painéis administrativo e BPO.
+- Esta entrega atende exclusivamente serviços sem requisições/produtos ou OP associada à fatura. Não movimenta estoque.
+
+### 15.2. Como identificar título preexistente
+
+`invoice_receivable_links` registra a associação com origem explícita:
+
+| Origem | Identificação | Efeito da reversão |
+| --- | --- | --- |
+| `generated` | Conta criada pelos fluxos de geração da fatura, inclusive confirmação e geração fiscal/financeira independente | Cancelar título e parcelas depois de resolver recebimentos e cobranças |
+| `linked_existing` | Título que existia antes e foi associado pelo fluxo de venda BPO | Preservar título, parcelas e cobranças; restaurar os vínculos anteriores |
+
+São persistidos empresa, fatura, ID original do título, referência ao registro atual, responsável, data, vínculos anteriores e retrato financeiro. Ao liberar, gravar motivo e novo retrato com parcelas, pagamentos, movimentos originais e estornos. A identificação original e os retratos liberados não podem ser reescritos.
+
+Um título pode ser associado a uma única fatura ativa. Seu histórico continua existindo após liberar o vínculo. Caso um título não recebido seja excluído por um fluxo existente, o histórico mantém o ID original e seu retrato, mesmo que a referência ao registro atual fique nula.
+
+Títulos antigos já associados sem rastreabilidade não são classificados por aproximação: bloqueiam reversão automática até revisão. Valores/datas iguais não comprovam origem.
+
+### 15.3. Como comprovar estorno do recebimento
+
+O caminho de rastreabilidade é:
+
+```text
+Fatura → vínculo financeiro → título → parcela → recebimento
+  → movimento original (origin_type + origin_id)
+    → movimento compensatório (reversal_of_id)
+```
+
+Um recebimento vigente impede iniciar a reversão. Para aceitar um recebimento histórico já estornado, verificar:
+
+1. Empresa e associação consistentes.
+2. `returned_amount` integralmente igual ao valor recebido.
+3. Parcela e título sem saldo recebido vigente.
+4. Quando houve conta/movimento financeiro, existência do movimento original, da marca de estorno e de compensação da mesma empresa/conta, no valor correspondente e na direção inversa.
+5. Ausência de recebimentos ou eventos bancários financeiros a regularizar nas cobranças.
+
+Uma saída manual avulsa de mesmo valor não comprova estorno. Alterar apenas o indicador do pagamento também não libera a operação.
+
+Para títulos com histórico de fatura, a ação existente de remoção do recebimento se apresenta como **Estornar recebimento**: mantém o pagamento e registra a compensação, em vez de apagar a cadeia de rastreabilidade. Recebimento sem conta financeira pode não ter movimento de caixa; nesse caso, preservar o registro de seu estorno sem inventar uma movimentação inexistente.
+
+Recebimentos bancários continuam usando o fluxo existente de devolução confirmada do provedor. A reversão da fatura não devolve dinheiro automaticamente e não estorna recebimentos por conta própria.
+
+### 15.4. Etapas da reversão
+
+1. Autorizar administrador ativo da própria empresa e validar justificativa.
+2. Bloquear fatura sem retrato histórico, composição divergente, produto/produção, origem financeira desconhecida, emissão ainda em fila/processamento ou recebimento vigente.
+3. Registrar operação única e idempotente. Desativar novos disparos automáticos de cobrança/recebimento dos títulos gerados pela fatura.
+4. Para cada NFS-e, reconhecer cancelamentos anteriores, encerrar documentos não enviados ou rejeitados sem autorização anterior, ou solicitar cancelamento ao provedor quando autorizada. O encerramento local preserva o status de rejeição e não inventa um cancelamento externo. Guardar a etapa antes da chamada externa.
+5. Quando o resultado anterior for incerto, consultar antes de repetir. Uma consulta que confirme a nota ainda autorizada permite nova tentativa somente em retomada explícita.
+6. Revalidar recebimentos entre etapas externas.
+7. Cancelar cobranças dos títulos gerados pela fatura pelos serviços bancários existentes. Cobranças nunca enviadas podem ser desativadas localmente. Cobranças preexistentes de título apenas vinculado são preservadas.
+8. Aguardar confirmação dos cancelamentos; falhas/divergências exigem intervenção. As OS permanecem vinculadas durante a espera.
+9. Revalidar sob bloqueio da fatura, dos títulos, parcelas e cobranças antes da conclusão local.
+10. Cancelar títulos/parcelas gerados; liberar associações dos preexistentes; registrar o histórico financeiro da liberação.
+11. Marcar a fatura **Cancelada — Reversão de faturamento**, com responsável/data/motivo `rebilling`.
+12. Liberar todas as OS para Encerrada, marcar liberação no histórico e concluir a operação.
+
+Falhas parciais preservam as etapas já concluídas. Uma NFS-e já cancelada não é reenviada para cancelamento. O fluxo não apaga notas nem fatura e não cria outra venda/fatura automaticamente.
+
+A venda BPO anterior continua ligada à fatura revertida. Uma nova ação explícita do usuário pode selecionar a mesma OS encerrada em outra venda; a existência da venda anterior revertida não impede essa reutilização.
+
+### 15.5. Uso e execução
+
+- Botão **Reverter Faturamento** na fatura administrativa e na visualização da fatura BPO.
+- O mesmo botão permite retomar uma operação ativa, após corrigir seus impedimentos.
+- Abas **Operações da fatura** e **Histórico financeiro** mostram andamento, etapas e referências de recebimentos/estornos.
+- `ProcessInvoiceReversalJob` processa a solicitação na fila. `routes/console.php` retoma a cada minuto operações solicitadas, interrompidas ou aguardando confirmação externa.
+- Estado **Requer intervenção** não é repetido automaticamente. Após tratar a causa, outro administrador autorizado também pode retomar.
+- Revogação do acesso do responsável interrompe a execução; não há bypass de administrador de plataforma sem vínculo com a empresa.
+
+Aplicar `php artisan migrate` para a migration `2026_11_08_000003_add_invoice_financial_traceability.php`. Manter o consumidor de filas e o scheduler Laravel em execução na instalação, além das filas bancárias já utilizadas pelas integrações.
+
+Principais serviços: `InvoiceFinancialLinkService`, `InvoiceReceiptReversalService` e `ReverseServiceInvoiceWorkflow`.
+
+### 15.6. Próxima etapa: estoque e produção
+
+Definições registradas para o estudo seguinte:
+
+- Há empresas que não controlam estoque e precisam apenas incluir um item na venda. Não presumir que todo produto deva gerar reserva, saída ou entrada.
+- Avaliar a responsabilidade da NF-e versus faturamento na saída de estoque, mantendo os movimentos rastreáveis e sem duplicação no refaturamento.
+- Cancelamento de venda ligada à produção pode corrigir uma OP gerada em duplicidade; isso não significa que uma peça foi fisicamente produzida, devolvida ou retornou à empresa.
+- Separar correção de duplicidade operacional de cancelamento de produção executada e de retorno físico. Não gerar reposição de estoque ou reversão de insumos pela simples existência de uma OP cancelada.
+- Cancelamento definitivo de venda de serviço foi autorizado como regra de negócio, mas a ação **Cancelar Venda** ainda é uma entrega distinta de **Reverter Faturamento**.
+
+### 2026-11-09 — Rastreabilidade e reversão de serviços
+
+Implementados os itens 1 e 2 do encaminhamento aprovado.
+
+Regressão principal: **562 testes aprovados, 3.967 asserções**, em duas execuções independentes (280 testes financeiros e 282 testes de fatura/fiscal/interface/BPO). Depois da revisão final, as verificações focadas também passaram; a última execução do workflow reuniu **18 testes e 111 asserções**, incluindo bloqueio de novo título por callback fiscal durante a reversão, revogação de acesso no meio do processamento e encerramento local de NFS-e rejeitada sem autorização. As execuções focadas repetem parte da regressão e não devem ser somadas como casos distintos.
+
+```bash
+php artisan config:clear
+php artisan test tests/Feature/Services/Financial
+php artisan test tests/Feature/Services/Invoice tests/Feature/Services/FiscalDocument tests/Feature/Filament/Invoices tests/Feature/Filament/Bpo/QuickSalesTest.php tests/Feature/Filament/Bpo/FiscalDocumentsWorkspaceTest.php tests/Feature/Http/NfeWebhookControllerTest.php
+php artisan test tests/Feature/Services/Invoice/ReverseServiceInvoiceWorkflowTest.php
+```
+
+Pint aplicado aos arquivos PHP alterados/novos e `git diff --check` sem problemas. As migrations foram exercitadas no SQLite dos testes. Os provedores foram simulados; não houve solicitação de cancelamento em banco/prefeitura real durante a verificação.
+
+## 16. Estoque — fechamento aprovado
+
+As decisões desta seção orientam a implementação detalhada na seção 17.
+
+### Decisões confirmadas
+
+- A venda sempre utilizará um produto previamente cadastrado. Não haverá item avulso nesta etapa.
+- Reaproveitar `Product.has_stock_control` (**Controla estoque**) como referência do produto. Produto sem controle não deve exigir saldo, reserva ou movimento.
+- `ProductStock.allow_negative` é uma política diferente: mantém o controle e os movimentos, permitindo saldo negativo conforme a configuração do vínculo de estoque.
+- Manter a reserva no momento em que o item é adicionado à requisição, como no fluxo atual; atualizar/liberar a reserva nos ajustes do item.
+- A saída padrão da venda será comandada pela **autorização da NF-e**, não pelo faturamento da requisição.
+- Para o sistema, a peça saiu no momento da autorização da NF-e. Não haverá fluxo adicional de entrega antecipada nem regra separada de expedição nesta entrega.
+- Cancelar a nota não comprova retorno físico e não repõe estoque automaticamente.
+- Manter a configuração de saldo negativo no registro de estoque; não criar uma opção concorrente desnecessária na fatura.
+
+### Políticas existentes que precisam ser conciliadas
+
+Também existe `Requisition.stock_control_enabled`, utilizado por modelos de venda. Foi preservado como política da operação: quando desabilitado, não haverá reserva/saída, mesmo se o produto normalmente controlar estoque. Se habilitado, utilizar o cadastro do produto. A decisão é registrada em `RequisitionItem.stock_control_snapshot`; alteração posterior do cadastro não reescreve o comportamento do item já incluído. Trocar o produto do item estabelece uma nova política para esse produto.
+
+### Validação aprovada
+
+Validar disponibilidade na reserva e antes do envio da NF, com aplicação dos movimentos sob bloqueio transacional do estoque. A reserva da própria requisição deve ser considerada a favor da operação; não descontá-la duas vezes. Respeitar `allow_negative` em ambos os momentos.
+
+Quando a NF já estiver autorizada e surgir divergência no estoque, preservar a autorização e registrar pendência de estoque para regularização. Não fingir falha fiscal nem descartar o retorno externo porque a validação local falhou.
+
+### Momento da saída
+
+A autorização da NF-e confirma a saída no fluxo de venda. Sem autorização, requisição e fatura mantêm a reserva, mas não geram baixa. Não foi implementado evento de entrega/expedição separado. Entradas, produção, remessas e devoluções específicas mantêm seus serviços próprios; esta mudança não transforma toda NF avulsa em venda de estoque.
+
+### Cancelamento e reemissão
+
+- Sem saída registrada: liberar/manter a reserva conforme cancelamento definitivo ou refaturamento; não criar entrada.
+- Saída por NF autorizada: considerar a peça fora da empresa; o cancelamento fiscal isolado não cria entrada nem recompõe reserva.
+- Reemissão da mesma origem, produto e quantidade: vincular a nova NF à saída física já registrada, sem outra baixa.
+- Retorno físico real: registrar evento próprio, com sua quantidade e vínculo ao movimento de origem.
+- OP duplicada: tratar como correção de registro conforme a execução efetiva, sem presumir peça produzida ou devolvida.
+
+## 17. Implementação da saída de venda na NF-e
+
+### 17.1. Reserva transacional
+
+Os listeners de criação/atualização/exclusão do item reconciliam sua reserva pelo saldo dos movimentos da própria origem (`requisition_item`), e não apenas pela existência de um evento anterior. Repetir um evento não duplica a reserva. Diminuir quantidade, trocar produto ou remover item libera somente a quantidade que pertence àquela origem.
+
+A requisição e o item são bloqueados antes de alterações; o saldo é revalidado sob bloqueio do estoque. Se falhar a criação/alteração da reserva, a transação também desfaz a inclusão/alteração do item. Estoque ausente/inativo para produto controlado não é tratado como saldo livre.
+
+`allow_negative = false` impede reservar além do disponível e impede saída que tornaria o saldo físico negativo ou consumiria reservas de outras operações. Com `allow_negative = true`, manter os registros e permitir insuficiência de saldo. Desabilitar controle é diferente de permitir saldo negativo.
+
+### 17.2. Preparação e validação fiscal
+
+`SaleNfeStockService` atende à NF-e de saída vinculada a fatura, exceto cenários com serviço específico como devolução de compra. O preflight é executado no enfileiramento e novamente antes do envio.
+
+Cada item gerado pela fatura recebe `fiscal_document_items.requisition_item_id`. O serviço valida empresa e vínculo à fatura, quantidade efetiva da nota, unidade e origem comercial. Quantidades do mesmo produto são validadas conjuntamente. A reserva da própria nota é creditada uma única vez; reservas de outras operações não são consideradas disponíveis.
+
+`fiscal_stock_effects` mantém o retrato por item fiscal: produto, estoque, origem, controle aplicável, unidade/quantidade base, fator de conversão, movimento associado, situação, erro e momento do processamento. A conversão preparada é preservada quando os dados do item não mudaram. Alterar a unidade base após reserva/preparação exige regularização; a quantidade anterior não é reinterpretada na unidade nova. A precisão deve ser compatível com as três casas decimais do estoque.
+
+Não há faturamento parcial de ordem nesta versão. O vínculo comercial de cada item fiscal deve ser único dentro da nota para permitir rastreabilidade sem atribuições ambíguas.
+
+### 17.3. Autorização, atomicidade e idempotência
+
+Na autorização, bloquear e revalidar a nota e os estoques, liberar as reservas de suas origens e aplicar as saídas na mesma transação. Falha em qualquer item desfaz todas as novas saídas e liberações daquela tentativa. O status autorizado da nota, recebido antes do processamento de estoque, é preservado.
+
+A saída usa `source_type = fiscal_document_item` e `source_id` do item efetivamente autorizado, com referência adicional ao documento e ao item da requisição. `stock_consumed_at` na requisição somente é atualizado após a baixa fiscal; ele não é mais o gatilho para baixar na confirmação da fatura. Produto sem controle gera efeito `not_applicable`, sem inventar consumo físico.
+
+Efeitos processados são imutáveis. Movimento ligado a efeito fiscal processado não pode ser editado/excluído pela ação manual de estoque. Repetição de consulta/webhook/job reconhece o efeito existente e não gera nova saída.
+
+### 17.4. Cancelamento fiscal e reemissão
+
+Cancelar a NF não equivale a retorno de mercadoria. Não é gerada entrada automática. Ao emitir outra NF para a mesma origem, com o mesmo produto, unidade base e quantidade, reutilizar a saída existente se a nota anterior teve cancelamento confirmado. Essa referência é de rastreabilidade de estoque; não cria vínculo obrigatório de substituição entre as notas.
+
+Origem já atendida por outra nota ativa, ou saída anterior com produto/quantidade incompatível, exige regularização antes de novo processamento. Não reduzir estoque novamente nem criar devolução presumida. Baixas legadas feitas na requisição sem vínculo fiscal validado também exigem revisão; o sistema não as apaga nem gera outra baixa por aproximação.
+
+### 17.5. Pendência após autorização
+
+Se a nota já foi autorizada e a aplicação do estoque falhar, guardar efeito `blocked` e mensagem da divergência. A nota continua autorizada. Após corrigir saldo/origem/configuração, o administrador da empresa pode usar **Reprocessar estoque da NF-e**, disponível nas ações compartilhadas da nota e da fatura, inclusive no BPO. A ação não reenvia a nota à SEFAZ e não duplica itens já processados.
+
+### 17.6. Implantação e escopo
+
+Aplicar a migration `2026_11_09_000001_add_fiscal_stock_effects.php` com `php artisan migrate`, após as migrations anteriores de histórico financeiro. Não foi feita baixa nem reposição retroativa de registros existentes.
+
+A reversão integral de faturamento já entregue continua limitada a serviços. Ampliação para produtos, devolução física e cancelamento/correção de OP duplicada são os próximos fluxos; não foram confundidos com a simples transferência do momento da baixa para a NF-e.
+
+### 2026-11-09 — Estoque comandado pela autorização
+
+Implementado o fechamento aprovado: produto cadastrado, reserva na inclusão, validação nas duas etapas e saída na autorização.
+
+Verificação desta entrega: **386 cenários verificados** entre regressão fiscal, fatura, BPO, requisições, itens, estoque, produção, OS, reinício operacional, conversão de unidades e interface de operação. A última execução focada de estoque e preflight passou com **25 testes e 158 asserções**, incluindo a ação de reprocessamento, sua restrição ao administrador e proteção contra mudança de unidade base. A reexecução repete casos da regressão; não é somada como cobertura distinta.
+
+```bash
+php artisan config:clear
+php artisan test tests/Feature/Services/FiscalDocument tests/Feature/Services/Invoice tests/Feature/Filament/Invoices tests/Feature/Filament/Bpo/QuickSalesTest.php tests/Feature/Filament/Bpo/FiscalDocumentsWorkspaceTest.php tests/Feature/Http/NfeWebhookControllerTest.php
+php artisan test tests/Feature/Services/Requisition tests/Feature/Services/RequisitionItem tests/Feature/Services/StockMovement tests/Feature/Services/ProductionOrder tests/Feature/Services/ServiceOrder tests/Feature/Listeners/RequisitionItem tests/Feature/Services/Company/CompanyOperationalResetTest.php tests/Feature/Services/Amounts tests/Feature/Services/Shared tests/Feature/Filament/Operation/OperationServiceOrderProductsTest.php tests/Unit/Services/Product/ProductUnitConversionServiceTest.php
+php artisan test tests/Feature/Services/FiscalDocument/SaleNfeStockFlowTest.php tests/Feature/Services/FiscalDocument/FiscalEmissionPreflightServiceTest.php
+```
+
+Pint aplicado aos arquivos PHP novos/alterados. Integrações fiscais simuladas nos testes e migrations exercitadas no SQLite. A implantação requer aplicar as migrations e reiniciar os workers para utilizar o novo processamento.

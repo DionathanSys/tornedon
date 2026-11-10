@@ -5,6 +5,7 @@ namespace App\Services\FiscalDocument;
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
 use App\Domain\DTO\Fiscal\FiscalEmissionPreflightResult;
 use App\Enum\FiscalDocument\NfseModel;
+use App\Enum\FiscalDocument\Status;
 use App\Enum\Tax\TaxRegime;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
@@ -36,6 +37,12 @@ class FiscalEmissionPreflightService
     private function validate(FiscalDocument $document, bool $allowQueuedStatus): ?FiscalEmissionPreflightResult
     {
         $this->resetResponse();
+        $invoice = $document->invoice_id ? $document->invoice()->first() : null;
+        if ($document->canceled || $document->status === Status::CANCELLED || ($invoice && ($invoice->canceled || $invoice->operations()->where('active_slot', 1)->exists()))) {
+            $this->setError('A nota/fatura está cancelada ou possui uma operação de reversão em andamento.');
+
+            return null;
+        }
 
         $document->loadMissing([
             'company.fiscalProfile',
@@ -83,6 +90,11 @@ class FiscalEmissionPreflightService
         }
 
         $scenario->validate($document, $errors);
+        try {
+            app(SaleNfeStockService::class)->prepare($document);
+        } catch (\Throwable $exception) {
+            $errors['stock'][] = $exception instanceof ValidationException ? implode(' ', $exception->validator->errors()->all()) : $exception->getMessage();
+        }
 
         if ($errors !== []) {
             Log::debug('Documento fiscal inválido para emissão.', ['errors' => $errors]);

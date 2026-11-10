@@ -105,6 +105,7 @@ class FiscalDocumentsRelationManager extends RelationManager
                 TextColumn::make('fiscal_issue')->label('Tratamento fiscal')
                     ->state(fn ($record): string => $record->hasOpenFiscalIssue() ? 'Pendente' : '—')
                     ->badge()->color(fn ($state): string => $state === 'Pendente' ? 'warning' : 'gray'),
+                TextColumn::make('stock_issue')->label('Estoque')->state(fn ($record): string => $record->hasPendingStockEffect() ? 'Pendente' : '—')->badge()->color(fn ($state): string => $state === 'Pendente' ? 'warning' : 'gray'),
                 TextColumn::make('document_key')
                     ->label('Chave')
                     ->copyable()

@@ -10,6 +10,17 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class StockMovement extends Model
 {
+    protected static function booted(): void
+    {
+        $protect = function (self $movement): void {
+            if (FiscalStockEffect::where('stock_movement_id', $movement->id)->whereNotNull('processed_at')->exists()) {
+                throw new \LogicException('Saída vinculada à NF autorizada não pode ser alterada/excluída. Utilize um movimento compensatório rastreado.');
+            }
+        };
+        static::updating($protect);
+        static::deleting($protect);
+    }
+
     protected $fillable = [
         'product_stock_id',
         'product_id',

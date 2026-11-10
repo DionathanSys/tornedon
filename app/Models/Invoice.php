@@ -57,7 +57,7 @@ class Invoice extends Model
             }
         });
         static::deleting(function (self $invoice): void {
-            if ($invoice->status !== Status::PENDING || $invoice->confirmed || $invoice->canceled || $invoice->confirmations()->exists() || $invoice->sources()->exists() || $invoice->operations()->exists()) {
+            if ($invoice->status !== Status::PENDING || $invoice->confirmed || $invoice->canceled || $invoice->confirmations()->exists() || $invoice->sources()->exists() || $invoice->operations()->exists() || $invoice->receivableLinks()->exists()) {
                 throw new \RuntimeException('Somente rascunhos sem histórico podem ser excluídos.');
             }
             if ($invoice->fiscalDocuments()->exists()) {
@@ -200,6 +200,11 @@ class Invoice extends Model
     public function operations(): HasMany
     {
         return $this->hasMany(InvoiceOperation::class);
+    }
+
+    public function receivableLinks(): HasMany
+    {
+        return $this->hasMany(InvoiceReceivableLink::class);
     }
 
     public function confirmedComposition(): ?InvoiceConfirmation

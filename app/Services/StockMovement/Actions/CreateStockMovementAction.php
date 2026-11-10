@@ -6,10 +6,10 @@ use App\Models\ProductStock;
 use App\Models\StockMovement;
 use App\Services\StockMovement\Validators\StockMovementValidator;
 use App\Traits\HandlesActionResponse;
-use InvalidArgumentException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class CreateStockMovementAction
 {
@@ -21,17 +21,14 @@ class CreateStockMovementAction
 
     /**
      * Cria uma nova movimentação de estoque.
-     *
-     * @param array $data
-     * @return StockMovement|null
      */
     public function execute(array $data): ?StockMovement
     {
         try {
             Log::debug('CreateStockMovementAction: Iniciando criação de movimentação', [
-                'metodo'  => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'user_id' => $this->createdBy,
-                'data'    => $data,
+                'data' => $data,
             ]);
 
             $validated = StockMovementValidator::validateCreate($data);
@@ -40,16 +37,20 @@ class CreateStockMovementAction
 
             // source_type e source_id são NOT NULL no banco; garante fallback se não informados
             $validated['source_type'] ??= 'manual';
-            $validated['source_id']   ??= 0;
+            $validated['source_id'] ??= 0;
 
             // Bloqueia o ProductStock antes de criar o movimento para evitar race conditions
             $stock = ProductStock::where('id', $validated['product_stock_id'])
                 ->lockForUpdate()
                 ->first();
 
-            if (!$stock) {
+            if (! $stock) {
                 $this->setError('Registro de estoque não encontrado');
+
                 return null;
+            }
+            if ((int) $stock->company_id !== (int) $validated['company_id'] || (int) $stock->product_id !== (int) $validated['product_id']) {
+                throw ValidationException::withMessages(['product_stock_id' => 'Estoque, produto e empresa devem corresponder.']);
             }
 
             $movement = StockMovement::create($validated);
@@ -62,19 +63,19 @@ class CreateStockMovementAction
             $this->setSuccess();
 
             Log::info('CreateStockMovementAction: Movimentação de estoque criada com sucesso', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'product_id'         => $movement->product_id,
-                'type'               => $movement->type->value,
-                'quantity'           => $movement->quantity,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'product_id' => $movement->product_id,
+                'type' => $movement->type->value,
+                'quantity' => $movement->quantity,
             ]);
 
             return $movement;
         } catch (ValidationException $e) {
             $this->setError('Erro de validação', $e->errors());
 
-            Log::error('CreateStockMovementAction: ' . $this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+            Log::error('CreateStockMovementAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'errors' => $e->errors(),
@@ -84,12 +85,12 @@ class CreateStockMovementAction
         } catch (QueryException $e) {
             $this->setError('Erro ao criar movimentação de estoque');
 
-            Log::error('CreateStockMovementAction: ' . $this->getMessage(), [
-                'metodo'    => __METHOD__ . '@' . __LINE__,
+            Log::error('CreateStockMovementAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -97,22 +98,22 @@ class CreateStockMovementAction
             $this->setError($e->getMessage(), [], 422);
 
             Log::warning('CreateStockMovementAction: Falha de regra de negócio ao criar movimentação', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
+                'exception' => $e->getMessage(),
             ]);
 
             return null;
         } catch (\Exception $e) {
             $this->setError('Erro inesperado ao criar movimentação', [], 500);
 
-            Log::error('CreateStockMovementAction: ' . $this->getMessage(), [
-                'metodo'    => __METHOD__ . '@' . __LINE__,
+            Log::error('CreateStockMovementAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
-                'trace'     => $e->getTraceAsString(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;

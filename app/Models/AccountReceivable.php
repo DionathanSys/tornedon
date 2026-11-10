@@ -7,6 +7,7 @@ use App\Enum\AccountReceivable\Status;
 use App\Enum\Payment\Method as PaymentMethod;
 use App\Models\Concerns\HasAttachments;
 use App\Models\Concerns\ProtectsFinancialHistory;
+use App\Services\Invoice\InvoiceFinancialLinkService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,20 @@ class AccountReceivable extends Model
 {
     use HasAttachments;
     use ProtectsFinancialHistory;
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $receivable): void {
+            foreach ($receivable->invoiceLinks()->where('active_slot', 1)->get() as $link) {
+                app(InvoiceFinancialLinkService::class)->release($link, 'unreceived_title_deleted');
+            }
+        });
+    }
+
+    public function invoiceLinks(): HasMany
+    {
+        return $this->hasMany(InvoiceReceivableLink::class);
+    }
 
     protected $fillable = [
         'customer_id',

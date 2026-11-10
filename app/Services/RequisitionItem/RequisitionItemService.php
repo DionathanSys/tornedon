@@ -2,24 +2,23 @@
 
 namespace App\Services\RequisitionItem;
 
+use App\Models\Requisition;
 use App\Models\RequisitionItem;
 use App\Services\RequisitionItem\Actions\CreateRequisitionItemAction;
 use App\Services\RequisitionItem\Actions\DeleteRequisitionItemAction;
 use App\Services\RequisitionItem\Actions\UpdateRequisitionItemAction;
 use App\Traits\HandlesServiceResponse;
+use App\Traits\RunsFinancialTransactions;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RequisitionItemService
 {
     use HandlesServiceResponse;
+    use RunsFinancialTransactions;
 
     /**
      * Lista todos os itens de uma requisição.
-     *
-     * @param int $requisitionId
-     * @return Collection
      */
     public function list(int $requisitionId): Collection
     {
@@ -31,9 +30,6 @@ class RequisitionItemService
 
     /**
      * Busca um item pelo ID.
-     *
-     * @param int $id
-     * @return RequisitionItem|null
      */
     public function find(int $id): ?RequisitionItem
     {
@@ -43,17 +39,16 @@ class RequisitionItemService
 
     /**
      * Cria um novo item de requisição.
-     *
-     * @param array $data
-     * @param int $createdBy
-     * @return RequisitionItem|null
      */
     public function create(array $data, int $createdBy): ?RequisitionItem
     {
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($data, $createdBy) {
+            return $this->financialTransaction(function () use ($data, $createdBy) {
+                if (! empty($data['requisition_id'])) {
+                    Requisition::whereKey($data['requisition_id'])->lockForUpdate()->firstOrFail();
+                }
                 $action = new CreateRequisitionItemAction($createdBy);
                 $item = $action->execute($data);
 
@@ -66,16 +61,17 @@ class RequisitionItemService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
-                        'message'    => $this->getMessage(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
                         'error_code' => $this->getErrorCode(),
-                        'errors'     => $action->getErrors(),
+                        'errors' => $action->getErrors(),
                     ]);
 
                     return null;
                 }
 
                 $this->setSuccess('Item criado com sucesso');
+
                 return $item;
             });
 
@@ -83,12 +79,12 @@ class RequisitionItemService
             $this->setError('Erro ao processar criação do item');
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'exception'  => $e->getMessage(),
-                'trace'      => $e->getTraceAsString(),
-                'data'       => $data,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
             ]);
 
             return null;
@@ -97,18 +93,15 @@ class RequisitionItemService
 
     /**
      * Atualiza um item de requisição existente.
-     *
-     * @param RequisitionItem $requisitionItem
-     * @param array $data
-     * @param int $updatedBy
-     * @return RequisitionItem|null
      */
     public function update(RequisitionItem $requisitionItem, array $data, int $updatedBy): ?RequisitionItem
     {
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($requisitionItem, $data, $updatedBy) {
+            return $this->financialTransaction(function () use ($requisitionItem, $data, $updatedBy) {
+                $requisitionItem->requisition()->lockForUpdate()->firstOrFail();
+                $requisitionItem = RequisitionItem::whereKey($requisitionItem->id)->lockForUpdate()->firstOrFail();
                 $action = new UpdateRequisitionItemAction($updatedBy, $requisitionItem);
                 $result = $action->execute($data);
 
@@ -121,10 +114,10 @@ class RequisitionItemService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'              => __METHOD__ . '@' . __LINE__,
-                        'message'             => $this->getMessage(),
-                        'error_code'          => $this->getErrorCode(),
-                        'errors'              => $action->getErrors(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'errors' => $action->getErrors(),
                         'requisition_item_id' => $requisitionItem->id,
                     ]);
 
@@ -132,6 +125,7 @@ class RequisitionItemService
                 }
 
                 $this->setSuccess('Item atualizado com sucesso');
+
                 return $result;
             });
 
@@ -139,13 +133,13 @@ class RequisitionItemService
             $this->setError('Erro ao processar atualização do item');
 
             Log::error($this->getMessage(), [
-                'metodo'              => __METHOD__ . '@' . __LINE__,
-                'message'             => $this->getMessage(),
-                'error_code'          => $this->getErrorCode(),
-                'exception'           => $e->getMessage(),
-                'trace'               => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'requisition_item_id' => $requisitionItem->id,
-                'data'                => $data,
+                'data' => $data,
             ]);
 
             return null;
@@ -154,16 +148,15 @@ class RequisitionItemService
 
     /**
      * Exclui (soft delete) um item de requisição.
-     *
-     * @param RequisitionItem $requisitionItem
-     * @return bool
      */
     public function delete(RequisitionItem $requisitionItem): bool
     {
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($requisitionItem) {
+            return $this->financialTransaction(function () use ($requisitionItem) {
+                $requisitionItem->requisition()->lockForUpdate()->firstOrFail();
+                $requisitionItem = RequisitionItem::whereKey($requisitionItem->id)->lockForUpdate()->firstOrFail();
                 $action = new DeleteRequisitionItemAction($requisitionItem);
                 $result = $action->execute();
 
@@ -176,11 +169,11 @@ class RequisitionItemService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'              => __METHOD__ . '@' . __LINE__,
-                        'message'             => $this->getMessage(),
-                        'error_code'          => $this->getErrorCode(),
-                        'action_message'      => $action->getMessage(),
-                        'errors'              => $action->getErrors(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'action_message' => $action->getMessage(),
+                        'errors' => $action->getErrors(),
                         'requisition_item_id' => $requisitionItem->id,
                     ]);
 
@@ -188,6 +181,7 @@ class RequisitionItemService
                 }
 
                 $this->setSuccess('Item excluído com sucesso');
+
                 return $result;
             });
 
@@ -195,11 +189,11 @@ class RequisitionItemService
             $this->setError('Erro ao processar exclusão do item');
 
             Log::error($this->getMessage(), [
-                'metodo'              => __METHOD__ . '@' . __LINE__,
-                'message'             => $this->getMessage(),
-                'error_code'          => $this->getErrorCode(),
-                'exception'           => $e->getMessage(),
-                'trace'               => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'requisition_item_id' => $requisitionItem->id,
             ]);
 
@@ -209,16 +203,13 @@ class RequisitionItemService
 
     /**
      * Exclui permanentemente um item de requisição.
-     *
-     * @param RequisitionItem $requisitionItem
-     * @return bool
      */
     public function forceDelete(RequisitionItem $requisitionItem): bool
     {
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($requisitionItem) {
+            return $this->financialTransaction(function () use ($requisitionItem) {
                 $action = new DeleteRequisitionItemAction($requisitionItem);
                 $result = $action->forceDelete();
 
@@ -231,11 +222,11 @@ class RequisitionItemService
                     );
 
                     Log::error($this->getMessage(), [
-                        'metodo'              => __METHOD__ . '@' . __LINE__,
-                        'message'             => $this->getMessage(),
-                        'error_code'          => $this->getErrorCode(),
-                        'action_message'      => $action->getMessage(),
-                        'errors'              => $action->getErrors(),
+                        'metodo' => __METHOD__.'@'.__LINE__,
+                        'message' => $this->getMessage(),
+                        'error_code' => $this->getErrorCode(),
+                        'action_message' => $action->getMessage(),
+                        'errors' => $action->getErrors(),
                         'requisition_item_id' => $requisitionItem->id,
                     ]);
 
@@ -243,6 +234,7 @@ class RequisitionItemService
                 }
 
                 $this->setSuccess('Item excluído permanentemente com sucesso');
+
                 return $result;
             });
 
@@ -250,11 +242,11 @@ class RequisitionItemService
             $this->setError('Erro ao processar exclusão permanente do item');
 
             Log::error($this->getMessage(), [
-                'metodo'              => __METHOD__ . '@' . __LINE__,
-                'message'             => $this->getMessage(),
-                'error_code'          => $this->getErrorCode(),
-                'exception'           => $e->getMessage(),
-                'trace'               => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
                 'requisition_item_id' => $requisitionItem->id,
             ]);
 

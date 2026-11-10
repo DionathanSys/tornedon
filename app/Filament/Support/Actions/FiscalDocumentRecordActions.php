@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Notification\NotifyService as notify;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\UserAccessService;
+use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction;
 use App\Services\FiscalDocument\Actions\ReconcileNfseRpsSequenceAction;
 use App\Services\FiscalDocument\FiscalCancellationPolicy;
+use App\Services\FiscalDocument\FiscalDocumentIssueService;
 use App\Services\FiscalDocument\FiscalDocumentService;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
@@ -42,7 +44,7 @@ final class FiscalDocumentRecordActions
                 ->requiresConfirmation()
                 ->modalHeading('Emitir Nota Fiscal Eletrônica')
                 ->modalDescription('O envio é assíncrono. Após confirmação, a NF-e será processada em segundo plano.')
-                ->visible(fn (FiscalDocument $record) => $record->isNfe() && ! $record->isNfeQueued() && (! $record->isNfeSent() || $record->isNfeRejected()))
+                ->visible(fn (FiscalDocument $record) => ! $record->canceled && $record->isNfe() && ! $record->isNfeQueued() && (! $record->isNfeSent() || $record->isNfeRejected()))
                 ->action(function (FiscalDocument $record): void {
                     $record = self::resolveFullRecord($record);
 
@@ -256,7 +258,7 @@ final class FiscalDocumentRecordActions
                 ->requiresConfirmation()
                 ->modalHeading('Emitir Nota Fiscal de Serviço')
                 ->modalDescription('O envio é assíncrono. Após confirmação, a NFS-e será processada em segundo plano.')
-                ->visible(fn (FiscalDocument $record) => $record->isNfse() && ! $record->isNfseQueued() && (! $record->isNfseSent() || $record->isNfseRejected()))
+                ->visible(fn (FiscalDocument $record) => ! $record->canceled && $record->isNfse() && ! $record->isNfseQueued() && (! $record->isNfseSent() || $record->isNfseRejected()))
                 ->action(function (FiscalDocument $record): void {
                     $record = self::resolveFullRecord($record);
 
@@ -394,6 +396,19 @@ final class FiscalDocumentRecordActions
         ];
 
         $actions[] = ManageFiscalDocumentIssueAction::make();
+        $actions[] = Action::make('reprocessar_estoque')->label('Reprocessar estoque da NF-e')->icon(Heroicon::ArrowPath)->color('warning')->requiresConfirmation()
+            ->visible(fn (FiscalDocument $record): bool => $record->isNfeAuthorized() && $record->hasPendingStockEffect() && app(FiscalDocumentIssueService::class)->canManage(Filament::auth()->user(), $record))
+            ->modalDescription('Revalida o saldo e tenta concluir os efeitos de estoque pendentes, sem reenviar a nota e sem duplicar saídas já processadas.')
+            ->action(function (FiscalDocument $record): void {
+                $record = self::resolveFullRecord($record);
+                abort_unless(app(FiscalDocumentIssueService::class)->canManage(Filament::auth()->user(), $record), 403);
+                $action = app(ProcessAuthorizedNfeStockMovementsAction::class);
+                if ($action->execute($record, Filament::auth()->id())) {
+                    notify::success('Efeitos de estoque da NF-e processados.');
+                } else {
+                    notify::error($action->getMessage());
+                }
+            });
 
         if ($includeManagementActions) {
             array_unshift($actions, ConfigurePurchaseReturnSettlementAction::make());
@@ -427,7 +442,7 @@ final class FiscalDocumentRecordActions
             $ability = match ($action->getName()) {
                 'emitir', 'emitir_nfse' => 'issue',
                 'cancelar_nfe', 'cancelar_nfse' => 'cancel',
-                'consultar', 'consultar_nfse', 'corrigir_nfe', 'reconciliar_rps_nfse', 'tratar_pendencia_fiscal', 'configurePurchaseReturnSettlement', 'edit' => 'update',
+                'consultar', 'consultar_nfse', 'corrigir_nfe', 'reconciliar_rps_nfse', 'tratar_pendencia_fiscal', 'reprocessar_estoque', 'configurePurchaseReturnSettlement', 'edit' => 'update',
                 'delete' => 'delete',
                 default => 'view',
             };

@@ -7,6 +7,8 @@ use App\Filament\Bpo\Resources\Invoices\Pages;
 use App\Filament\Bpo\Resources\Invoices\RelationManagers;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesPdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InvoiceFinancialHistoryRelationManager;
+use App\Filament\Clusters\Financial\Resources\Invoices\RelationManagers\InvoiceOperationsRelationManager;
 use App\Filament\Clusters\Financial\Resources\Invoices\Schemas\InvoiceForm;
 use App\Models\Invoice;
 use App\Services\Access\CompanyAuthorization;
@@ -79,6 +81,8 @@ class InvoiceResource extends Resource
             ]),
             RelationManagers\AttachmentsRelationManager::class,
             RelationManagers\InvoiceSourcesRelationManager::class,
+            InvoiceFinancialHistoryRelationManager::class,
+            InvoiceOperationsRelationManager::class,
         ];
     }
 }

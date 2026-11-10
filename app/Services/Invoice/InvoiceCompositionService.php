@@ -85,6 +85,7 @@ class InvoiceCompositionService
 
             return [
                 'source_item_id' => $item->id,
+                'stock_control_snapshot' => $item->stock_control_snapshot,
                 'catalog_id' => $item->{$catalog.'_id'},
                 'description' => $item->{$catalog}?->name ?? '-',
                 'observations' => $item->observations,

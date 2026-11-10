@@ -150,6 +150,18 @@ class FiscalDocument extends Model
         return $this->hasMany(FiscalDocumentIssue::class);
     }
 
+    public function stockEffects(): HasMany
+    {
+        return $this->hasMany(FiscalStockEffect::class);
+    }
+
+    public function hasPendingStockEffect(): bool
+    {
+        return array_key_exists('has_pending_stock_effect', $this->attributes)
+            ? (bool) $this->attributes['has_pending_stock_effect']
+            : $this->stockEffects()->where('status', 'blocked')->exists();
+    }
+
     public function hasOpenFiscalIssue(): bool
     {
         return array_key_exists('has_open_fiscal_issue', $this->attributes)

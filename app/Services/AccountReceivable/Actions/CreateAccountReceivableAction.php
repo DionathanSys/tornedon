@@ -4,8 +4,10 @@ namespace App\Services\AccountReceivable\Actions;
 
 use App\Models\AccountReceivable;
 use App\Services\AccountReceivable\Validators\AccountReceivableValidator;
+use App\Services\Invoice\InvoiceFinancialLinkService;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -21,33 +23,39 @@ class CreateAccountReceivableAction
     {
         try {
             Log::debug('Iniciando criação de conta a receber', [
-                'metodo'  => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'user_id' => $this->createdBy,
-                'data'    => $data,
+                'data' => $data,
             ]);
 
             $validated = AccountReceivableValidator::validateCreate($data);
             $validated['created_by'] = $this->createdBy > 0 ? $this->createdBy : null;
 
-            $accountReceivable = AccountReceivable::create($validated);
+            $accountReceivable = DB::transaction(function () use ($validated): AccountReceivable {
+                $receivable = AccountReceivable::create($validated);
+                app(InvoiceFinancialLinkService::class)->recordGenerated($receivable, $this->createdBy);
+
+                return $receivable;
+            });
 
             Log::info('Conta a receber criada com sucesso', [
-                'metodo'                => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'account_receivable_id' => $accountReceivable->id,
             ]);
 
             $this->setSuccess();
+
             return $accountReceivable;
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
-                'message'    => $this->getMessage(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
                 'error_code' => $this->getErrorCode(),
-                'errors'     => $e->errors(),
-                'data'       => $data,
-                'user_id'    => $this->createdBy,
+                'errors' => $e->errors(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -55,12 +63,12 @@ class CreateAccountReceivableAction
             $this->setError('Erro ao salvar conta a receber no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
-                'data'          => $data,
-                'user_id'       => $this->createdBy,
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;
@@ -68,13 +76,13 @@ class CreateAccountReceivableAction
             $this->setError('Erro inesperado ao criar conta a receber');
 
             Log::error($this->getMessage(), [
-                'metodo'        => __METHOD__ . '@' . __LINE__,
-                'message'       => $this->getMessage(),
-                'error_code'    => $this->getErrorCode(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'message' => $this->getMessage(),
+                'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
-                'trace'         => $e->getTraceAsString(),
-                'data'          => $data,
-                'user_id'       => $this->createdBy,
+                'trace' => $e->getTraceAsString(),
+                'data' => $data,
+                'user_id' => $this->createdBy,
             ]);
 
             return null;

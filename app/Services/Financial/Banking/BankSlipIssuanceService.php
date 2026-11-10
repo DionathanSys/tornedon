@@ -26,6 +26,7 @@ final class BankSlipIssuanceService
         if (
             ! $invoice->confirmed
             || $invoice->canceled
+            || $invoice->operations()->where('active_slot', 1)->exists()
             || $invoice->payment_method !== PaymentMethod::BANK_SLIP
             || $invoice->auto_bank_slip_issuance !== true
         ) {
@@ -67,6 +68,9 @@ final class BankSlipIssuanceService
                 ->find($installment->id);
 
             if (! $installment || ($requireAutomaticIssuance && $installment->auto_bank_slip_issuance !== true)) {
+                return null;
+            }
+            if ($installment->accountReceivable?->invoice?->operations()->where('active_slot', 1)->exists()) {
                 return null;
             }
 

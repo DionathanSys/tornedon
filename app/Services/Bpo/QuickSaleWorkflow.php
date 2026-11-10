@@ -32,6 +32,7 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\FiscalDocument\NfeDocumentService;
 use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Invoice\Actions\ConfirmInvoiceAction;
+use App\Services\Invoice\InvoiceFinancialLinkService;
 use App\Services\ProductionOrder\ProductionOrderService;
 use App\Services\Requisition\RequisitionService;
 use App\Services\RequisitionItem\RequisitionItemService;
@@ -269,7 +270,8 @@ class QuickSaleWorkflow
             if ($sale && ((int) $sale->{$column} !== $source->id || $sale->sale_template_id !== $template->id)) {
                 $this->fail('A origem e o modelo de um rascunho existente não podem ser trocados.');
             }
-            if (BpoSale::withoutGlobalScope(RoleRecordScope::class)->where('company_id', $company->id)->where($column, $source->id)->when($id, fn ($query) => $query->whereKeyNot($id))->exists()) {
+            if (BpoSale::withoutGlobalScope(RoleRecordScope::class)->where('company_id', $company->id)->where($column, $source->id)->when($id, fn ($query) => $query->whereKeyNot($id))
+                ->whereDoesntHave('invoice', fn ($query) => $query->where('status', 'cancelled')->where('cancellation_reason', 'rebilling'))->exists()) {
                 $this->fail('Esta origem já está vinculada a uma venda. Continue a venda existente.');
             }
             $before = $sale ? app(AuditRecorder::class)->snapshot($sale) : null;
@@ -449,7 +451,8 @@ class QuickSaleWorkflow
                     $this->fail('Recebível incompatível: confira cliente, valor original, cancelamento e vínculos existentes.');
                 }
                 $beforeTarget = app(AuditRecorder::class)->snapshot($target);
-                $target->update(['invoice_id' => $invoice->id, 'fiscal_document_id' => $invoice->fiscalDocuments()->sole()->id]);
+                app(InvoiceFinancialLinkService::class)->attachExisting($invoice, $target, $user->id, $invoice->fiscalDocuments()->sole()->id);
+                $target->refresh();
                 app(AuditRecorder::class)->recordModelEvent($target, 'account_receivable.linked_to_invoice', 'Recebível existente vinculado à venda rápida',
                     $beforeTarget, app(AuditRecorder::class)->snapshot($target), $user->id, metadata: ['bpo_sale_id' => $sale->id]);
             }

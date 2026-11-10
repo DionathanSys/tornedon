@@ -12,7 +12,7 @@ class InvoiceOperation extends Model
 {
     protected $guarded = ['id', 'active_slot'];
 
-    protected $casts = ['type' => OperationType::class, 'status' => OperationStatus::class];
+    protected $casts = ['type' => OperationType::class, 'status' => OperationStatus::class, 'steps' => 'array', 'completed_at' => 'datetime'];
 
     protected static function booted(): void
     {

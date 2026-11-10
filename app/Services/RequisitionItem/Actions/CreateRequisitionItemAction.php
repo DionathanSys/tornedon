@@ -68,6 +68,9 @@ class CreateRequisitionItemAction
             $validated['created_by'] = $this->createdBy;
             $validated['stock_consumed'] = false;
             $validated['stock_consumed_at'] = null;
+            $requisition = Requisition::findOrFail($validated['requisition_id']);
+            $product = Product::where('company_id', $requisition->company_id)->findOrFail($validated['product_id']);
+            $validated['stock_control_snapshot'] = $requisition->stock_control_enabled !== false && $product->has_stock_control;
 
             $item = RequisitionItem::create($validated);
 

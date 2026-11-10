@@ -42,7 +42,7 @@ class UpdateRequisitionItemAction
         $oldUnitPrice = (float) $this->requisitionItem->unit_price;
 
         // Validação de saldo disponível no estoque
-        $stockError = $this->requisitionItem->requisition?->stock_control_enabled === false
+        $stockError = ($this->requisitionItem->requisition?->stock_control_enabled === false || ($this->requisitionItem->stock_control_snapshot === false && (! isset($data['product_id']) || (int) $data['product_id'] === $oldProductId)))
             ? null : $this->validateStockAvailability($data, $oldProductId, $oldQuantity);
         if ($stockError) {
             $this->setError($stockError);
@@ -67,6 +67,10 @@ class UpdateRequisitionItemAction
             $validated = $this->applyUnitCostSnapshot($validated);
 
             $validated['updated_by'] = $this->updatedBy;
+            if ((isset($validated['product_id']) && (int) $validated['product_id'] !== (int) $oldProductId) || $this->requisitionItem->stock_control_snapshot === null) {
+                $product = Product::where('company_id', $this->requisitionItem->requisition->company_id)->findOrFail($validated['product_id'] ?? $oldProductId);
+                $validated['stock_control_snapshot'] = $this->requisitionItem->requisition->stock_control_enabled !== false && $product->has_stock_control;
+            }
 
             $this->requisitionItem->update($validated);
             $this->requisitionItem->refresh();

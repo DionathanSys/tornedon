@@ -12,6 +12,7 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFis
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ReturnInvoiceToPendingAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ReverseInvoiceBillingAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedFiscalDocumentsAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ViewLinkedProductionOrdersAction;
@@ -88,6 +89,7 @@ class EditInvoice extends EditRecord
                     ->size(Size::Small),
                 ReturnInvoiceToPendingAction::make()
                     ->size(Size::Small),
+                ReverseInvoiceBillingAction::make(),
                 GenerateFiscalDocumentAction::make(DocumentModel::NFE)
                     ->size(Size::Small),
                 GenerateFiscalDocumentAction::make(DocumentModel::NFSE)

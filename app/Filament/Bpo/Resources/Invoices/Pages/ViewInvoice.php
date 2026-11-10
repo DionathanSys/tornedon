@@ -9,6 +9,7 @@ use App\Filament\Bpo\Resources\InvoiceResource;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ReverseInvoiceBillingAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use Filament\Resources\Pages\ViewRecord;
 use Livewire\Attributes\On;
@@ -30,6 +31,7 @@ class ViewInvoice extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [$this->secureBpoAction(PreviewInvoicePdfAction::make()->modalSubmitAction(false), 'invoices.view'),
+            ReverseInvoiceBillingAction::make(),
             $this->secureBpoAction(DownloadInvoicePdfAction::make(), 'invoices.view'),
             $this->secureBpoAction(SendInvoiceEmailAction::make(), 'invoices.update'),
             $this->secureBpoAction(GenerateFiscalDocumentAction::make(DocumentModel::NFE), 'fiscal_documents.create'),

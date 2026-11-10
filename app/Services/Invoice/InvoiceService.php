@@ -656,6 +656,7 @@ class InvoiceService
 
         $item = [
             'fiscal_document_id' => $fiscalDocumentId,
+            'requisition_item_id' => $reqItem->id,
             'product_id' => $reqItem->product_id,
             'product_code' => $product?->product_code,
             'product_origin' => $productTax?->product_origin?->value,

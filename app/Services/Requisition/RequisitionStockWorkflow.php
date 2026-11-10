@@ -4,7 +4,6 @@ namespace App\Services\Requisition;
 
 use App\Enum\StockMovement\Type;
 use App\Models\Requisition;
-use App\Models\RequisitionItem;
 use App\Models\StockMovement;
 use App\Services\ProductStock\ProductStockService;
 use App\Traits\HandlesServiceResponse;
@@ -119,69 +118,6 @@ class RequisitionStockWorkflow
         return true;
     }
 
-    public function processStockExits(Requisition $requisition, int $userId): bool
-    {
-        $this->resetResponse();
-
-        $items = $this->stockService->pendingItems($requisition);
-
-        if ($items->isEmpty()) {
-            Log::info('RequisitionStockWorkflow: Nenhum item pendente de saída de estoque', [
-                'requisition_id' => $requisition->id,
-            ]);
-
-            return true;
-        }
-
-        foreach ($items as $item) {
-            if (! $item->product_id) {
-                continue;
-            }
-
-            $product = $item->product;
-
-            if (! $product || ! $product->has_stock_control) {
-                $this->stockService->markItemAsConsumed($item);
-
-                continue;
-            }
-
-            $productStock = $this->stockService->findProductStock($requisition, $item);
-
-            if (! $productStock) {
-                throw new \RuntimeException('Estoque não encontrado para o produto #'.$item->product_id);
-            }
-
-            $exit = $this->stockService->createExit(
-                $requisition,
-                $item,
-                $userId,
-                'Saída por faturamento — requisição #'.$requisition->number,
-            );
-
-            $release = $this->stockService->createReservationRelease(
-                $requisition,
-                $item,
-                $userId,
-                'Liberação de reserva por faturamento — requisição #'.$requisition->number,
-            );
-
-            $this->stockService->markItemAsConsumed($item);
-
-            Log::info('RequisitionStockWorkflow: Saída de estoque processada', [
-                'product_id' => $item->product_id,
-                'quantity' => $item->quantity,
-                'exit_id' => $exit->id,
-                'release_id' => $release->id,
-                'requisition_id' => $requisition->id,
-            ]);
-        }
-
-        $this->stockService->syncConsumptionFlags($requisition);
-
-        return true;
-    }
-
     public function hasSufficientStockForClose(Requisition $requisition, $item): bool
     {
         $stock = $this->productStockService->findByProductId($item->product_id, $requisition->company_id);
@@ -207,55 +143,6 @@ class RequisitionStockWorkflow
         ]);
 
         return $effectiveAvailable >= $requestedQuantity;
-    }
-
-    public function consumeAuthorizedFiscalItem(Requisition $requisition, RequisitionItem $item, int $userId): void
-    {
-        if ($requisition->stock_control_enabled === false) {
-            return;
-        }
-        if (! $item->product_id) {
-            $this->stockService->markItemAsConsumed($item);
-
-            return;
-        }
-
-        if (! $item->product?->has_stock_control) {
-            $this->stockService->markItemAsConsumed($item);
-
-            return;
-        }
-
-        $productStock = $this->stockService->findProductStock($requisition, $item);
-
-        if (! $productStock) {
-            throw new \RuntimeException('Estoque não encontrado para o produto #'.$item->product_id);
-        }
-
-        $releaseQuantity = $this->stockService->resolveReservedQuantity($requisition, $item);
-
-        if ($releaseQuantity > 0.0001) {
-            $this->stockService->createReservationRelease(
-                $requisition,
-                $item,
-                $userId,
-                'Liberação de reserva por NF-e autorizada - requisição #'.$requisition->number,
-                $releaseQuantity,
-                'requisition_item',
-                $item->id,
-            );
-        }
-
-        $this->stockService->createExit(
-            $requisition,
-            $item,
-            $userId,
-            'Saída por NF-e autorizada - requisição #'.$requisition->number,
-            'requisition_item',
-            $item->id,
-        );
-
-        $this->stockService->markItemAsConsumed($item);
     }
 
     public function syncFlags(Requisition $requisition): void

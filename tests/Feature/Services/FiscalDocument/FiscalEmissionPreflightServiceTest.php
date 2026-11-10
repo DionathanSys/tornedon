@@ -19,8 +19,12 @@ use App\Models\FiscalDocumentItem;
 use App\Models\FiscalDocumentItemOrigin;
 use App\Models\FiscalDocumentTaxDetail;
 use App\Models\FiscalProfile;
+use App\Models\Invoice;
 use App\Models\Partner;
 use App\Models\Product;
+use App\Models\ProductStock;
+use App\Models\Requisition;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Fiscal\NfeConfigService;
 use App\Services\Fiscal\NfseConfigService;
@@ -58,6 +62,30 @@ class FiscalEmissionPreflightServiceTest extends TestCase
         $this->assertSame('nfe:default', $result->payloadBuilderKey);
         $this->assertSame("nfe:{$document->company_id}:1:2", $result->queueGroupKey);
         $this->assertSame(1, $result->candidateNumber);
+    }
+
+    public function test_stock_is_revalidated_before_queue_and_before_the_actual_send(): void
+    {
+        [$user, $document] = $this->createReadyNfeDocument();
+        $invoice = Invoice::create(['company_id' => $document->company_id, 'customer_id' => $document->customer_id, 'invoice_number' => 'STOCK-CHECK', 'invoice_date' => today(), 'status' => 'pending', 'created_by' => $user->id]);
+        $document->update(['invoice_id' => $invoice->id]);
+        $item = $document->items()->sole();
+        $item->product->update(['has_stock_control' => true]);
+        $stock = ProductStock::create(['company_id' => $document->company_id, 'product_id' => $item->product_id, 'quantity_total' => 1, 'quantity_reserved' => 0, 'is_active' => true, 'allow_negative' => false]);
+        $requisition = Requisition::create(['company_id' => $document->company_id, 'customer_id' => $document->customer_id, 'invoice_id' => $invoice->id, 'number' => 'STOCK-CHECK', 'sale_date' => today(), 'status' => 'open', 'created_by' => $user->id]);
+        $source = $requisition->items()->create(['product_id' => $item->product_id, 'unit_of_measure' => 'UN', 'quantity' => 1, 'quantity_in_base_unit' => 1, 'conversion_factor_snapshot' => 1, 'stock_control_snapshot' => true, 'unit_price' => 100]);
+        $item->update(['requisition_item_id' => $source->id]);
+        $config = Mockery::mock(NfeConfigService::class);
+        $config->shouldReceive('resolveAmbiente')->andReturn(2);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $this->app->instance(NfeConfigService::class, $config);
+        $service = app(FiscalEmissionPreflightService::class);
+        $this->assertNotNull($service->validateForQueue($document), (string) $service->getMessage());
+        $document->update(['nfe_status' => NfeStatus::QUEUED]);
+        $stock->update(['quantity_total' => 0]);
+        $this->assertNull($service->validateForSend($document));
+        $this->assertArrayHasKey('stock', $service->getErrors());
+        $this->assertSame(0, StockMovement::where('type', 'exit')->count());
     }
 
     public function test_nfe_purchase_return_requires_reference(): void

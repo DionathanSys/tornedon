@@ -11,8 +11,23 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class FiscalDocumentItem extends Model
 {
+    protected static function booted(): void
+    {
+        static::updating(function (self $item): void {
+            if ($item->isDirty(['product_id', 'quantity', 'unit_of_measure', 'requisition_item_id']) && FiscalStockEffect::where('fiscal_document_item_id', $item->id)->whereNotNull('processed_at')->exists()) {
+                throw new \LogicException('A origem e a quantidade de uma saída fiscal processada são imutáveis.');
+            }
+        });
+        static::deleting(function (self $item): void {
+            if (FiscalStockEffect::where('fiscal_document_item_id', $item->id)->whereNotNull('processed_at')->exists()) {
+                throw new \LogicException('Um item com saída fiscal processada não pode ser excluído.');
+            }
+        });
+    }
+
     protected $fillable = [
         'fiscal_document_id',
+        'requisition_item_id',
         'product_id',
         'product_code',
         'description',

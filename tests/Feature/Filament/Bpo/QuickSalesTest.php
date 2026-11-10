@@ -4,6 +4,7 @@ namespace Tests\Feature\Filament\Bpo;
 
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationNature;
+use App\Enum\Invoice\OperationStatus;
 use App\Enum\Invoice\Status;
 use App\Enum\Payment\Condition;
 use App\Enum\Payment\Method;
@@ -15,10 +16,12 @@ use App\Filament\Bpo\Pages\Sales;
 use App\Filament\Bpo\Pages\SaleTemplates;
 use App\Filament\Bpo\Resources\InvoiceResource;
 use App\Filament\Bpo\Resources\Invoices\Pages\ListInvoices;
+use App\Filament\Bpo\Resources\Invoices\Pages\ViewInvoice;
 use App\Filament\Bpo\Resources\ProductResource;
 use App\Filament\Bpo\Resources\Products\Pages\CreateProduct;
 use App\Filament\Bpo\Resources\ServiceResource;
 use App\Filament\Bpo\Resources\Services\Pages\CreateService;
+use App\Jobs\ProcessInvoiceReversalJob;
 use App\Jobs\ScheduleBankSlipIssuanceJob;
 use App\Jobs\SchedulePixChargeIssuanceJob;
 use App\Jobs\SendInvoiceEmailJob;
@@ -49,6 +52,7 @@ use App\Services\FiscalDocument\NfseDocumentService;
 use App\Services\Invoice\Actions\GenerateInvoiceAccountReceivablesAction;
 use App\Services\Invoice\Actions\ReturnInvoiceToPendingAction;
 use App\Services\Invoice\InvoiceService;
+use App\Services\Invoice\ReverseServiceInvoiceWorkflow;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -306,6 +310,33 @@ class QuickSalesTest extends TestCase
         $summary = $reporting->summary($this->bpo, $this->company, BpoSale::query());
         $this->assertSame(0.0, $summary['billed_amount']);
         $this->assertSame(0, $summary['billed_count']);
+    }
+
+    public function test_bpo_administrator_reverses_service_invoice_and_preserves_old_sale_for_manual_rebilling(): void
+    {
+        $sale = $this->reportSale(190);
+        Bus::fake([ProcessInvoiceReversalJob::class]);
+        Livewire::test(ViewInvoice::class, ['record' => $sale->invoice_id])
+            ->assertActionVisible('reverseInvoiceBilling')
+            ->callAction('reverseInvoiceBilling', data: ['request_id' => (string) Str::uuid(), 'justification' => 'Reverter integralmente para faturar novamente depois.'])
+            ->assertHasNoActionErrors();
+        Bus::assertDispatched(ProcessInvoiceReversalJob::class);
+        $operation = $sale->invoice->operations()->sole();
+        app(ReverseServiceInvoiceWorkflow::class)->process($operation);
+        $this->assertSame(OperationStatus::COMPLETED, $operation->fresh()->status, $operation->fresh()->last_message);
+        $this->assertSame(1, BpoSale::count());
+        $this->assertSame(1, Invoice::count());
+        $this->assertSame($sale->invoice_id, $sale->fresh()->invoice_id);
+        $this->assertSame(State::CLOSED, $sale->source()->status);
+        $this->assertSame(190.0, $sale->invoice->fresh()->total_amount);
+        // A different, explicit user action can later reuse the closed OS.
+        $draft = $this->workflow->saveExisting($this->bpo, $this->company, [
+            'sale_template_id' => $this->template->id, 'source_type' => 'service_order', 'source_id' => $sale->service_order_id,
+        ], (string) Str::uuid());
+        $this->assertNotSame($sale->id, $draft->id);
+        $this->assertNull($draft->invoice_id);
+        $this->assertSame(2, BpoSale::count());
+        $this->assertSame(1, Invoice::count());
     }
 
     public function test_service_sale_uses_real_os_and_finalizes_once_without_requesting_emission(): void
