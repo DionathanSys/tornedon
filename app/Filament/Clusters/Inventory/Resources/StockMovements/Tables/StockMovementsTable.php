@@ -183,7 +183,7 @@ class StockMovementsTable
             ->columnManagerLayout(ColumnManagerLayout::Modal);
     }
 
-    private static function resolveRecordUrl(StockMovement $record): ?string
+    public static function resolveRecordUrl(StockMovement $record): ?string
     {
         return match ($record->source_type) {
             'requisition' => RequisitionResource::getUrl('edit', ['record' => $record->source_id]),

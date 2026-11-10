@@ -8,15 +8,15 @@ use App\Enum\Product\OriginSalePrice;
 use App\Enum\Product\Unit;
 use App\Filament\Components\NcmCodeInput;
 use App\Models\Category;
+use App\Models\Product;
 use Filament\Facades\Filament;
-use Filament\Forms\Components\Checkbox;
-use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -39,6 +39,7 @@ class ProductForm
                 'lg' => 8,
             ])
             ->components([
+                ProductInventorySchema::summary(),
                 Tabs::make('ProductTabs')
                     ->columnSpanFull()
                     ->vertical()
@@ -79,7 +80,7 @@ class ProductForm
                                             ->relationship(
                                                 name: 'category',
                                                 titleAttribute: 'name',
-                                                modifyQueryUsing: fn($query) => $query
+                                                modifyQueryUsing: fn ($query) => $query
                                                     ->where('company_id', Filament::getTenant()->id)
                                                     ->where('is_active', true)
                                                     ->orderBy('name')
@@ -93,6 +94,7 @@ class ProductForm
                                                     ->maxLength(255)
                                                     ->unique(ignoreRecord: true, modifyRuleUsing: function ($rule) {
                                                         $tenant = Filament::getTenant();
+
                                                         return $rule->where('company_id', $tenant->id);
                                                     })
                                                     ->autocomplete(false),
@@ -173,17 +175,12 @@ class ProductForm
                                             ->columnSpan(['md' => 2, 'lg' => 2])
                                             ->inline(false)
                                             ->default(false),
-                                        Toggle::make('has_stock_control')
-                                            ->label('Controla Estoque?')
-                                            ->columnSpan(['md' => 2, 'lg' => 2])
-                                            ->inline(false)
-                                            ->default(false),
                                         Toggle::make('is_active')
                                             ->label('Ativo')
                                             ->columnSpan(['md' => 1, 'lg' => 1])
                                             ->inline(false)
                                             ->default(true),
-                                        //TODO: A ideia seria de ser um campo automatico para controlar se o produto pode ser vendido
+                                        // TODO: A ideia seria de ser um campo automatico para controlar se o produto pode ser vendido
                                         Toggle::make('is_invoiceable')
                                             ->label('Permite Venda')
                                             ->visibleOn('edit')
@@ -199,9 +196,15 @@ class ProductForm
                                     ]),
 
                             ]),
-                        Tab::make('Preços')
+                        Tab::make('Estoque')
+                            ->icon(Heroicon::ArchiveBox)
+                            ->schema(ProductInventorySchema::stock()),
+                        Tab::make('Custos e preços')
                             ->icon(Heroicon::CurrencyDollar)
                             ->schema([
+                                Section::make('Custos atuais')->visibleOn('edit')->columns(3)
+                                    ->description('Atualizados pelas operações. Administradores da empresa podem corrigir custos pela ação Ajustar custos.')
+                                    ->schema(ProductInventorySchema::costs()),
                                 Section::make('Precificação')
                                     ->columns([
                                         'sm' => 1,
@@ -213,30 +216,37 @@ class ProductForm
                                     ->contained(false)
                                     ->schema([
                                         Money::make('profit_margin')
-                                            ->label('Margem de Lucro (%)')
+                                            ->label('Acréscimo sobre o custo (%)')
+                                            ->live(onBlur: true)
                                             ->columnSpan(['md' => 1, 'lg' => 2])
                                             ->default(0)
                                             ->suffix('%')
                                             ->prefix(null),
                                         Money::make('min_sale_price')
+                                            ->live(onBlur: true)
                                             ->label('Preço Mínimo de Venda')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                             ->default(0),
                                         Select::make('origin_sale_price')
+                                            ->live()
                                             ->label('Origem do Preço de Venda')
                                             ->native(false)
                                             ->options(OriginSalePrice::toSelectArray())
                                             ->default(OriginSalePrice::CALCULATED_II->value)
                                             ->columnSpan(['md' => 1, 'lg' => 2]),
                                         Money::make('sale_price_value')
+                                            ->live(onBlur: true)
                                             ->label('Valor de Venda Fixo')
                                             ->columnSpan(['md' => 1, 'lg' => 2])
-                                            ->formatStateUsing(fn($state) => number_format($state, 2, ',', '.'))
+                                            ->formatStateUsing(fn ($state) => number_format($state, 2, ',', '.'))
                                             ->hiddenJs(<<<'JS'
                                                 $get('origin_sale_price') !== 'fixed'
                                             JS)
                                             ->requiredIf('origin_sale_price', 'fixed'),
+                                        TextEntry::make('price_preview')
+                                            ->label('Formação do preço')->columnSpanFull()
+                                            ->state(fn (Get $get, ?Product $record): string => ProductInventorySchema::preview($get, $record)),
                                     ]),
                             ]),
                         Tab::make('Conversões')
@@ -258,7 +268,7 @@ class ProductForm
                                             ->label('Unidade alternativa')
                                             ->options(Unit::toSelectArray())
                                             ->required()
-                                            ->disableOptionWhen(fn(Get $get, string $value): bool => $value === $get('../../unit'))
+                                            ->disableOptionWhen(fn (Get $get, string $value): bool => $value === $get('../../unit'))
                                             ->disableOptionsWhenSelectedInSiblingRepeaterItems()
                                             ->native(false),
                                         TextInput::make('conversion_factor')
@@ -335,7 +345,7 @@ class ProductForm
                                                         '60' => '60 - ICMS cobrado anteriormente por substituição tributária',
                                                         '70' => '70 - Com redução de base de cálculo e cobrança do ICMS por substituição tributária',
                                                         '90' => '90 - Outras',
-                                                    ]), //TODO falta mais opções
+                                                    ]), // TODO falta mais opções
                                                 Select::make('tax.icms.base_calculation_method')
                                                     ->label('Método de Cálculo da Base')
                                                     ->native(false)
@@ -343,7 +353,7 @@ class ProductForm
                                                         0 => '0 - margem de valor agregado (%)',
                                                         1 => '1 - pauta (valor)',
                                                         2 => '2 - preço tabelado máximo (valor)',
-                                                        3 => '3 - valor da operação'
+                                                        3 => '3 - valor da operação',
                                                     ]),
                                                 Money::make('tax.icms.aliquot')
                                                     ->label('Alíquota (%)')

@@ -11,7 +11,6 @@ use App\Filament\Clusters\Inventory\Resources\Products\Schemas\ProductForm;
 use App\Filament\Clusters\Inventory\Resources\Products\Tables\ProductsTable;
 use App\Models\Product;
 use BackedEnum;
-use Filament\Resources\Pages\Page;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -26,8 +25,8 @@ class ProductResource extends Resource
 
     // protected static ?string $cluster = InventoryCluster::class;
 
-    protected static string | UnitEnum | null $navigationGroup = 'Estoque';
-    
+    protected static string|UnitEnum|null $navigationGroup = 'Estoque';
+
     protected static ?string $modelLabel = 'Produto';
 
     protected static ?string $pluralModelLabel = 'Produtos';
@@ -56,7 +55,10 @@ class ProductResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [
+            RelationManagers\StockMovementsRelationManager::class,
+            RelationManagers\ReservationsRelationManager::class,
+            RelationManagers\InventoryHistoryRelationManager::class,
+        ];
     }
-
 }

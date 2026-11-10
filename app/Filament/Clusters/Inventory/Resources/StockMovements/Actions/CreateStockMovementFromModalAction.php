@@ -22,27 +22,29 @@ final class CreateStockMovementFromModalAction
             ->icon(Heroicon::Plus)
             ->modalWidth(Width::FiveExtraLarge)
             ->modalHeading('Registrar Movimentação de Estoque')
-            ->schema(fn(Schema $schema) => $schema->columns(4)->components(StockMovementForm::schema()))
+            ->schema(fn (Schema $schema) => $schema->columns(4)->components(StockMovementForm::schema()))
             ->action(function (Action $action, array $data): void {
                 // Garante company_id mesmo que o hidden não seja enviado
-                $data['company_id'] ??= Filament::getTenant()->id;
+                $data['company_id'] = Filament::getTenant()->id;
 
                 Log::debug('CreateStockMovementFromModalAction: Criando movimentação via action', [
-                    'metodo'  => __METHOD__ . '@' . __LINE__,
-                    'data'    => $data,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'data' => $data,
                     'user_id' => Auth::id(),
                 ]);
 
-                $data['source_id'] =  1;
+                if (($data['source_type'] ?? 'manual') === 'manual') {
+                    $data['source_id'] = 0;
+                }
 
                 $service = app(StockMovementService::class);
                 $movement = $service->create($data, Auth::id());
 
                 if ($service->hasError()) {
-                    Log::error('CreateStockMovementFromModalAction: ' . $service->getMessage(), [
-                        'metodo'     => __METHOD__ . '@' . __LINE__,
+                    Log::error('CreateStockMovementFromModalAction: '.$service->getMessage(), [
+                        'metodo' => __METHOD__.'@'.__LINE__,
                         'error_code' => $service->getErrorCode(),
-                        'message'    => $service->getMessage(),
+                        'message' => $service->getMessage(),
                     ]);
 
                     notify::error(
@@ -51,16 +53,16 @@ final class CreateStockMovementFromModalAction
                     );
 
                     $action->halt();
+
                     return;
                 }
 
                 Log::info('CreateStockMovementFromModalAction: Movimentação criada com sucesso', [
-                    'metodo'             => __METHOD__ . '@' . __LINE__,
-                    'stock_movement_id'  => $movement->id,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'stock_movement_id' => $movement->id,
                 ]);
 
                 notify::success('Movimentação de estoque registrada com sucesso.');
             });
     }
 }
-

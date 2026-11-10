@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -44,20 +45,20 @@ class Product extends Model
     ];
 
     protected $casts = [
-        'is_active'                 => 'boolean',
-        'has_st'                    => 'boolean',
-        'is_custom_manufacturing'   => 'boolean',
-        'is_invoiceable'            => 'boolean',
-        'has_stock_control'         => 'boolean',
-        'unit'                      => Unit::class,
-        'sale_unit'                 => Unit::class,
-        'origin_sale_price'         => OriginSalePrice::class,
-        'profit_margin'             => 'decimal:2',
-        'min_sale_price'            => MoneyCast::class,
-        'sale_price_value'          => MoneyCast::class,
-        'external_reference_codes'  => 'array',
-        'gross_weight'              => 'decimal:3',
-        'net_weight'                => 'decimal:3',
+        'is_active' => 'boolean',
+        'has_st' => 'boolean',
+        'is_custom_manufacturing' => 'boolean',
+        'is_invoiceable' => 'boolean',
+        'has_stock_control' => 'boolean',
+        'unit' => Unit::class,
+        'sale_unit' => Unit::class,
+        'origin_sale_price' => OriginSalePrice::class,
+        'profit_margin' => 'decimal:2',
+        'min_sale_price' => MoneyCast::class,
+        'sale_price_value' => MoneyCast::class,
+        'external_reference_codes' => 'array',
+        'gross_weight' => 'decimal:3',
+        'net_weight' => 'decimal:3',
     ];
 
     public function company(): BelongsTo
@@ -88,6 +89,16 @@ class Product extends Model
     public function stock(): HasOne
     {
         return $this->hasOne(ProductStock::class);
+    }
+
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    public function inventoryHistory(): MorphMany
+    {
+        return $this->morphMany(AuditEntry::class, 'auditable');
     }
 
     public function alternativeUnitConversions(): HasMany
