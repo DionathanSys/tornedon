@@ -9,6 +9,7 @@
 /vendor
 /docs/*
 !/docs/faturas-regras-e-funcionamento.md
+!/docs/recuperacao-vinculos-nfe-antiga.md
 .env
 .env.backup
 .env.production

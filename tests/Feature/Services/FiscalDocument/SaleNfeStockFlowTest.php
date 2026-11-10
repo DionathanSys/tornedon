@@ -17,6 +17,7 @@ use App\Models\Requisition;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedNfeStockMovementsAction;
+use App\Services\FiscalDocument\RecoverNfeRequisitionLinksService;
 use App\Services\FiscalDocument\SaleNfeStockService;
 use App\Services\Requisition\RequisitionItemReservationService;
 use App\Services\Requisition\RequisitionService;
@@ -303,6 +304,160 @@ class SaleNfeStockFlowTest extends TestCase
         $this->assertFalse($document->hasPendingStockEffect());
     }
 
+    public function test_legacy_link_recovery_diagnoses_without_writing_then_applies_idempotently_without_stock_changes(): void
+    {
+        [, , $stock, $requisition, $item] = $this->context();
+        $document = $this->note($requisition, [$item]);
+        $document->items()->sole()->update(['requisition_item_id' => null]);
+        $movements = StockMovement::count();
+        $diagnosis = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id);
+        $this->assertSame([], $diagnosis['errors'], json_encode($diagnosis));
+
+        $this->artisan('fiscal:recover-requisition-links', ['document' => $document->id])
+            ->expectsOutputToContain('Nenhuma alteração gravada')->assertSuccessful();
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+        $this->artisan('fiscal:recover-requisition-links', ['document' => $document->id, '--apply' => true])
+            ->expectsOutputToContain('1 vínculo(s) recuperado(s)')->assertSuccessful();
+        $this->assertSame($item->id, $document->items()->sole()->requisition_item_id);
+        $this->artisan('fiscal:recover-requisition-links', ['document' => $document->id, '--apply' => true])
+            ->expectsOutputToContain('Todos os itens já possuem vínculos compatíveis')->assertSuccessful();
+        $this->assertSame($movements, StockMovement::count());
+        $this->assertSame(10.0, (float) $stock->fresh()->quantity_total);
+        $this->assertSame(3.0, (float) $stock->fresh()->quantity_reserved);
+        $this->assertSame(0, $document->stockEffects()->count());
+        app(SaleNfeStockService::class)->prepare($document);
+        $this->authorize($document);
+        $this->assertTrue(app(SaleNfeStockService::class)->apply($document));
+        $this->assertSame(7.0, (float) $stock->fresh()->quantity_total);
+        $this->assertSame(1, StockMovement::where('type', Type::EXIT)->count());
+    }
+
+    public function test_legacy_link_recovery_rejects_ambiguous_sources_and_rolls_back_all_links(): void
+    {
+        [$owner, $product, , $requisition, $item] = $this->context();
+        $other = app(RequisitionItemService::class)->create($this->itemData($requisition, $product, 2), $owner->id);
+        app(RequisitionItemService::class)->create($this->itemData($requisition, $product, 3), $owner->id);
+        $document = $this->note($requisition, [$item, $other]);
+        foreach ($document->items as $line) {
+            $line->update(['requisition_item_id' => null]);
+        }
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true);
+        $this->assertNotEmpty($report['errors']);
+        $this->assertFalse($report['applied']);
+        $this->assertSame(0, $document->items()->whereNotNull('requisition_item_id')->count());
+    }
+
+    public function test_legacy_link_recovery_does_not_assign_one_source_to_two_fiscal_lines(): void
+    {
+        [, , , $requisition, $item] = $this->context();
+        $document = $this->note($requisition, [$item, $item]);
+        foreach ($document->items as $line) {
+            $line->update(['requisition_item_id' => null]);
+        }
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true);
+        $this->assertStringContainsString('disputam a mesma origem', implode(' ', $report['errors']));
+        $this->assertSame(0, $document->items()->whereNotNull('requisition_item_id')->count());
+    }
+
+    public function test_legacy_link_recovery_reports_previous_exit_without_writing_or_lowering_stock_again(): void
+    {
+        [$owner, $product, $stock, $requisition, $item] = $this->context();
+        $document = $this->note($requisition, [$item]);
+        $document->items()->sole()->update(['requisition_item_id' => null]);
+        $movement = StockMovement::create([
+            'company_id' => $document->company_id, 'product_id' => $product->id,
+            'product_stock_id' => $stock->id, 'type' => Type::EXIT,
+            'quantity' => 3, 'unit_price' => 10, 'source_type' => 'requisition_item',
+            'source_id' => $item->id, 'created_by' => $owner->id,
+        ]);
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true);
+        $this->assertNotEmpty($report['errors']);
+        $this->assertStringContainsString('movimentos: '.$movement->id, $report['rows'][0]['message']);
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+        $this->assertSame(10.0, (float) $stock->fresh()->quantity_total);
+        $this->assertSame(1, StockMovement::where('type', Type::EXIT)->count());
+    }
+
+    public function test_legacy_link_recovery_checks_consumption_flags_even_without_a_traced_movement(): void
+    {
+        [, , , $requisition, $item] = $this->context();
+        $document = $this->note($requisition, [$item]);
+        $document->items()->sole()->update(['requisition_item_id' => null]);
+        // Reproduce a legacy consumption record, bypassing invoiced-item editing guards.
+        $item->newQuery()->whereKey($item->id)->update(['stock_consumed' => true]);
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true);
+        $this->assertNotEmpty($report['errors']);
+        $this->assertStringContainsString('sem movimento rastreado', $report['rows'][0]['message']);
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+    }
+
+    public function test_legacy_link_recovery_detects_old_exits_traced_only_to_the_requisition(): void
+    {
+        [$owner, $product, $stock, $requisition, $item] = $this->context();
+        $document = $this->note($requisition, [$item]);
+        $document->items()->sole()->update(['requisition_item_id' => null]);
+        $movement = StockMovement::create([
+            'company_id' => $document->company_id, 'product_id' => $product->id,
+            'product_stock_id' => $stock->id, 'type' => Type::EXIT,
+            'quantity' => 3, 'unit_price' => 10, 'source_type' => 'requisition',
+            'source_id' => $requisition->id, 'created_by' => $owner->id,
+        ]);
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true);
+        $this->assertNotEmpty($report['errors']);
+        $this->assertStringContainsString('movimentos: '.$movement->id, $report['rows'][0]['message']);
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+    }
+
+    public function test_legacy_link_recovery_detects_consumption_marked_only_on_the_requisition(): void
+    {
+        [, , , $requisition, $item] = $this->context();
+        $document = $this->note($requisition, [$item]);
+        $document->items()->sole()->update(['requisition_item_id' => null]);
+        $requisition->update(['stock_consumed' => true]);
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true);
+        $this->assertNotEmpty($report['errors']);
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+    }
+
+    public function test_legacy_link_recovery_is_scoped_to_the_document_company_and_invoice(): void
+    {
+        [, $product, , $requisition, $item] = $this->context();
+        $document = $this->note($requisition, [$item]);
+        [$foreignOwner, , , $foreignRequisition] = $this->context(quantity: 0);
+        // Matching product/unit/quantity in another invoice must never be considered.
+        $foreignRequisition->items()->create($this->itemData($foreignRequisition, $product, 4) + ['created_by' => $foreignOwner->id]);
+        $document->items()->sole()->update(['requisition_item_id' => null, 'quantity' => 4]);
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true);
+        $this->assertSame('', $report['rows'][0]['candidate_ids']);
+        $this->assertNotEmpty($report['errors']);
+        $this->artisan('fiscal:recover-requisition-links', ['document' => $document->id, '--company' => $foreignRequisition->company_id, '--apply' => true])
+            ->assertFailed();
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+    }
+
+    public function test_legacy_link_recovery_preserves_existing_links_and_excludes_their_sources(): void
+    {
+        [$owner, $product, , $requisition, $item] = $this->context();
+        $other = app(RequisitionItemService::class)->create($this->itemData($requisition, $product, 3), $owner->id);
+        $document = $this->note($requisition, [$item, $other]);
+        $line = $document->items()->orderByDesc('id')->first();
+        $line->update(['requisition_item_id' => null]);
+        $report = app(RecoverNfeRequisitionLinksService::class)->execute($document->id, $document->company_id, true);
+        $this->assertTrue($report['applied']);
+        $this->assertSame($other->id, $line->fresh()->requisition_item_id);
+        $this->assertSame($item->id, $document->items()->orderBy('id')->first()->requisition_item_id);
+    }
+
+    public function test_legacy_link_recovery_rejects_authorized_documents(): void
+    {
+        [, , , $requisition, $item] = $this->context();
+        $document = $this->note($requisition, [$item]);
+        $document->items()->sole()->update(['requisition_item_id' => null]);
+        $this->authorize($document);
+        $this->artisan('fiscal:recover-requisition-links', ['document' => $document->id, '--apply' => true])->assertFailed();
+        $this->assertNull($document->items()->sole()->requisition_item_id);
+    }
+
     private function context(float $quantity = 3, bool $controlled = true, bool $hasStock = true, bool $negative = false): array
     {
         $owner = User::factory()->create();
@@ -312,7 +467,7 @@ class SaleNfeStockFlowTest extends TestCase
         $customer->companies()->attach($company, ['is_active' => true, 'type' => '["customer"]']);
         $product = Product::factory()->create(['company_id' => $company->id, 'has_stock_control' => $controlled, 'unit' => Unit::UN]);
         $stock = $hasStock ? ProductStock::create(['company_id' => $company->id, 'product_id' => $product->id, 'quantity_total' => 10, 'quantity_reserved' => 0, 'quantity_minimum' => 0, 'quantity_maximum' => 100, 'average_cost' => 5, 'last_cost' => 5, 'last_sale_price' => 10, 'is_active' => true, 'allow_negative' => $negative, 'created_by' => $owner->id]) : null;
-        $requisition = Requisition::create(['company_id' => $company->id, 'customer_id' => $customer->id, 'number' => fake()->unique()->bothify('REQ-####'), 'sale_date' => today(), 'status' => Status::OPEN, 'stock_control_enabled' => true, 'created_by' => $owner->id]);
+        $requisition = Requisition::create(['company_id' => $company->id, 'customer_id' => $customer->id, 'number' => fake()->unique()->bothify('REQ-####'), 'sale_date' => today(), 'status' => Status::OPEN, 'stock_control_enabled' => true, 'stock_consumed' => false, 'created_by' => $owner->id]);
         $item = null;
         if ($quantity > 0) {
             $service = app(RequisitionItemService::class);
