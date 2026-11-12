@@ -18,6 +18,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+use Filament\Support\Exceptions\Halt;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
@@ -28,6 +29,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 
 class PixChargeResource extends Resource
 {
@@ -151,7 +153,18 @@ class PixChargeResource extends Resource
                     ], true))
                     ->schema([Textarea::make('reason')->label('Justificativa')->required()->minLength(10)->maxLength(2000)])
                     ->action(function (PixCharge $record, array $data): void {
-                        app(BankingOperationService::class)->retryRegistration($record, Filament::getTenant()->id, Filament::auth()->user(), $data['reason']);
+                        try {
+                            app(BankingOperationService::class)->retryRegistration($record, Filament::getTenant()->id, Filament::auth()->user(), $data['reason']);
+                        } catch (ValidationException $exception) {
+                            Notification::make()
+                                ->title('Não foi possível reenviar a cobrança PIX.')
+                                ->body(collect($exception->errors())->flatten()->unique()->implode("\n"))
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            throw new Halt;
+                        }
 
                         Notification::make()
                             ->title('Registro da cobrança PIX enfileirado.')

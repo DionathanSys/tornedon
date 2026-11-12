@@ -3,6 +3,7 @@
 namespace Tests\Feature\Services\Financial;
 
 use App\Filament\Clusters\Financial\Resources\BankingEvents\BankingEventResource;
+use App\Filament\Clusters\Financial\Resources\BankingEvents\Pages\ListBankingEvents;
 use App\Filament\Clusters\Financial\Resources\BankSlips\Pages\ListBankSlips;
 use App\Filament\Clusters\Financial\Resources\PixCharges\Pages\ListPixCharges;
 use App\Jobs\CancelBankSlipJob;
@@ -11,6 +12,7 @@ use App\Jobs\ProcessBankingEventJob;
 use App\Jobs\QueryBankSlipJob;
 use App\Jobs\QueryPixChargeJob;
 use App\Jobs\RegisterBankSlipJob;
+use App\Jobs\RegisterPixChargeJob;
 use App\Jobs\UpdateBankSlipJob;
 use App\Models\Bank;
 use App\Models\BankAccountConnection;
@@ -865,6 +867,32 @@ class BankingOperationsTest extends TestCase
                 ->assertCanSeeTableRecords([$charge]);
             $this->assertFalse($charge->fresh()->trashed());
         }
+    }
+
+    public function test_registration_retry_blockers_are_shown_without_dispatching_another_registration(): void
+    {
+        Queue::fake();
+        foreach ([[ListBankSlips::class, $this->slip, 'Não foi possível reenviar o boleto.'],
+            [ListPixCharges::class, $this->pix(), 'Não foi possível reenviar a cobrança PIX.']] as [$page, $charge, $title]) {
+            $charge->update(['status' => 'uncertain', 'request_sent_at' => now()->subMinutes(10)]);
+            $event = $this->observe([
+                'sucesso' => false, 'codigo' => 12, 'mensagem' => 'Cobrança não encontrada.',
+            ], 'query', 'query', $charge);
+
+            foreach ([[$page, $charge, $title], [ListBankingEvents::class, $event, 'Não foi possível reenviar a cobrança.']] as [$retryPage, $record, $notificationTitle]) {
+                Livewire::test($retryPage)
+                    ->callTableAction('retry_registration', $record, ['reason' => 'Nova tentativa após cobrança não encontrada.'])
+                    ->assertNotified(Notification::make()
+                        ->title($notificationTitle)
+                        ->body('Reenvio exige falha de validação anterior ao processamento ou ausência confirmada em duas consultas espaçadas, após cinco minutos.')
+                        ->danger()->persistent())
+                    ->assertSet('mountedActions.0.name', 'retry_registration');
+            }
+
+            $this->assertSame('uncertain', $charge->fresh()->status->value);
+        }
+        Queue::assertNotPushed(RegisterBankSlipJob::class);
+        Queue::assertNotPushed(RegisterPixChargeJob::class);
     }
 
     public function test_registration_refused_for_low_value_can_be_removed_without_cancellation(): void

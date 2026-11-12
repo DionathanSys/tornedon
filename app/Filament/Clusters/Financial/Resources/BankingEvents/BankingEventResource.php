@@ -18,11 +18,13 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Support\Exceptions\Halt;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Illuminate\Validation\ValidationException;
 
 class BankingEventResource extends Resource
 {
@@ -97,7 +99,20 @@ class BankingEventResource extends Resource
                     ->schema([Textarea::make('reason')->label('Justificativa')->required()->minLength(10)->maxLength(2000)])
                     ->action(function (BankingEvent $record, array $data): void {
                         app(BankingResolutionService::class)->authorize($record, Filament::getTenant()->id, Filament::auth()->user());
-                        app(BankingOperationService::class)->retryRegistration($record->bankSlip ?? $record->pixCharge, Filament::getTenant()->id, Filament::auth()->user(), $data['reason']);
+                        try {
+                            app(BankingOperationService::class)->retryRegistration($record->bankSlip ?? $record->pixCharge, Filament::getTenant()->id, Filament::auth()->user(), $data['reason']);
+                        } catch (ValidationException $exception) {
+                            Notification::make()
+                                ->title('Não foi possível reenviar a cobrança.')
+                                ->body(collect($exception->errors())->flatten()->unique()->implode("\n"))
+                                ->danger()
+                                ->persistent()
+                                ->send();
+
+                            throw new Halt;
+                        }
+
+                        Notification::make()->title('Registro da cobrança enfileirado.')->success()->send();
                     }),
                 Action::make('resolve_payment')->label('Resolver recebimento')->icon('heroicon-o-check-circle')
                     ->visible(fn (BankingEvent $record) => $record->status === 'needs_review' && data_get($record->payload, 'charge_status') === '3' && ($record->bank_slip_id || $record->pix_charge_id))
