@@ -33,7 +33,11 @@ final class BankingOperationService
                 return false;
             }
             if ($charge->request_snapshot !== null && $charge->request_sent_at !== null) {
-                $charge->update(['status' => 'uncertain', 'operation_status' => 'uncertain']);
+                $rejected = $this->hasPixValidationRejection($charge);
+                $charge->update([
+                    'status' => $rejected ? 'registration_failed' : 'uncertain',
+                    'operation_status' => $rejected ? 'failed' : 'uncertain',
+                ]);
 
                 return false;
             }
@@ -124,7 +128,8 @@ final class BankingOperationService
         DB::transaction(function () use ($charge, $user, $reason): void {
             $charge = $charge->newQuery()->lockForUpdate()->findOrFail($charge->id);
             $localFailure = ($charge->status->value === 'registration_failed' && ($charge->request_snapshot === null || in_array($charge->provider_response_code, ['1', '23', 'LOCAL_VALIDATION'], true)))
-                || ($charge->status->value === 'pending_registration' && $charge->request_sent_at === null);
+                || ($charge->status->value === 'pending_registration' && $charge->request_sent_at === null)
+                || ($charge->status->value === 'uncertain' && $this->hasPixValidationRejection($charge));
             $field = $charge instanceof BankSlip ? 'bank_slip_id' : 'pix_charge_id';
             $evidence = BankingEvent::query()->where($field, $charge->id)->where('source', 'query')
                 ->where('operation', 'query')->latest('id')->first();
@@ -155,5 +160,18 @@ final class BankingOperationService
                 RegisterPixChargeJob::dispatch($charge->id)->afterCommit();
             }
         });
+    }
+
+    private function hasPixValidationRejection(BankSlip|PixCharge $charge): bool
+    {
+        return $charge instanceof PixCharge
+            && $charge->operation_kind === 'register'
+            && $charge->provider_response_code === '1'
+            && data_get($charge->provider_payload, 'sucesso') === false
+            && (string) data_get($charge->provider_payload, 'codigo') === '1'
+            && filled(data_get($charge->provider_payload, 'erros'))
+            && $charge->registered_at === null && $charge->paid_at === null
+            && blank($charge->provider_charge_id) && blank($charge->provider_status_code)
+            && blank($charge->qr_code) && blank($charge->pix_copy_paste);
     }
 }

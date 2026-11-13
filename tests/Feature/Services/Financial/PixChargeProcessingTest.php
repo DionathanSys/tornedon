@@ -35,6 +35,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PixChargeProcessingTest extends TestCase
@@ -490,6 +491,87 @@ class PixChargeProcessingTest extends TestCase
             ],
         ]);
         $this->installment->update(['due_date' => '2026-11-13', 'balance_amount' => 424.66]);
+
+        return $charge;
+    }
+
+    public function test_uncertain_pix_with_saved_validation_rejection_can_retry_without_queries(): void
+    {
+        Queue::fake();
+        $this->authorizeRegistrationRetry();
+        $charge = $this->createPixWithSavedValidationRejection();
+        $client = Mockery::mock(IntegraBancosPixClientInterface::class);
+        $client->shouldNotReceive('query');
+        $client->shouldReceive('generate')->once()->with(Mockery::on(fn (array $payload): bool => $payload['pagamento']['data_vencimento'] === '2026-11-13'
+            && $payload['pagamento']['valor'] === '424.66'
+        ))->andReturn(['sucesso' => true, 'status' => ['codigo' => '2']]);
+        app()->instance(IntegraBancosPixClientInterface::class, $client);
+
+        app(BankingOperationService::class)->retryRegistration($charge, $this->company->id, $this->user, 'Rejeição por vencimento antigo; parcela corrigida para hoje.');
+
+        $this->assertNull($charge->fresh()->request_snapshot);
+        $this->assertSame('2026-11-13', $charge->fresh()->due_date->toDateString());
+        Queue::assertPushed(RegisterPixChargeJob::class);
+        (new RegisterPixChargeJob($charge->id))->handle(app(PixProviderRegistry::class));
+        $this->assertSame(PixChargeStatus::REGISTERED, $charge->fresh()->status);
+    }
+
+    public function test_reprocessing_a_rejected_registration_does_not_make_its_result_uncertain(): void
+    {
+        $charge = $this->createPixWithSavedValidationRejection();
+        $charge->update(['status' => PixChargeStatus::REGISTRATION_FAILED, 'operation_status' => 'failed']);
+
+        $this->assertFalse(app(BankingOperationService::class)->beginRegistration($charge));
+        $this->assertSame(PixChargeStatus::REGISTRATION_FAILED, $charge->fresh()->status);
+        $this->assertSame('failed', $charge->fresh()->operation_status);
+    }
+
+    #[DataProvider('unconfirmedValidationRejections')]
+    public function test_uncertain_pix_cannot_retry_without_unambiguous_rejection(array $attributes): void
+    {
+        Queue::fake();
+        $this->authorizeRegistrationRetry();
+        $charge = $this->createPixWithSavedValidationRejection();
+        $charge->update($attributes);
+
+        try {
+            app(BankingOperationService::class)->retryRegistration($charge, $this->company->id, $this->user, 'Código antigo não deve ignorar evidência de emissão.');
+            $this->fail('Não deve liberar reenvio sem rejeição inequívoca.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('charge', $exception->errors());
+        }
+
+        $this->assertSame(PixChargeStatus::UNCERTAIN, $charge->fresh()->status);
+        Queue::assertNotPushed(RegisterPixChargeJob::class);
+    }
+
+    public static function unconfirmedValidationRejections(): array
+    {
+        return [
+            'provider charge id' => [['provider_charge_id' => 'existing-pix']],
+            'registered status' => [['provider_status_code' => '2']],
+            'registered date' => [['registered_at' => '2026-11-05 12:00:00']],
+            'qr code' => [['qr_code' => 'existing-qr']],
+            'successful response' => [['provider_payload' => ['sucesso' => true, 'codigo' => 1, 'erros' => ['old error']]]],
+            'missing validation response' => [['provider_payload' => null]],
+        ];
+    }
+
+    private function createPixWithSavedValidationRejection(): PixCharge
+    {
+        $charge = $this->createUncertainPixWithOldDueDate();
+        $charge->update([
+            'provider_response_code' => '1',
+            'provider_payload' => [
+                'sucesso' => false, 'codigo' => 1,
+                'mensagem' => 'JSON com erros nos campos, para mais detalhes verifique a propriedade erros',
+                'erros' => [[
+                    'campo' => 'pagamento.data_vencimento',
+                    'erro' => 'Deve ser informado uma data de vencimento futura.',
+                    'descricao' => 'Data de vencimento.', 'detalhes' => 'ex. 2026-12-31',
+                ]],
+            ],
+        ]);
 
         return $charge;
     }
