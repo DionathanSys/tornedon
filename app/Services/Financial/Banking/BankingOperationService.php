@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Access\UserAccessService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\Banking\Providers\IntegraBancosPayloadBuilder;
+use App\Services\Financial\Pix\PixChargeIssuanceService;
 use App\Support\Financial\InstallmentPaymentGuard;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
@@ -46,6 +47,27 @@ final class BankingOperationService
                 $event->update(['status' => 'needs_review', 'error' => $charge->last_error]);
 
                 return false;
+            }
+            if ($charge instanceof PixCharge) {
+                try {
+                    $issuance = app(PixChargeIssuanceService::class);
+                    $issuance->validateDueDate($charge->installment);
+                    if ($charge->request_snapshot === null || $charge->provider_response_code !== '12') {
+                        $issuance->syncRegistrationData($charge, $charge->installment);
+                    } else {
+                        Validator::make(['due_date' => $charge->due_date?->toDateString()], [
+                            'due_date' => ['required', 'date', 'after_or_equal:today'],
+                        ])->validate();
+                    }
+                } catch (ValidationException $exception) {
+                    $charge->update([
+                        'status' => 'registration_failed', 'operation_status' => 'failed',
+                        'provider_response_code' => 'LOCAL_VALIDATION', 'last_error' => $exception->getMessage(),
+                    ]);
+                    app(BankingEventService::class)->record($charge, ['response' => [], 'successful' => false, 'message' => $charge->last_error], 'register', 'preflight');
+
+                    return false;
+                }
             }
             $charge->update(['status' => 'processing', 'operation_kind' => 'register', 'operation_attempt_id' => (string) Str::uuid(), 'operation_status' => 'sending', 'request_sent_at' => now()]);
             $intent = app(BankingEventService::class)->record($charge, ['response' => [], 'successful' => true, 'response_code' => '4'], 'register', 'intent');
@@ -117,6 +139,15 @@ final class BankingOperationService
             }
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($charge);
+            if ($charge instanceof PixCharge) {
+                $issuance = app(PixChargeIssuanceService::class);
+                $issuance->validateDueDate($charge->installment);
+                if ($localFailure) {
+                    $issuance->syncRegistrationData($charge, $charge->installment);
+                } elseif ($charge->due_date?->lt(today())) {
+                    throw ValidationException::withMessages(['due_date' => ['O vencimento do PIX salvo para reenvio não pode ser anterior a hoje.']]);
+                }
+            }
             $charge->update([
                 'status' => 'pending_registration', 'operation_status' => 'ready', 'request_sent_at' => null,
                 'request_snapshot' => $localFailure ? null : $charge->request_snapshot, 'last_error' => null,

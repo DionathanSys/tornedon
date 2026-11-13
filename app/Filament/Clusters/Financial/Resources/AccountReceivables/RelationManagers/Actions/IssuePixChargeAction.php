@@ -14,6 +14,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 final class IssuePixChargeAction
@@ -77,7 +78,17 @@ final class IssuePixChargeAction
                     $record = $updated;
                 }
 
-                $charge = app(PixChargeIssuanceService::class)->preparePixCharge($record);
+                try {
+                    $charge = app(PixChargeIssuanceService::class)->preparePixCharge($record);
+                } catch (ValidationException $exception) {
+                    Notification::make()
+                        ->title('Não foi possível emitir a cobrança PIX.')
+                        ->body($exception->getMessage())
+                        ->danger()
+                        ->send();
+
+                    return;
+                }
 
                 if (! $charge) {
                     Notification::make()

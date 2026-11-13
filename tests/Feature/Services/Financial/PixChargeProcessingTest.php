@@ -23,13 +23,17 @@ use App\Models\Partner;
 use App\Models\PixCharge;
 use App\Models\User;
 use App\Services\AccountReceivable\AccountReceivableService;
+use App\Services\Financial\Banking\BankingOperationService;
 use App\Services\Financial\Banking\BankSlipIssuanceService;
 use App\Services\Financial\Pix\PixChargeIssuanceService;
 use App\Services\Financial\Pix\PixChargePublicLinkService;
 use App\Services\Financial\Pix\PixProviderRegistry;
 use App\Services\Financial\Pix\Providers\IntegraBancosPixClientInterface;
+use Carbon\Carbon;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;
 
@@ -50,6 +54,7 @@ class PixChargeProcessingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->travelTo(Carbon::parse('2026-10-01 12:00:00'));
         config(['integrabancos-contracts.999' => config('integrabancos-contracts.461')]);
 
         $this->user = User::factory()->create();
@@ -255,6 +260,165 @@ class PixChargeProcessingTest extends TestCase
         $this->assertSame('pix-provider-1', $charge->provider_charge_id);
         $this->assertSame('qr-code-data', $charge->qr_code);
         $this->assertSame('000201copy-paste', $charge->pix_copy_paste);
+    }
+
+    public function test_registration_uses_current_installment_data_after_queueing(): void
+    {
+        $service = app(PixChargeIssuanceService::class);
+        $charge = $service->preparePixCharge($this->installment);
+        $charge->update(['request_snapshot' => ['pagamento' => ['data_vencimento' => '2026-10-01', 'valor' => '100.00']]]);
+        $this->installment->update(['due_date' => '2026-11-13', 'balance_amount' => 424.66]);
+
+        $client = Mockery::mock(IntegraBancosPixClientInterface::class);
+        $client->shouldReceive('generate')->once()->with(Mockery::on(fn (array $payload): bool => $payload['pagamento']['data_vencimento'] === '2026-11-13'
+            && $payload['pagamento']['valor'] === '424.66'
+        ))->andReturn(['sucesso' => true, 'status' => ['codigo' => '2']]);
+        app()->instance(IntegraBancosPixClientInterface::class, $client);
+
+        (new RegisterPixChargeJob($charge->id))->handle(app(PixProviderRegistry::class));
+
+        $this->assertSame('2026-11-13', $charge->fresh()->due_date->toDateString());
+        $this->assertSame(424.66, (float) $charge->fresh()->amount);
+    }
+
+    public function test_failed_pix_can_be_requested_again_with_current_installment_data(): void
+    {
+        $service = app(PixChargeIssuanceService::class);
+        $charge = $service->preparePixCharge($this->installment);
+        $charge->update([
+            'status' => PixChargeStatus::REGISTRATION_FAILED,
+            'provider_response_code' => '1', 'request_sent_at' => now(),
+            'request_snapshot' => ['pagamento' => ['data_vencimento' => '2026-10-01']],
+        ]);
+        $this->installment->update(['due_date' => '2026-11-13', 'balance_amount' => 424.66]);
+
+        $retried = $service->preparePixCharge($this->installment);
+
+        $this->assertSame($charge->id, $retried->id);
+        $this->assertSame('2026-11-13', $retried->due_date->toDateString());
+        $this->assertSame(424.66, (float) $retried->amount);
+        $this->assertNull($retried->request_snapshot);
+        $this->assertNull($retried->request_sent_at);
+        $this->assertTrue(app(BankingOperationService::class)->beginRegistration($retried));
+    }
+
+    public function test_pix_request_rejects_a_past_due_date(): void
+    {
+        $this->installment->update(['due_date' => today()->subDay()]);
+
+        try {
+            app(PixChargeIssuanceService::class)->preparePixCharge($this->installment);
+            $this->fail('Não deve solicitar PIX com vencimento anterior a hoje.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('due_date', $exception->errors());
+        }
+        $this->assertDatabaseCount('pix_charges', 0);
+    }
+
+    public function test_pix_request_accepts_today_and_future_due_dates(): void
+    {
+        $service = app(PixChargeIssuanceService::class);
+        $this->assertNotNull($service->preparePixCharge($this->installment));
+        $this->installment->update(['due_date' => today()->addDay()]);
+        $this->assertSame(today()->addDay()->toDateString(), $service->preparePixCharge($this->installment)->due_date->toDateString());
+    }
+
+    public function test_queue_does_not_send_a_pix_that_became_overdue(): void
+    {
+        $charge = app(PixChargeIssuanceService::class)->preparePixCharge($this->installment);
+        $this->travel(1)->days();
+        $client = Mockery::mock(IntegraBancosPixClientInterface::class);
+        $client->shouldNotReceive('generate');
+        app()->instance(IntegraBancosPixClientInterface::class, $client);
+
+        (new RegisterPixChargeJob($charge->id))->handle(app(PixProviderRegistry::class));
+
+        $this->assertSame(PixChargeStatus::REGISTRATION_FAILED, $charge->fresh()->status);
+        $this->assertSame('LOCAL_VALIDATION', $charge->fresh()->provider_response_code);
+        $this->assertNull($charge->fresh()->request_sent_at);
+    }
+
+    public function test_preparing_a_failed_pix_with_uncertain_result_preserves_original_request(): void
+    {
+        $service = app(PixChargeIssuanceService::class);
+        $charge = $service->preparePixCharge($this->installment);
+        $snapshot = ['pagamento' => ['data_vencimento' => '2026-10-01', 'valor' => '100.00']];
+        $charge->update([
+            'status' => PixChargeStatus::REGISTRATION_FAILED, 'request_sent_at' => now(),
+            'request_snapshot' => $snapshot, 'provider_response_code' => '17',
+        ]);
+        $this->installment->update(['due_date' => '2026-11-13', 'balance_amount' => 424.66]);
+
+        $retried = $service->preparePixCharge($this->installment);
+
+        $this->assertSame($snapshot, $retried->request_snapshot);
+        $this->assertSame('2026-10-01', $retried->due_date->toDateString());
+        $this->assertFalse(app(BankingOperationService::class)->beginRegistration($retried));
+    }
+
+    public function test_manual_retry_refreshes_a_definitively_rejected_pix(): void
+    {
+        Queue::fake();
+        $this->authorizeRegistrationRetry();
+        $charge = app(PixChargeIssuanceService::class)->preparePixCharge($this->installment);
+        $charge->update([
+            'status' => PixChargeStatus::REGISTRATION_FAILED, 'provider_response_code' => '1',
+            'request_sent_at' => now(), 'request_snapshot' => ['pagamento' => ['valor' => '100.00']],
+        ]);
+        $this->installment->update(['due_date' => '2026-11-13', 'balance_amount' => 424.66]);
+
+        app(BankingOperationService::class)->retryRegistration($charge, $this->company->id, $this->user, 'Vencimento e valor corrigidos antes do reenvio.');
+
+        $this->assertSame('2026-11-13', $charge->fresh()->due_date->toDateString());
+        $this->assertSame(424.66, (float) $charge->fresh()->amount);
+        $this->assertNull($charge->fresh()->request_snapshot);
+        Queue::assertPushed(RegisterPixChargeJob::class);
+    }
+
+    public function test_confirmed_not_found_retry_preserves_the_original_payload_before_sending(): void
+    {
+        $service = app(PixChargeIssuanceService::class);
+        $charge = $service->preparePixCharge($this->installment);
+        $snapshot = ['pagamento' => ['data_vencimento' => '2026-10-01', 'valor' => '100.00']];
+        $charge->update(['provider_response_code' => '12', 'request_snapshot' => $snapshot]);
+        $this->installment->update(['due_date' => '2026-11-13', 'balance_amount' => 424.66]);
+
+        $prepared = $service->preparePixCharge($this->installment);
+        $this->assertSame($snapshot, $prepared->request_snapshot);
+        $this->assertTrue(app(BankingOperationService::class)->beginRegistration($prepared));
+        $this->assertSame($snapshot, $charge->fresh()->request_snapshot);
+        $this->assertSame(100.0, (float) $charge->fresh()->amount);
+    }
+
+    public function test_manual_retry_rejects_an_overdue_installment_without_dispatching(): void
+    {
+        Queue::fake();
+        $this->authorizeRegistrationRetry();
+        $charge = app(PixChargeIssuanceService::class)->preparePixCharge($this->installment);
+        $charge->update(['status' => PixChargeStatus::REGISTRATION_FAILED, 'provider_response_code' => '1']);
+        $this->travel(1)->days();
+
+        try {
+            app(BankingOperationService::class)->retryRegistration($charge, $this->company->id, $this->user, 'Nova tentativa de emissão com vencimento passado.');
+            $this->fail('Não deve reenviar PIX vencido.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('due_date', $exception->errors());
+        }
+
+        Queue::assertNotPushed(RegisterPixChargeJob::class);
+        $this->assertSame(PixChargeStatus::REGISTRATION_FAILED, $charge->fresh()->status);
+    }
+
+    private function authorizeRegistrationRetry(): void
+    {
+        $this->user->companies()->attach($this->company, ['role' => 'member', 'is_active' => true]);
+        $this->user->companyAccesses()->create([
+            'company_id' => $this->company->id, 'permissions' => ['account_receivables.access'],
+            'panels' => ['admin' => true], 'navigation' => [],
+        ]);
+        $this->actingAs($this->user);
+        Filament::setCurrentPanel(Filament::getPanel('admin'));
+        Filament::setTenant($this->company);
     }
 
     public function test_reads_qr_data_from_a_persisted_provider_payload_when_columns_are_empty(): void

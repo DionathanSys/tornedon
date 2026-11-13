@@ -80,6 +80,8 @@ final class PixChargeIssuanceService
                 return null;
             }
 
+            $this->validateDueDate($installment);
+
             $existing = PixCharge::query()
                 ->where('account_receivable_installment_id', $installment->id)
                 ->whereNotIn('status', [
@@ -90,11 +92,18 @@ final class PixChargeIssuanceService
                 ->first();
 
             if ($existing) {
-                if ($existing->status === PixChargeStatus::REGISTRATION_FAILED) {
+                if ($existing->status === PixChargeStatus::REGISTRATION_FAILED
+                    && ($existing->request_sent_at === null || $existing->request_snapshot === null
+                        || in_array($existing->provider_response_code, ['1', '23', 'LOCAL_VALIDATION'], true))) {
+                    $this->syncRegistrationData($existing, $installment);
                     $existing->update([
                         'status' => PixChargeStatus::PENDING_REGISTRATION,
+                        'request_sent_at' => null,
                         'last_error' => null,
                     ]);
+                } elseif ($existing->status === PixChargeStatus::PENDING_REGISTRATION && $existing->request_sent_at === null
+                    && ($existing->request_snapshot === null || $existing->provider_response_code !== '12')) {
+                    $this->syncRegistrationData($existing, $installment);
                 }
 
                 return $existing;
@@ -123,6 +132,26 @@ final class PixChargeIssuanceService
                 'due_date' => $installment->due_date,
             ]);
         });
+    }
+
+    public function validateDueDate(AccountReceivableInstallment $installment): void
+    {
+        if (! $installment->due_date || $installment->due_date->lt(today())) {
+            throw ValidationException::withMessages([
+                'due_date' => ['Para emitir PIX, o vencimento da parcela deve ser hoje ou uma data futura.'],
+            ]);
+        }
+    }
+
+    /** Only call before the first send or after a definitive registration rejection. */
+    public function syncRegistrationData(PixCharge $charge, AccountReceivableInstallment $installment): void
+    {
+        $this->validateDueDate($installment);
+        $charge->update([
+            'amount' => $installment->balance_amount,
+            'due_date' => $installment->due_date,
+            'request_snapshot' => null,
+        ]);
     }
 
     private function buildProviderIdentification(AccountReceivableInstallment $installment): string
