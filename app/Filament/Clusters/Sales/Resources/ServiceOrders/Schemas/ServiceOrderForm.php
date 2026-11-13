@@ -15,6 +15,7 @@ use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ProductsRelationManager;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ReceivedAssetsRelationManager;
+use App\Filament\Forms\Components\PaymentConditionFields;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
 use App\Models\CompanyPreference;
 use App\Models\Equipment;
@@ -278,7 +279,7 @@ class ServiceOrderForm
                                                     Filament::getTenant()->id,
                                                     null,
                                                 )['payment_method']),
-                                            \App\Filament\Forms\Components\PaymentConditionFields::make(),
+                                            PaymentConditionFields::make(),
                                             Select::make('payment_condition')->live()
                                                 ->label('Condição de Pagamento')
                                                 ->options(PaymentCondition::toGroupedSelectArray())
@@ -328,6 +329,7 @@ class ServiceOrderForm
                                     'pageClass' => EditServiceOrder::class,
                                 ])
                                     ->key('items-relation-manager')
+                                    ->lazy()
                                     ->columnSpanFull()
                                     ->visibleOn([Operation::Edit]),
                                 ComponentsLivewire::make(ProductsRelationManager::class, fn (ServiceOrder $record) => [
@@ -335,6 +337,7 @@ class ServiceOrderForm
                                     'pageClass' => EditServiceOrder::class,
                                 ])
                                     ->key('products-relation-manager')
+                                    ->lazy()
                                     ->columnSpanFull()
                                     ->visibleOn([Operation::Edit]),
 
@@ -390,22 +393,22 @@ class ServiceOrderForm
                                     ->schema([
                                         TextEntry::make('remittance_assets_count')
                                             ->label('Itens vinculados')
-                                            ->state(fn (ServiceOrder $record): int => $record->remittanceAssets()->count())
+                                            ->state(fn (EditServiceOrder $livewire): int => $livewire->remittanceSummary['count'])
                                             ->columnSpan(['md' => 1, 'lg' => 4]),
                                         TextEntry::make('remittance_origin_document')
                                             ->label('NF de remessa')
-                                            ->state(fn (ServiceOrder $record): string => self::formatLinkedFiscalDocument(
-                                                $record->remittanceAssets()->with('fiscalDocument')->first()?->fiscalDocument
+                                            ->state(fn (EditServiceOrder $livewire): string => self::formatLinkedFiscalDocument(
+                                                $livewire->remittanceSummary['origin']
                                             ))
-                                            ->url(fn (ServiceOrder $record): ?string => ($originDocument = $record->remittanceAssets()->with('fiscalDocument')->first()?->fiscalDocument)
+                                            ->url(fn (EditServiceOrder $livewire): ?string => ($originDocument = $livewire->remittanceSummary['origin'])
                                                 ? FinancialFiscalDocumentResource::getUrl('edit', ['record' => $originDocument])
                                                 : null)
                                             ->openUrlInNewTab()
                                             ->columnSpan(['md' => 1, 'lg' => 4]),
                                         TextEntry::make('remittance_return_document')
                                             ->label('NF de retorno')
-                                            ->state(fn (ServiceOrder $record): string => self::formatLinkedFiscalDocument($record->linkedReturnFiscalDocument()))
-                                            ->url(fn (ServiceOrder $record): ?string => ($returnDocument = $record->linkedReturnFiscalDocument())
+                                            ->state(fn (EditServiceOrder $livewire): string => self::formatLinkedFiscalDocument($livewire->remittanceSummary['return']))
+                                            ->url(fn (EditServiceOrder $livewire): ?string => ($returnDocument = $livewire->remittanceSummary['return'])
                                                 ? SalesFiscalDocumentResource::getUrl('edit', ['record' => $returnDocument])
                                                 : null)
                                             ->openUrlInNewTab()
@@ -420,6 +423,7 @@ class ServiceOrderForm
                                             'pageClass' => EditServiceOrder::class,
                                         ])
                                             ->key('received-assets-relation-manager')
+                                            ->lazy()
                                             ->columnSpanFull(),
                                     ]),
                             ]),
@@ -436,6 +440,7 @@ class ServiceOrderForm
                                             'pageClass' => EditServiceOrder::class,
                                         ])
                                             ->key('attachments-relation-manager')
+                                            ->lazy()
                                             ->columnSpanFull(),
                                     ]),
                             ]),

@@ -35,10 +35,21 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
 
 class EditServiceOrder extends EditRecord
 {
     protected static string $resource = ServiceOrderResource::class;
+
+    #[Computed]
+    public function remittanceSummary(): array
+    {
+        return [
+            'count' => $this->record->remittanceAssets()->count(),
+            'origin' => $this->record->remittanceAssets()->with('fiscalDocument')->first()?->fiscalDocument,
+            'return' => $this->record->linkedReturnFiscalDocument(),
+        ];
+    }
 
     public function getSubheading(): ?string
     {
@@ -79,13 +90,14 @@ class EditServiceOrder extends EditRecord
                 OpenWarrantyClaimAction::make()
                     ->hiddenLabel(),
                 GenerateRepairReturnFiscalDocumentAction::make()
-                    ->hiddenLabel(),
+                    ->hiddenLabel()
+                    ->visible(fn (): bool => $this->remittanceSummary['count'] > 0 && $this->remittanceSummary['return'] === null),
                 Action::make('view-linked-return-fiscal-document')
                     ->tooltip('Abrir nota de retorno')
                     ->label('Abrir Nota de Retorno')
                     ->icon(Heroicon::DocumentText)
-                    ->visible(fn (): bool => $this->record->linkedReturnFiscalDocument() !== null)
-                    ->url(fn (): ?string => ($linkedRecord = $this->record->linkedReturnFiscalDocument())
+                    ->visible(fn (): bool => $this->remittanceSummary['return'] !== null)
+                    ->url(fn (): ?string => ($linkedRecord = $this->remittanceSummary['return'])
                         ? SalesFiscalDocumentResource::getUrl('edit', ['record' => $linkedRecord])
                         : null)
                     ->openUrlInNewTab(),
@@ -99,7 +111,7 @@ class EditServiceOrder extends EditRecord
                     ->tooltip('Abrir requisição')
                     ->label('Acessar Requisição')
                     ->icon(Heroicon::ClipboardDocumentList)
-                    ->visible(fn (): bool => $this->record->requisition()->exists())
+                    ->visible(fn (): bool => $this->record->requisition !== null)
                     ->url(fn (): string => RequisitionResource::getUrl('edit', ['record' => $this->record->requisition]))
                     ->openUrlInNewTab(),
                 ViewInvoiceServiceOrderAction::make(),
@@ -110,7 +122,7 @@ class EditServiceOrder extends EditRecord
                 DeleteAction::make()
                     ->hiddenLabel()
                     ->icon(Heroicon::Trash)
-                    ->visible(fn (Model $record): bool => blank($record->invoice_id) && ! $record->requisition()->exists())
+                    ->visible(fn (Model $record): bool => blank($record->invoice_id) && $record->requisition === null)
                     ->using(function (Model $record): bool {
 
                         $service = app(ServiceOrderService::class);
