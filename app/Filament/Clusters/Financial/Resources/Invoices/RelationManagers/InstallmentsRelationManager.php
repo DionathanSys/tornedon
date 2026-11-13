@@ -34,10 +34,25 @@ class InstallmentsRelationManager extends RelationManager
 
     protected static string|BackedEnum|null $icon = Heroicon::QueueList;
 
+    /** @var array<int, bool> Authorization results for this request only. */
+    protected array $accountReceivableEditAccess = [];
+
+    protected function canEditAccountReceivable(AccountReceivableInstallment $record): bool
+    {
+        $account = $record->accountReceivable;
+
+        if ($account === null) {
+            return false;
+        }
+
+        return $this->accountReceivableEditAccess[$account->getKey()] ??= AccountReceivableResource::canEdit($account);
+    }
+
     #[On('invoice-confirmed')]
     #[On('refresh-installments')]
     public function refreshInstallments(): void
     {
+        $this->accountReceivableEditAccess = [];
         $this->resetTable();
     }
 
@@ -143,7 +158,7 @@ class InstallmentsRelationManager extends RelationManager
                     ->label('Abrir conta a receber')
                     ->icon(Heroicon::ArrowTopRightOnSquare)
                     ->url(fn (AccountReceivableInstallment $record): string => AccountReceivableResource::getUrl('edit', ['record' => $record->account_receivable_id]))
-                    ->visible(fn (AccountReceivableInstallment $record): bool => $record->accountReceivable !== null && AccountReceivableResource::canEdit($record->accountReceivable)),
+                    ->visible(fn (AccountReceivableInstallment $record): bool => $this->canEditAccountReceivable($record)),
                 IssueBankSlipAction::make()
                     ->label('Emitir boleto'),
                 IssuePixChargeAction::make()
