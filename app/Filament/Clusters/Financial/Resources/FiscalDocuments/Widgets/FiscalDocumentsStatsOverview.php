@@ -7,13 +7,14 @@ use App\Models\FiscalDocumentItem;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
-use Override;
 
 class FiscalDocumentsStatsOverview extends StatsOverviewWidget
 {
     use InteractsWithPageTable;
 
     protected static bool $isDiscovered = false;
+
+    protected ?string $pollingInterval = null;
 
     protected function getTablePage(): string
     {
@@ -39,6 +40,6 @@ class FiscalDocumentsStatsOverview extends StatsOverviewWidget
 
     private function formatMoney(float $amount): string
     {
-        return 'R$ ' . number_format($amount, 2, ',', '.');
+        return 'R$ '.number_format($amount, 2, ',', '.');
     }
 }

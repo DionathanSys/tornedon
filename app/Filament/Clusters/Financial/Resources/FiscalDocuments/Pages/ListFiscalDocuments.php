@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\ImportSefazDfeAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Widgets\FiscalDocumentsStatsOverview;
+use App\Filament\Support\Concerns\AuthorizesFiscalDocumentListing;
 use Filament\Actions\CreateAction;
 use Filament\Pages\Concerns\ExposesTableToWidgets;
 use Filament\Resources\Pages\ListRecords;
@@ -12,6 +13,7 @@ use Filament\Support\Icons\Heroicon;
 
 class ListFiscalDocuments extends ListRecords
 {
+    use AuthorizesFiscalDocumentListing;
     use ExposesTableToWidgets;
 
     protected static string $resource = FiscalDocumentResource::class;

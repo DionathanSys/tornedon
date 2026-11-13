@@ -56,7 +56,9 @@ class GeneratePurchaseReturnAction
             && $record->operation_type === OperationType::ENTRADA
             && $record->status !== Status::CANCELLED
             && ! $record->canceled
-            && app(PurchaseReturnBalanceService::class)->hasAvailableBalance($record);
+            && (array_key_exists('has_available_return_balance', $record->getAttributes())
+                ? (bool) $record->getAttribute('has_available_return_balance')
+                : app(PurchaseReturnBalanceService::class)->hasAvailableBalance($record));
 
         return $visible;
     }

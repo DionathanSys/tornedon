@@ -12,7 +12,10 @@ class FiscalCancellationPolicy
         if (! $authorized) {
             return ['allowed' => false, 'reason' => 'not_authorized', 'message' => 'Somente uma nota autorizada pode ser cancelada.', 'deadline' => null];
         }
-        if ($document->hasOpenFiscalIssue() && $document->fiscalIssues()->where('active_slot', 1)->where('status', 'awaiting_confirmation')->exists()) {
+        $awaitingCancellation = array_key_exists('has_awaiting_cancellation', $document->getAttributes())
+            ? (bool) $document->getAttribute('has_awaiting_cancellation')
+            : ($document->hasOpenFiscalIssue() && $document->fiscalIssues()->where('active_slot', 1)->where('status', 'awaiting_confirmation')->exists());
+        if ($awaitingCancellation) {
             return ['allowed' => false, 'reason' => 'cancellation_confirmation_pending', 'message' => 'Existe um cancelamento com resultado pendente. Consulte o órgão emissor antes de repetir a solicitação.', 'deadline' => null];
         }
         // NFS-e has no local time restriction; acceptance belongs to the provider.

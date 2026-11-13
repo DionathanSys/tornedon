@@ -6,8 +6,10 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\Status;
+use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Support\Actions\FiscalDocumentRecordActions;
 use App\Models\FiscalDocument;
+use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Support\Enums\Size;
@@ -21,32 +23,43 @@ class FiscalDocumentsTable
 {
     public static function configure(Table $table): Table
     {
+        // Build aggregates once: Filament also resolves this query while rendering each action.
         return $table
-            ->modifyQueryUsing(function (Builder $query): Builder {
-                return $query
-                    ->select([
-                        'id',
-                        'company_id',
-                        'customer_id',
-                        'operation_type',
-                        'document_type',
-                        'document_number',
-                        'document_series',
-                        'rps_series',
-                        'rps_number',
-                        'operation_nature',
-                        'issued_at',
-                        'nfe_status',
-                        'nfse_status',
-                        'status',
-                        'nfe_protocolo',
-                        'document_key',
-                        'confirmed_at',
-                        'pending',
-                        'created_at',
-                    ])
-                    ->with(['customer']);
-            })
+            ->query(FiscalDocumentResource::getEloquentQuery()
+                ->select([
+                    'id',
+                    'company_id',
+                    'created_by',
+                    'customer_id',
+                    'operation_type',
+                    'document_type',
+                    'document_number',
+                    'document_series',
+                    'rps_series',
+                    'rps_number',
+                    'operation_nature',
+                    'issued_at',
+                    'nfe_status',
+                    'nfse_status',
+                    'status',
+                    'nfe_protocolo',
+                    'document_key',
+                    'confirmed_at',
+                    'authorized_at',
+                    'canceled',
+                    'nfse_model',
+                    'operational_reset_at',
+                    'pending',
+                    'created_at',
+                ])
+                ->without(['taxDetail', 'payload'])
+                ->with('customer:id,name')
+                ->withExists([
+                    'stockEffects as has_pending_stock_effect' => fn (Builder $query) => $query->where('status', 'blocked'),
+                    'fiscalIssues as has_open_fiscal_issue' => fn (Builder $query) => $query->where('active_slot', 1),
+                    'fiscalIssues as has_awaiting_cancellation' => fn (Builder $query) => $query->where('active_slot', 1)->where('status', 'awaiting_confirmation'),
+                    'payload as has_corrections' => fn (Builder $query) => $query->whereJsonLength('nfe_payload->correcoes', '>', 0),
+                ]))
             ->columns([
                 Tables\Columns\TextColumn::make('document_type')
                     ->label('Tipo')
@@ -214,11 +227,14 @@ class FiscalDocumentsTable
             ->reorderableColumns()
             ->recordActions([
                 ActionGroup::make(
-                    FiscalDocumentRecordActions::make(includeEditAction: true)
+                    array_map(fn (Action $action): Action => $action->model(FiscalDocument::class), FiscalDocumentRecordActions::make(includeEditAction: true))
                 )->size(Size::ExtraSmall)->icon(Heroicon::Bars3),
             ])
+            ->recordUrl(fn (FiscalDocument $record, $livewire): ?string => $livewire->canUseFiscalDocumentAction($record, 'update')
+                ? FiscalDocumentResource::getUrl('edit', ['record' => $record]) : null)
             ->toolbarActions([
                 CreateAction::make()
+                    ->model(FiscalDocument::class)
                     ->label('Documento Fiscal')
                     ->icon(Heroicon::Plus)
                     ->color('gray')

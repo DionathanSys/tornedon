@@ -397,7 +397,8 @@ final class FiscalDocumentRecordActions
 
         $actions[] = ManageFiscalDocumentIssueAction::make();
         $actions[] = Action::make('reprocessar_estoque')->label('Reprocessar estoque da NF-e')->icon(Heroicon::ArrowPath)->color('warning')->requiresConfirmation()
-            ->visible(fn (FiscalDocument $record): bool => $record->isNfeAuthorized() && $record->hasPendingStockEffect() && app(FiscalDocumentIssueService::class)->canManage(Filament::auth()->user(), $record))
+            ->visible(fn (FiscalDocument $record, $livewire): bool => $record->isNfeAuthorized() && $record->hasPendingStockEffect()
+                && (method_exists($livewire, 'canUseFiscalDocumentAction') ? $livewire->canManageFiscalIssues() : app(FiscalDocumentIssueService::class)->canManage(Filament::auth()->user(), $record)))
             ->modalDescription('Revalida o saldo e tenta concluir os efeitos de estoque pendentes, sem reenviar a nota e sem duplicar saídas já processadas.')
             ->action(function (FiscalDocument $record): void {
                 $record = self::resolveFullRecord($record);
@@ -446,7 +447,8 @@ final class FiscalDocumentRecordActions
                 'delete' => 'delete',
                 default => 'view',
             };
-            $action->authorize(fn (FiscalDocument $record): bool => self::canUse($record, $ability))
+            $action->authorize(fn (FiscalDocument $record, $livewire): bool => method_exists($livewire, 'canUseFiscalDocumentAction')
+                ? $livewire->canUseFiscalDocumentAction($record, $ability) : self::canUse($record, $ability))
                 ->beforeFormFilled(fn (FiscalDocument $record) => abort_unless(self::canUse($record, $ability), 403))
                 ->before(fn (FiscalDocument $record) => abort_unless(self::canUse($record, $ability), 403))
                 ->after(function ($livewire) use ($action): void {

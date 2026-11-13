@@ -10,6 +10,7 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Schemas\FiscalDocument
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Tables\FiscalDocumentsTable;
 use App\Models\FiscalDocument;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -39,12 +40,13 @@ class FiscalDocumentResource extends Resource
     }
 
     /**
-     * Restringe o resource apenas a notas de entrada (operation_type = ENTRADA).
+     * Restringe o resource às notas de saída da empresa atual.
      */
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
             ->with(['taxDetail', 'payload'])
+            ->where('company_id', Filament::getTenant()->id)
             ->where('operation_type', OperationType::SAIDA->value);
     }
 

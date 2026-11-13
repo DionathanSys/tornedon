@@ -7,6 +7,7 @@ use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsPdfAction;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsXmlAction;
+use App\Filament\Support\Concerns\AuthorizesFiscalDocumentListing;
 use App\Models\User;
 use App\Notification\NotifyService as notify;
 use App\Services\Fiscal\NfeConfigService;
@@ -24,28 +25,37 @@ use Illuminate\Support\Facades\Log;
 
 class ListFiscalDocuments extends ListRecords
 {
+    use AuthorizesFiscalDocumentListing;
+
     protected static string $resource = FiscalDocumentResource::class;
 
     public function getTabs(): array
     {
+        $counts = static::getResource()::getEloquentQuery()->withoutEagerLoads()
+            ->select(['nfe_status', 'nfse_status'])->selectRaw('COUNT(*) as total')
+            ->groupBy('nfe_status', 'nfse_status')->get();
+        $count = fn (NfeStatus $status): int => (int) $counts->filter(fn ($record): bool => $record->nfe_status === $status || $record->nfse_status === $status
+            || ($status === NfeStatus::PENDING && $record->nfe_status === null && $record->nfse_status === null)
+        )->sum('total');
+
         return [
             'all' => Tab::make('Todas')
                 ->badgeColor('gray'),
             NfeStatus::QUEUED->value => Tab::make('Na Fila')
                 ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::QUEUED))
-                ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::QUEUED)->count())
+                ->badge($count(NfeStatus::QUEUED))
                 ->badgeColor(NfeStatus::QUEUED->color()),
             NfeStatus::PENDING->value => Tab::make('Pendente')
                 ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::PENDING))
-                ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::PENDING)->count())
+                ->badge($count(NfeStatus::PENDING))
                 ->badgeColor(NfeStatus::PENDING->color()),
             NfeStatus::IN_PROCESSING->value => Tab::make('Em Processamento')
                 ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::IN_PROCESSING))
-                ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::IN_PROCESSING)->count())
+                ->badge($count(NfeStatus::IN_PROCESSING))
                 ->badgeColor(NfeStatus::IN_PROCESSING->color()),
             NfeStatus::REJECTED->value => Tab::make('Rejeitada')
                 ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::REJECTED))
-                ->badge(static::applyFiscalStatusFilter(static::getResource()::getEloquentQuery(), NfeStatus::REJECTED)->count())
+                ->badge($count(NfeStatus::REJECTED))
                 ->badgeColor(NfeStatus::REJECTED->color()),
             NfeStatus::AUTHORIZED->value => Tab::make('Autorizada')
                 ->modifyQueryUsing(fn (Builder $query): Builder => static::applyFiscalStatusFilter($query, NfeStatus::AUTHORIZED)),

@@ -9,6 +9,7 @@ use App\Enum\FiscalDocument\Status;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\FiscalDocumentItemOrigin;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class PurchaseReturnBalanceService
@@ -56,6 +57,19 @@ class PurchaseReturnBalanceService
             ->contains(fn (float $quantity): bool => $quantity > self::EPSILON);
     }
 
+    public function withAvailableBalance(Builder $query): Builder
+    {
+        return $query->withExists(['items as has_available_return_balance' => function (Builder $items): void {
+            $linkedQuantity = $this->activeLinksQuery()
+                ->whereColumn('origin_fiscal_document_item_id', 'fiscal_document_items.id')
+                ->selectRaw('COALESCE(SUM(linked_quantity), 0)')->toBase();
+
+            $items->whereRaw('quantity - ('.$linkedQuantity->toSql().') > CAST(? AS DECIMAL(20,4))', [
+                ...$linkedQuantity->getBindings(), self::EPSILON,
+            ]);
+        }]);
+    }
+
     public function isWithinAvailableBalance(
         FiscalDocumentItem $originItem,
         float $requestedQuantity,
@@ -65,10 +79,10 @@ class PurchaseReturnBalanceService
             && $requestedQuantity <= $this->availableQuantity($originItem, $ignoreReturnDocumentId) + self::EPSILON;
     }
 
-    private function activeLinksQuery(FiscalDocument $originDocument, ?int $ignoreReturnDocumentId = null)
+    private function activeLinksQuery(?FiscalDocument $originDocument = null, ?int $ignoreReturnDocumentId = null): Builder
     {
         return FiscalDocumentItemOrigin::query()
-            ->where('origin_fiscal_document_id', $originDocument->id)
+            ->when($originDocument, fn (Builder $query) => $query->where('origin_fiscal_document_id', $originDocument->id))
             ->when($ignoreReturnDocumentId, function ($query) use ($ignoreReturnDocumentId): void {
                 $query->where('return_fiscal_document_id', '!=', $ignoreReturnDocumentId);
             })

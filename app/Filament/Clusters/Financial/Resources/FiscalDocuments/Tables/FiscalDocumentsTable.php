@@ -6,8 +6,11 @@ use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\CreatePurchaseClosingBulkAction;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Actions\GeneratePurchaseReturnAction;
+use App\Filament\Clusters\Financial\Resources\FiscalDocuments\FiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
+use App\Models\FiscalDocument;
 use App\Notification\NotifyService as notify;
+use App\Services\FiscalDocument\PurchaseReturnBalanceService;
 use App\Services\FiscalDocument\PurchaseReturnFiscalDocumentService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -27,7 +30,16 @@ class FiscalDocumentsTable
 {
     public static function configure(Table $table): Table
     {
+        // Build aggregates once: Filament also resolves this query while rendering each action.
+        $query = FiscalDocumentResource::getEloquentQuery()->select([
+            'id', 'company_id', 'created_by', 'customer_id', 'document_number', 'document_series',
+            'document_type', 'operation_type', 'status', 'canceled', 'issued_at', 'movement_at',
+            'document_key', 'confirmed', 'confirmed_at', 'created_at',
+        ])->without(['taxDetail', 'payload'])->with('customer:id,name')
+            ->withSum('items as items_total', 'total_price');
+
         return $table
+            ->query(app(PurchaseReturnBalanceService::class)->withAvailableBalance($query))
             ->columns([
                 TextColumn::make('document_number')
                     ->label('Número NF')
@@ -114,8 +126,9 @@ class FiscalDocumentsTable
             ])
             ->recordActions([
                 ActionGroup::make([
-                    EditAction::make(),
+                    EditAction::make()->model(FiscalDocument::class)->authorize(fn ($record, $livewire): bool => $livewire->canUseFiscalDocumentAction($record, 'update')),
                     Action::make('generatePurchaseReturn')
+                        ->model(FiscalDocument::class)
                         ->label('Gerar nota de devolução')
                         ->icon('heroicon-o-arrow-uturn-left')
                         ->color('warning')
@@ -138,6 +151,8 @@ class FiscalDocumentsTable
                 ])->icon(Heroicon::Bars3),
 
             ], RecordActionsPosition::BeforeCells)
+            ->recordUrl(fn ($record, $livewire): ?string => $livewire->canUseFiscalDocumentAction($record, 'update')
+                ? FiscalDocumentResource::getUrl('edit', ['record' => $record]) : null)
             ->toolbarActions([
                 BulkActionGroup::make([
                     CreatePurchaseClosingBulkAction::make(),
