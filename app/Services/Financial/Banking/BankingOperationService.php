@@ -140,13 +140,9 @@ final class BankingOperationService
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($charge);
             if ($charge instanceof PixCharge) {
-                $issuance = app(PixChargeIssuanceService::class);
-                $issuance->validateDueDate($charge->installment);
-                if ($localFailure) {
-                    $issuance->syncRegistrationData($charge, $charge->installment);
-                } elseif ($charge->due_date?->lt(today())) {
-                    throw ValidationException::withMessages(['due_date' => ['O vencimento do PIX salvo para reenvio não pode ser anterior a hoje.']]);
-                }
+                // The checks above confirmed rejection or absence at the provider.
+                // Rebuild PIX from the current installment, including overdue snapshots.
+                app(PixChargeIssuanceService::class)->syncRegistrationData($charge, $charge->installment);
             }
             $charge->update([
                 'status' => 'pending_registration', 'operation_status' => 'ready', 'request_sent_at' => null,

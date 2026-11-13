@@ -409,6 +409,91 @@ class PixChargeProcessingTest extends TestCase
         $this->assertSame(PixChargeStatus::REGISTRATION_FAILED, $charge->fresh()->status);
     }
 
+    public function test_uncertain_pix_is_rebuilt_with_current_due_date_after_two_not_found_queries(): void
+    {
+        Queue::fake();
+        $this->authorizeRegistrationRetry();
+        $charge = $this->createUncertainPixWithOldDueDate();
+        $identification = $charge->provider_identification;
+        $client = Mockery::mock(IntegraBancosPixClientInterface::class);
+        $client->shouldReceive('query')->twice()->andReturn([
+            'sucesso' => false, 'codigo' => 12, 'mensagem' => 'Cobrança não encontrada.',
+        ]);
+        $client->shouldReceive('generate')->once()->with(Mockery::on(fn (array $payload): bool => $payload['identificacao'] === $identification
+            && $payload['pagamento']['data_vencimento'] === '2026-11-13'
+            && $payload['pagamento']['valor'] === '424.66'
+        ))->andReturn(['sucesso' => true, 'status' => ['codigo' => '2']]);
+        app()->instance(IntegraBancosPixClientInterface::class, $client);
+        $registry = app(PixProviderRegistry::class);
+
+        (new QueryPixChargeJob($charge->id))->handle($registry);
+        try {
+            app(BankingOperationService::class)->retryRegistration($charge, $this->company->id, $this->user, 'Uma consulta não deve liberar a recuperação.');
+            $this->fail('Não deve reenviar com uma única consulta.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('charge', $exception->errors());
+        }
+        Queue::assertNotPushed(RegisterPixChargeJob::class);
+        $this->assertSame('2026-11-05', $charge->fresh()->request_snapshot['pagamento']['data_vencimento']);
+
+        $this->travel(1)->minutes();
+        (new QueryPixChargeJob($charge->id))->handle($registry);
+        app(BankingOperationService::class)->retryRegistration($charge, $this->company->id, $this->user, 'Ausência confirmada; usar o vencimento atual da parcela.');
+
+        $this->assertNull($charge->fresh()->request_snapshot);
+        $this->assertSame('2026-11-13', $charge->fresh()->due_date->toDateString());
+        Queue::assertPushed(RegisterPixChargeJob::class);
+        (new RegisterPixChargeJob($charge->id))->handle($registry);
+        $this->assertSame(PixChargeStatus::REGISTERED, $charge->fresh()->status);
+        $this->assertDatabaseCount('pix_charges', 1);
+    }
+
+    public function test_confirmed_absence_does_not_allow_recovery_when_the_installment_is_overdue(): void
+    {
+        Queue::fake();
+        $this->authorizeRegistrationRetry();
+        $charge = $this->createUncertainPixWithOldDueDate();
+        $client = Mockery::mock(IntegraBancosPixClientInterface::class);
+        $client->shouldReceive('query')->twice()->andReturn([
+            'sucesso' => false, 'codigo' => 12, 'mensagem' => 'Cobrança não encontrada.',
+        ]);
+        app()->instance(IntegraBancosPixClientInterface::class, $client);
+        $registry = app(PixProviderRegistry::class);
+        (new QueryPixChargeJob($charge->id))->handle($registry);
+        $this->travel(1)->minutes();
+        (new QueryPixChargeJob($charge->id))->handle($registry);
+        $this->installment->update(['due_date' => '2026-11-12']);
+
+        try {
+            app(BankingOperationService::class)->retryRegistration($charge, $this->company->id, $this->user, 'Ausência confirmada, porém parcela ainda vencida.');
+            $this->fail('Não deve recuperar PIX com parcela vencida.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('due_date', $exception->errors());
+        }
+
+        $this->assertSame(PixChargeStatus::UNCERTAIN, $charge->fresh()->status);
+        $this->assertSame('2026-11-05', $charge->fresh()->request_snapshot['pagamento']['data_vencimento']);
+        Queue::assertNotPushed(RegisterPixChargeJob::class);
+    }
+
+    private function createUncertainPixWithOldDueDate(): PixCharge
+    {
+        $charge = app(PixChargeIssuanceService::class)->preparePixCharge($this->installment);
+        $this->travelTo(Carbon::parse('2026-11-13 12:00:00'));
+        $charge->update([
+            'status' => PixChargeStatus::UNCERTAIN, 'operation_status' => 'uncertain',
+            'operation_kind' => 'register', 'request_sent_at' => now()->subMinutes(10),
+            'due_date' => '2026-11-05',
+            'request_snapshot' => [
+                'identificacao' => $charge->provider_identification,
+                'pagamento' => ['data_vencimento' => '2026-11-05', 'valor' => '100.00'],
+            ],
+        ]);
+        $this->installment->update(['due_date' => '2026-11-13', 'balance_amount' => 424.66]);
+
+        return $charge;
+    }
+
     private function authorizeRegistrationRetry(): void
     {
         $this->user->companies()->attach($this->company, ['role' => 'member', 'is_active' => true]);

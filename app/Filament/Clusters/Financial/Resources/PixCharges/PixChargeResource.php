@@ -144,6 +144,7 @@ class PixChargeResource extends Resource
                     }),
                 Action::make('retry_registration')
                     ->label('Tentar registro novamente')
+                    ->modalDescription('Para resultado incerto, aguarde cinco minutos após a emissão e use "Consultar no provider" duas vezes, com intervalo mínimo de um minuto. Se ambas confirmarem que a cobrança não existe, o reenvio usará o valor e o vencimento atuais da parcela, que deve vencer hoje ou em data futura.')
                     ->icon(Heroicon::ArrowPath)
                     ->color('warning')
                     ->visible(fn (PixCharge $record): bool => ! $record->trashed() && in_array($record->status, [
