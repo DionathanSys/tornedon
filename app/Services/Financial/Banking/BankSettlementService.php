@@ -27,7 +27,8 @@ final class BankSettlementService
         $field = $charge instanceof BankSlip ? 'bank_slip_id' : 'pix_charge_id';
         $accountId = (int) ($charge->financial_account_id ?? $charge->connection->financial_account_id);
         $isWebhook = $event->source === 'webhook';
-        $amount = $isWebhook ? ($body['valor'] ?? null) : (data_get($body, 'dados.valor') ?? data_get($body, 'data.valor') ?? $body['valor'] ?? null);
+        $amount = $isWebhook ? ($body['valor'] ?? null) : (IntegraBancosResponse::paidAmount($body)
+            ?? data_get($body, 'dados.valor') ?? data_get($body, 'data.valor') ?? $body['valor'] ?? null);
         $dateValue = $isWebhook ? ($body['data_hora'] ?? null) : IntegraBancosResponse::paymentDate($body);
         $date = IntegraBancosResponse::date($dateValue);
         if (! is_numeric($amount) || (float) $amount <= 0 || ! $date) {

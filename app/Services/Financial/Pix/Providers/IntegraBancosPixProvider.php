@@ -156,7 +156,8 @@ final class IntegraBancosPixProvider implements PixProviderInterface
 
     private function responseAmount(array $payload): ?float
     {
-        $amount = data_get($payload, 'valor')
+        $amount = IntegraBancosResponse::paidAmount($payload)
+            ?? data_get($payload, 'valor')
             ?? data_get($payload, 'pagamento.valor')
             ?? data_get($payload, 'dados.valor')
             ?? data_get($payload, 'dados.pagamento.valor')

@@ -55,6 +55,11 @@ final class IntegraBancosResponse
         return data_get($payload, 'dados.data_pagamento') ?? data_get($payload, 'data.data_pagamento') ?? $payload['data_pagamento'] ?? null;
     }
 
+    public static function paidAmount(array $payload): mixed
+    {
+        return data_get($payload, 'dados.valor_pago') ?? data_get($payload, 'data.valor_pago') ?? $payload['valor_pago'] ?? null;
+    }
+
     private static function text(mixed $value): ?string
     {
         return is_scalar($value) && (string) $value !== '' ? (string) $value : null;

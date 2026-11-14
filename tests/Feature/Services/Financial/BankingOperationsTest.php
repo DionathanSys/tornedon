@@ -135,6 +135,45 @@ class BankingOperationsTest extends TestCase
         return app(BankingEventService::class)->observe($charge ?? $this->slip, $result, $operation, $source);
     }
 
+    public function test_pix_query_uses_paid_amount_and_requires_explicit_resolution_of_the_difference(): void
+    {
+        $charge = $this->pix();
+        $body = $this->paid();
+        $body['dados']['valor_pago'] = 99.14;
+        $event = $this->observe($body, charge: $charge);
+
+        $this->assertSame('needs_review', $charge->fresh()->status->value);
+        $this->assertSame('needs_review', $event->status);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+
+        app(BankingResolutionService::class)->confirmPayment($event, $this->company->id, $this->user, [
+            'amount' => 99.14, 'discount_amount' => 0.86, 'payment_date' => '2026-10-01',
+            'reason' => 'Diferença concedida como desconto após conferência do Pix recebido.',
+        ]);
+
+        $payment = $charge->installment->payments()->sole();
+        $this->assertSame(99.14, (float) $payment->amount);
+        $this->assertSame(0.86, (float) $payment->discount_amount);
+        $this->assertSame(0.0, $charge->installment->fresh()->balance_amount);
+        $this->assertSame('paid', $charge->fresh()->status->value);
+        $this->assertSame('resolved', $event->fresh()->status);
+
+        $this->observe($body, charge: $charge);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 1);
+    }
+
+    public function test_pix_query_does_not_use_nominal_amount_when_reported_paid_amount_is_zero(): void
+    {
+        $charge = $this->pix();
+        $body = $this->paid();
+        $body['dados']['valor_pago'] = 0;
+
+        $event = $this->observe($body, charge: $charge);
+
+        $this->assertSame('needs_review', $event->status);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+    }
+
     private function paid(): array
     {
         return ['sucesso' => true, 'codigo' => 10, 'dados' => ['valor' => 100, 'data_pagamento' => '01/10/2026', 'status' => ['codigo' => 3]]];
