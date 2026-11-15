@@ -8,6 +8,10 @@ use App\Enum\Payment\Method;
 use App\Enum\ServiceOrder\State;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\EditInvoice;
 use App\Filament\Clusters\Financial\Resources\Invoices\Widgets\InvoicesStatsOverview;
+use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\EditRequisition;
+use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\ItemsRelationManager as RequisitionItemsRelationManager;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ItemsRelationManager as ServiceOrderItemsRelationManager;
 use App\Filament\Pages\ProductProfitReport;
 use App\Models\FinancialCategory;
 use App\Models\Invoice;
@@ -231,6 +235,20 @@ class InvoiceDiscountTest extends TestCase
         $this->assertSame(20.0, $row['invoice_discount_amount']);
         $this->assertSame(180.0, $productItem->fresh()->total_amount);
         $this->assertSame(160.0, $requisition->fresh()->invoiced_net_amount);
+
+        Livewire::test(RequisitionItemsRelationManager::class, [
+            'ownerRecord' => $requisition,
+            'pageClass' => EditRequisition::class,
+        ])->assertSuccessful()
+            ->assertTableColumnSummarySet('gross_amount', 'gross_amount', 20000)
+            ->assertTableColumnSummarySet('invoiced_net_amount', 'invoiced_net_amount', 16000);
+
+        Livewire::test(ServiceOrderItemsRelationManager::class, [
+            'ownerRecord' => $order,
+            'pageClass' => EditServiceOrder::class,
+        ])->assertSuccessful()
+            ->assertTableColumnSummarySet('gross_amount', 'gross_amount', 100000)
+            ->assertTableColumnSummarySet('invoiced_net_amount', 'invoiced_net_amount', 82000);
 
         $widget = new InvoicesStatsOverview;
         $method = new \ReflectionMethod($widget, 'resolveTotals');

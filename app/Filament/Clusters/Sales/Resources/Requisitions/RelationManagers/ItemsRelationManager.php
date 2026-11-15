@@ -9,6 +9,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +61,7 @@ class ItemsRelationManager extends RelationManager
                     ->state(fn ($record): float => round(((float) ($record->quantity ?? 0)) * ((float) ($record->unit_price ?? 0)), 2))
                     ->money('BRL')
                     ->summarize(
-                        Sum::make('gross_amount')
+                        Summarizer::make('gross_amount')
                             ->label('TT Bruto')
                             ->using(fn ($query): float => (float) $query->sum(DB::raw('quantity * unit_price')))
                             ->money('BRL', 100)
@@ -88,7 +89,7 @@ class ItemsRelationManager extends RelationManager
                 TextColumn::make('invoice_discount_amount')->label('Desc. fechamento')->money('BRL')
                     ->summarize(Sum::make()->money('BRL', 100)),
                 TextColumn::make('invoiced_net_amount')->label('Líquido após fechamento')->money('BRL')
-                    ->summarize(Sum::make()->using(fn ($query) => $query->sum(DB::raw('total_amount - invoice_discount_amount')))->money('BRL', 100)),
+                    ->summarize(Summarizer::make('invoiced_net_amount')->using(fn ($query) => $query->sum(DB::raw('total_amount - invoice_discount_amount')))->money('BRL', 100)),
                 IconColumn::make('stock_consumed')
                     ->label('Estoque Consumido')
                     ->boolean()
