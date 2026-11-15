@@ -129,10 +129,13 @@ class InvoiceForm
                             ->tooltip(fn (?Invoice $record): string => 'Total líquido das requisições vinculadas.')
                             ->columnSpan(['md' => 2]),
                         TextEntry::make('discount_amount')
-                            ->label('Desconto')
+                            ->label('Descontos totais')
                             ->money('BRL')
                             ->tooltip(fn (?Invoice $record): string => 'Total de descontos da fatura.')
                             ->columnSpan(['md' => 2]),
+                        TextEntry::make('invoice_discount_amount')->label('Desconto de fechamento')->money('BRL')->columnSpan(['md' => 2]),
+                        TextEntry::make('sale_discount_amount')->label('Desconto da venda')->money('BRL')->columnSpan(['md' => 2]),
+                        TextEntry::make('invoice_discount_reason')->label('Motivo do desconto')->columnSpan(['md' => 2]),
                         TextEntry::make('total_amount')
                             ->label('Valor Total')
                             ->money('BRL')

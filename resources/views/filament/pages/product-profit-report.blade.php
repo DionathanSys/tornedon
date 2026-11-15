@@ -21,7 +21,7 @@
             <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
                 <div class="text-sm text-gray-500 dark:text-gray-400">Valor vendido</div>
                 <div class="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">{{ $this->money($summary['sold_amount']) }}</div>
-                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bruto: {{ $this->money($summary['gross_amount']) }}</div>
+                <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">Bruto: {{ $this->money($summary['gross_amount']) }} | Desc. venda: {{ $this->money($summary['sale_discount_amount']) }} | Desc. fechamento: {{ $this->money($summary['invoice_discount_amount']) }}</div>
             </div>
 
             <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-white/5">
@@ -60,7 +60,7 @@
         <div class="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
             <div class="border-b border-gray-200 px-4 py-3 dark:border-white/10">
                 <h2 class="text-base font-semibold text-gray-950 dark:text-white">Margem por produto</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Agrupamento por produto e unidade de venda.</p>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Agrupamento por produto e unidade de venda. Valores líquidos consideram descontos da venda e do fechamento; descontos no recebimento pertencem ao financeiro.</p>
             </div>
 
             <div class="overflow-x-auto">
@@ -90,7 +90,7 @@
                                 <td class="px-4 py-3 text-center text-sm text-gray-700 dark:text-gray-300">{{ $row['unit_of_measure'] }}</td>
                                 <td class="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300">{{ $this->decimal($row['quantity'], 3) }}</td>
                                 <td class="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300">{{ number_format($row['sales_count'], 0, ',', '.') }}</td>
-                                <td class="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300">{{ $this->money($row['sold_amount']) }}</td>
+                                <td class="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300">{{ $this->money($row['sold_amount']) }}<div class="text-xs">Desc. venda: {{ $this->money($row['sale_discount_amount']) }}<br>Desc. fechamento: {{ $this->money($row['invoice_discount_amount']) }}</div></td>
                                 <td class="px-4 py-3 text-right text-sm text-gray-700 dark:text-gray-300">{{ $this->money($row['cost_amount']) }}</td>
                                 <td @class([
                                     'px-4 py-3 text-right text-sm font-medium',

@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enum\Requisition\Status;
 use App\Filament\Clusters\Financial\FinancialReportsCluster;
+use App\Filament\Concerns\AuthorizesCompanyPermission;
 use App\Models\Product;
 use BackedEnum;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -22,8 +23,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductProfitReport extends Page implements Forms\Contracts\HasForms
 {
+    use AuthorizesCompanyPermission;
     use Forms\Concerns\InteractsWithForms;
-    use \App\Filament\Concerns\AuthorizesCompanyPermission;
 
     protected static function rolePagePermission(): string
     {
@@ -117,6 +118,8 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
                 'quantity' => round((float) $row->quantity, 3),
                 'gross_amount' => $grossAmount,
                 'discount_amount' => $discountAmount,
+                'invoice_discount_amount' => round((float) $row->invoice_discount_amount / 100, 2),
+                'sale_discount_amount' => round($discountAmount - (float) $row->invoice_discount_amount / 100, 2),
                 'sold_amount' => $soldAmount,
                 'cost_amount' => $costAmount,
                 'profit_amount' => $profitAmount,
@@ -139,6 +142,8 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
             'quantity' => round((float) $rows->sum('quantity'), 3),
             'gross_amount' => round((float) $rows->sum('gross_amount'), 2),
             'discount_amount' => round((float) $rows->sum('discount_amount'), 2),
+            'invoice_discount_amount' => round((float) $rows->sum('invoice_discount_amount'), 2),
+            'sale_discount_amount' => round((float) $rows->sum('sale_discount_amount'), 2),
             'sold_amount' => $soldAmount,
             'cost_amount' => $costAmount,
             'profit_amount' => $profitAmount,
@@ -234,7 +239,7 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
             ->when(filled($filters['date_to'] ?? null), fn ($query) => $query->whereDate('requisitions.sale_date', '<=', $filters['date_to']))
             ->when(filled($filters['product_id'] ?? null), fn ($query) => $query->where('requisition_items.product_id', (int) $filters['product_id']))
             ->groupBy('requisition_items.product_id', 'products.product_code', 'products.name', 'requisition_items.unit_of_measure')
-            ->orderByDesc(DB::raw('SUM(requisition_items.total_amount) - SUM(requisition_items.quantity * COALESCE(requisition_items.unit_cost, 0))'))
+            ->orderByDesc(DB::raw('SUM(requisition_items.total_amount - requisition_items.invoice_discount_amount) - SUM(requisition_items.quantity * COALESCE(requisition_items.unit_cost, 0))'))
             ->get([
                 'requisition_items.product_id',
                 'products.product_code',
@@ -243,8 +248,9 @@ class ProductProfitReport extends Page implements Forms\Contracts\HasForms
                 DB::raw('COUNT(DISTINCT requisitions.id) as sales_count'),
                 DB::raw('COALESCE(SUM(requisition_items.quantity), 0) as quantity'),
                 DB::raw('COALESCE(SUM(requisition_items.gross_amount), 0) as gross_amount'),
-                DB::raw('COALESCE(SUM(requisition_items.discount_amount), 0) as discount_amount'),
-                DB::raw('COALESCE(SUM(requisition_items.total_amount), 0) as sold_amount'),
+                DB::raw('COALESCE(SUM(requisition_items.discount_amount + requisition_items.invoice_discount_amount), 0) as discount_amount'),
+                DB::raw('COALESCE(SUM(requisition_items.invoice_discount_amount), 0) as invoice_discount_amount'),
+                DB::raw('COALESCE(SUM(requisition_items.total_amount - requisition_items.invoice_discount_amount), 0) as sold_amount'),
                 DB::raw('COALESCE(SUM(requisition_items.quantity * COALESCE(requisition_items.unit_cost, 0)), 0) as cost_amount'),
                 DB::raw('SUM(CASE WHEN requisition_items.unit_cost IS NULL OR requisition_items.unit_cost <= 0 THEN 1 ELSE 0 END) as missing_cost_items'),
             ]);

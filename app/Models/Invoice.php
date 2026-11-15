@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\MoneyCast;
 use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\Invoice\CancellationReason;
 use App\Enum\Invoice\Status;
@@ -42,6 +43,9 @@ class Invoice extends Model
             }
         });
         static::updating(function (self $invoice): void {
+            if ($invoice->getRawOriginal('status') !== Status::PENDING->value && $invoice->isDirty(['invoice_discount_amount', 'invoice_discount_reason', 'invoice_discount_signature'])) {
+                throw new \RuntimeException('O desconto de fechamento só pode ser alterado em uma fatura pendente.');
+            }
             if ($invoice->getRawOriginal('status') === Status::CANCELLED->value && $invoice->isDirty('status')) {
                 throw new \RuntimeException('Uma fatura cancelada não pode ser reaberta.');
             }
@@ -70,6 +74,9 @@ class Invoice extends Model
     }
 
     protected $fillable = [
+        'invoice_discount_amount',
+        'invoice_discount_reason',
+        'invoice_discount_signature',
         'financial_policy',
         'customer_id',
         'company_id',
@@ -95,6 +102,7 @@ class Invoice extends Model
     ];
 
     protected $casts = [
+        'invoice_discount_amount' => MoneyCast::class,
         'status' => Status::class,
         'cancellation_reason' => CancellationReason::class,
         'invoice_date' => 'date',
@@ -305,6 +313,11 @@ class Invoice extends Model
         );
     }
 
+    protected function saleDiscountAmount(): Attribute
+    {
+        return Attribute::get(fn (): float => $this->resolveAmounts()['sale_discount_amount'] ?? $this->discount_amount);
+    }
+
     public function netValue(): Attribute
     {
         return Attribute::make(
@@ -330,7 +343,7 @@ class Invoice extends Model
         $aggregate = static fn (string $source, string $items, string $foreignKey) => DB::table($source)
             ->join($items, $items.'.'.$foreignKey, '=', $source.'.id')
             ->whereIn($source.'.invoice_id', $ids)->whereIn($source.'.company_id', $companies)
-            ->selectRaw($source.'.invoice_id, COALESCE(SUM('.$items.'.gross_amount), 0) as gross_amount, COALESCE(SUM('.$items.'.discount_amount), 0) as discount_amount, COALESCE(SUM('.$items.'.total_amount), 0) as total_amount')
+            ->selectRaw($source.'.invoice_id, COALESCE(SUM('.$items.'.invoice_discount_amount), 0) as invoice_discount_amount, COALESCE(SUM('.$items.'.gross_amount), 0) as gross_amount, COALESCE(SUM('.$items.'.discount_amount), 0) as discount_amount, COALESCE(SUM('.$items.'.total_amount), 0) as total_amount')
             ->groupBy($source.'.invoice_id')->get()->keyBy('invoice_id');
         $services = $aggregate('service_orders', 'service_order_items', 'service_order_id');
         $products = $aggregate('requisitions', 'requisition_items', 'requisition_id');
@@ -346,6 +359,10 @@ class Invoice extends Model
             $invoice->resolvedAmounts = ['gross_amount' => round(((float) ($service->gross_amount ?? 0) + $travelAmount + (float) ($product->gross_amount ?? 0)) / 100, 2),
                 'discount_amount' => round(((float) ($service->discount_amount ?? 0) + (float) ($product->discount_amount ?? 0)) / 100, 2),
                 'services_amount' => $serviceAmount, 'products_amount' => $productAmount, 'total_amount' => $total, 'net_value' => $total];
+            $invoice->resolvedAmounts = $invoice->applyInvoiceDiscount($invoice->resolvedAmounts, [
+                'services_amount' => (float) ($service->invoice_discount_amount ?? 0) / 100,
+                'products_amount' => (float) ($product->invoice_discount_amount ?? 0) / 100,
+            ]);
         }
     }
 
@@ -394,14 +411,14 @@ class Invoice extends Model
             );
             $totalAmount = round($servicesAmount + $productsAmount, 2);
 
-            return $this->resolvedAmounts = [
+            return $this->resolvedAmounts = $this->applyInvoiceDiscount([
                 'gross_amount' => $grossAmount,
                 'services_amount' => $servicesAmount,
                 'products_amount' => $productsAmount,
                 'discount_amount' => $discountAmount,
                 'total_amount' => $totalAmount,
                 'net_value' => $totalAmount,
-            ];
+            ]);
         }
 
         // Os itens estão em centavos, enquanto travel_value é armazenado em reais.
@@ -455,14 +472,31 @@ class Invoice extends Model
         );
         $totalAmount = round($servicesAmount + $productsAmount, 2);
 
-        return $this->resolvedAmounts = [
+        return $this->resolvedAmounts = $this->applyInvoiceDiscount([
             'gross_amount' => $grossAmount,
             'services_amount' => $servicesAmount,
             'products_amount' => $productsAmount,
             'discount_amount' => $discountAmount,
             'total_amount' => $totalAmount,
             'net_value' => $totalAmount,
-        ];
+        ]);
+    }
+
+    private function applyInvoiceDiscount(array $amounts, ?array $discounts = null): array
+    {
+        $amounts['sale_discount_amount'] = $amounts['discount_amount'];
+        foreach (['serviceOrders' => 'services_amount', 'requisitions' => 'products_amount'] as $relation => $key) {
+            $source = $relation === 'serviceOrders' ? 'service_orders' : 'requisitions';
+            $items = $relation === 'serviceOrders' ? 'service_order_items' : 'requisition_items';
+            $foreignKey = $relation === 'serviceOrders' ? 'service_order_id' : 'requisition_id';
+            $discount = $discounts[$key] ?? (float) DB::table($items)->join($source, $source.'.id', '=', $items.'.'.$foreignKey)
+                ->where($source.'.invoice_id', $this->id)->where($source.'.company_id', $this->company_id)->sum($items.'.invoice_discount_amount') / 100;
+            $amounts[$key] = round($amounts[$key] - $discount, 2);
+            $amounts['discount_amount'] = round($amounts['discount_amount'] + $discount, 2);
+        }
+        $amounts['total_amount'] = $amounts['net_value'] = round($amounts['services_amount'] + $amounts['products_amount'], 2);
+
+        return $amounts;
     }
 
     public function refresh()

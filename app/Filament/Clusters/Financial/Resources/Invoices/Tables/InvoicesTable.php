@@ -4,8 +4,8 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Tables;
 
 use App\Enum\Invoice\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInvoicePdfAction;
-use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesPdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ExportSelectedInvoicesPdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\SendInvoiceEmailAction;
 use App\Models\Invoice;
@@ -59,17 +59,18 @@ class InvoicesTable
                 TextColumn::make('gross_amount')
                     ->label('Valor Bruto')
                     ->state(fn (Invoice $record): float => (float) $record->gross_amount)
-                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('invoice_discount_amount')->label('Desc. fechamento')->money('BRL')->toggleable(),
                 TextColumn::make('discount_amount')
                     ->label('Desconto')
                     ->state(fn (Invoice $record): float => (float) $record->discount_amount)
-                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('net_value')
                     ->label('Valor Líquido')
                     ->state(fn (Invoice $record): float => (float) $record->net_value)
-                    ->formatStateUsing(fn ($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('createdBy.name')
                     ->label('Criado por')
@@ -114,7 +115,7 @@ class InvoicesTable
 
                             if ($service->hasError()) {
                                 Log::error($service->getMessage(), [
-                                    'metodo' => __METHOD__ . '@' . __LINE__,
+                                    'metodo' => __METHOD__.'@'.__LINE__,
                                     'message' => $service->getMessage(),
                                     'error_code' => $service->getErrorCode(),
                                     'errors' => $service->getErrors(),

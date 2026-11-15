@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Models\Concerns\HasInvoiceDiscount;
 use App\Models\Concerns\ProtectsInvoicedItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ServiceOrderItem extends Model
 {
+    use HasInvoiceDiscount;
     use ProtectsInvoicedItem;
 
     protected $fillable = [
@@ -19,6 +21,8 @@ class ServiceOrderItem extends Model
         'unit_cost',
         'discount_percentage',
         'discount_amount',
+        'invoice_discount_amount',
+        'invoice_discount_share_percentage',
         'observations',
         'additional_info',
         'created_by',
@@ -29,6 +33,8 @@ class ServiceOrderItem extends Model
         'unit_price' => MoneyCast::class,
         'unit_cost' => MoneyCast::class,
         'discount_amount' => MoneyCast::class,
+        'invoice_discount_amount' => MoneyCast::class,
+        'invoice_discount_share_percentage' => 'decimal:6',
         'gross_amount' => MoneyCast::class,
         'total_amount' => MoneyCast::class,
         'additional_info' => 'array',

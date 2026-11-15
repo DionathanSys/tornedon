@@ -24,6 +24,7 @@ class ServiceOrderPdfDataFormatter
             2
         );
         $grandTotal = round((float) $serviceOrder->grand_total_amount, 2);
+        $invoiceDiscount = round($serviceOrder->invoice_discount_amount + ($requisition?->invoice_discount_amount ?? 0), 2);
 
         $additionalInfoLabels = [
             'accessories' => 'Acessorios entregues',
@@ -72,6 +73,8 @@ class ServiceOrderPdfDataFormatter
                 ? ['label' => 'Desconto total', 'value' => $this->formatMoney($discountTotal)]
                 : null,
             ['label' => 'Valor total', 'value' => $this->formatMoney($grandTotal)],
+            $invoiceDiscount > 0 ? ['label' => 'Desconto de fechamento', 'value' => $this->formatMoney($invoiceDiscount)] : null,
+            $invoiceDiscount > 0 ? ['label' => 'Líquido após fechamento', 'value' => $this->formatMoney($grandTotal - $invoiceDiscount)] : null,
         ])->filter()->values()->all();
 
         $items = $serviceOrder->items->map(fn ($item) => [

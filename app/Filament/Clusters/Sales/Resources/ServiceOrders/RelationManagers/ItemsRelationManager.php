@@ -53,7 +53,7 @@ class ItemsRelationManager extends RelationManager
                     )
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
-                    ->label('Valor Líquido')
+                    ->label('Líquido da venda')
                     ->width('1%')
                     ->money('BRL', true)
                     ->summarize(Sum::make('total_amount')->label('Líquido')->money('BRL', 100))
@@ -68,6 +68,10 @@ class ItemsRelationManager extends RelationManager
                     ->money('BRL', true)
                     ->summarize(Sum::make('discount_amount')->label('Desc.')->money('BRL', 100))
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('invoice_discount_amount')->label('Desc. fechamento')->money('BRL')
+                    ->summarize(Sum::make()->money('BRL', 100)),
+                TextColumn::make('invoiced_net_amount')->label('Líquido após fechamento')->money('BRL')
+                    ->summarize(Sum::make()->using(fn ($query) => $query->sum(DB::raw('total_amount - invoice_discount_amount')))->money('BRL', 100)),
                 TextColumn::make('observations')
                     ->label('Observações')
                     ->placeholder('Sem observações')
@@ -102,7 +106,7 @@ class ItemsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                
+
             ])
             ->recordActions([
                 EditItemAction::make(),

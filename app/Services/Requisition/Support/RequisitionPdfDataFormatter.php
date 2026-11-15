@@ -3,6 +3,7 @@
 namespace App\Services\Requisition\Support;
 
 use App\Models\Requisition;
+use App\Support\Financial\PaymentTerms;
 use Illuminate\Support\Facades\Storage;
 
 class RequisitionPdfDataFormatter
@@ -53,6 +54,8 @@ class RequisitionPdfDataFormatter
                 ? ['label' => 'Desconto total', 'value' => $this->formatMoney($requisition->discount_amount)]
                 : null,
             ['label' => 'Valor total', 'value' => $this->formatMoney($requisition->total_amount)],
+            $requisition->invoice_discount_amount > 0 ? ['label' => 'Desconto de fechamento', 'value' => $this->formatMoney($requisition->invoice_discount_amount)] : null,
+            $requisition->invoice_discount_amount > 0 ? ['label' => 'Líquido após fechamento', 'value' => $this->formatMoney($requisition->invoiced_net_amount)] : null,
         ])->filter()->values()->all();
 
         $paymentMode = null;
@@ -60,7 +63,7 @@ class RequisitionPdfDataFormatter
         if ($requisition->payment_method || $requisition->payment_condition) {
             $paymentMode = ($requisition->payment_method?->description() ?? 'N/A')
                 .' - '
-                .\App\Support\Financial\PaymentTerms::description($requisition->payment_condition, $requisition->payment_condition_details);
+                .PaymentTerms::description($requisition->payment_condition, $requisition->payment_condition_details);
         }
 
         return [

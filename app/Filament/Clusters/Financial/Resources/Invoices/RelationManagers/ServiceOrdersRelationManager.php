@@ -133,13 +133,15 @@ class ServiceOrdersRelationManager extends RelationManager
                     ->placeholder('Sem Orçamento')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
-                    ->label('Valor Total')
+                    ->label('Líquido da venda')
                     ->money('BRL')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('discount_amount')
                     ->label('Valor do Desc. (R$)')
                     ->money('BRL')
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('invoice_discount_amount')->label('Desc. fechamento')->money('BRL'),
+                TextColumn::make('invoiced_net_amount')->label('Líquido faturado')->money('BRL'),
                 TextColumn::make('order_date')
                     ->label('Dt. Ordem')
                     ->date('d/m/Y')

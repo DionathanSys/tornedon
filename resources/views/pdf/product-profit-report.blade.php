@@ -133,7 +133,7 @@
                 <td class="text-center">{{ $row['unit_of_measure'] }}</td>
                 <td class="text-right">{{ $decimal($row['quantity'], 3) }}</td>
                 <td class="text-right">{{ number_format($row['sales_count'], 0, ',', '.') }}</td>
-                <td class="text-right">{{ $money($row['sold_amount']) }}</td>
+                <td class="text-right">{{ $money($row['sold_amount']) }}<br>Desc. venda: {{ $money($row['sale_discount_amount']) }}<br>Desc. fechamento: {{ $money($row['invoice_discount_amount']) }}</td>
                 <td class="text-right">{{ $money($row['cost_amount']) }}</td>
                 <td class="text-right {{ $row['profit_amount'] >= 0 ? 'positive' : 'negative' }}">{{ $money($row['profit_amount']) }}</td>
                 <td class="text-right {{ $row['margin_percent'] >= 0 ? 'positive' : 'negative' }}">{{ $decimal($row['margin_percent']) }}%</td>

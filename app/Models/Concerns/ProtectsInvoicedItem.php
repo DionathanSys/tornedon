@@ -26,6 +26,12 @@ trait ProtectsInvoicedItem
             }
         };
         static::saving(function ($item) use ($check): void {
+            if ($item->isDirty(['invoice_discount_amount', 'invoice_discount_share_percentage'])) {
+                $source = $item instanceof RequisitionItem ? $item->requisition()->first() : $item->serviceOrder()->first();
+                if (! $source?->invoice_id || Invoice::whereKey($source->invoice_id)->where('status', '!=', Status::PENDING->value)->exists()) {
+                    throw ValidationException::withMessages(['invoice_discount_amount' => 'O desconto de fechamento exige uma fatura pendente.']);
+                }
+            }
             if (! $item->exists || $item->isDirty(['requisition_id', 'service_order_id', 'product_id', 'service_id', 'quantity', 'unit_price', 'discount_amount', 'discount_percentage', 'unit_of_measure', 'quantity_in_base_unit', 'conversion_factor_snapshot'])) {
                 $check($item);
             }

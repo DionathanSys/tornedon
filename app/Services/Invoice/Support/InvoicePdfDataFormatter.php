@@ -18,6 +18,8 @@ class InvoicePdfDataFormatter
         ];
 
         $summaryLines = collect([
+            ['label' => 'Desconto na venda', 'value' => $this->formatMoney($invoice->sale_discount_amount)],
+            ['label' => 'Desconto de fechamento', 'value' => $this->formatMoney($invoice->invoice_discount_amount ?? 0)],
             $invoice->discount_amount > 0
                 ? ['label' => 'Desconto total', 'value' => $this->formatMoney($invoice->discount_amount)]
                 : null,
@@ -52,7 +54,7 @@ class InvoicePdfDataFormatter
                 'items' => $serviceOrder->items->map(function ($item) {
                     return ($item->service?->name ?? '-').' ('.$this->formatQuantity($item->quantity).')';
                 })->all(),
-                'total' => $this->formatMoney($serviceOrder->total_amount),
+                'total' => $this->formatMoney($serviceOrder->total_amount - $serviceOrder->items->sum('invoice_discount_amount')),
             ];
         })->all();
 
@@ -63,7 +65,7 @@ class InvoicePdfDataFormatter
                 'items' => $requisition->items->map(function ($item) {
                     return ($item->product?->name ?? '-').' ('.$this->formatQuantity($item->quantity).')';
                 })->all(),
-                'total' => $this->formatMoney($requisition->total_amount),
+                'total' => $this->formatMoney($requisition->total_amount - $requisition->items->sum('invoice_discount_amount')),
             ];
         })->all();
 
@@ -103,7 +105,7 @@ class InvoicePdfDataFormatter
                     'number' => '#'.$source->source_number,
                     'status' => $snapshot['status'] ?? '-',
                     'items' => array_map(fn (array $item): string => $item['description'].' ('.$this->formatQuantity($item['quantity']).')', $snapshot['items']),
-                    'total' => $this->formatMoney($snapshot['total_amount'] / 100),
+                    'total' => $this->formatMoney(($snapshot['invoiced_net_amount'] ?? $snapshot['total_amount']) / 100),
                 ];
             }
             $serviceOrders = $groups['service_order'];

@@ -60,10 +60,10 @@ class SalesReportingService
         // of re-running the entire filtered sales query for each count and monetary component.
         $orders->select('service_orders.id', 'travel_value')
             ->selectSub(ServiceOrderItem::withoutGlobalScope(RoleRecordScope::class)
-                ->whereColumn('service_order_id', 'service_orders.id')->selectRaw('COALESCE(SUM(total_amount), 0)'), 'items_amount');
+                ->whereColumn('service_order_id', 'service_orders.id')->selectRaw('COALESCE(SUM(total_amount - invoice_discount_amount), 0)'), 'items_amount');
         $requisitions->select('requisitions.id')
             ->selectSub(RequisitionItem::withoutGlobalScope(RoleRecordScope::class)
-                ->whereColumn('requisition_id', 'requisitions.id')->selectRaw('COALESCE(SUM(total_amount), 0)'), 'items_amount');
+                ->whereColumn('requisition_id', 'requisitions.id')->selectRaw('COALESCE(SUM(total_amount - invoice_discount_amount), 0)'), 'items_amount');
         $totals = $sales->reorder()->toBase()
             ->leftJoinSub($orders->toBase(), 'sale_services', 'sale_services.id', '=', 'bpo_sales.service_order_id')
             ->leftJoinSub($requisitions->toBase(), 'sale_products', 'sale_products.id', '=', 'bpo_sales.requisition_id')

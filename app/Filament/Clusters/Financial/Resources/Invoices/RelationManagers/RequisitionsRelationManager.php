@@ -106,9 +106,11 @@ class RequisitionsRelationManager extends RelationManager
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
-                    ->label('Valor Total')
+                    ->label('Líquido da venda')
                     ->money('BRL')
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('invoice_discount_amount')->label('Desc. fechamento')->money('BRL'),
+                TextColumn::make('invoiced_net_amount')->label('Líquido faturado')->money('BRL'),
                 TextColumn::make('sale_date')
                     ->label('Dt. da Venda')
                     ->date('d/m/Y')

@@ -20,6 +20,8 @@ final class ExportSelectedInvoicesAction
     public const NUMERIC_COLUMNS = [
         'gross_amount',
         'discount_amount',
+        'invoice_discount_amount',
+        'sale_discount_amount',
         'net_value',
     ];
 
@@ -161,6 +163,8 @@ final class ExportSelectedInvoicesAction
             'status' => ['label' => 'Status', 'default' => true],
             'gross_amount' => ['label' => 'Valor Bruto', 'default' => true],
             'discount_amount' => ['label' => 'Desconto', 'default' => true],
+            'sale_discount_amount' => ['label' => 'Desconto da venda', 'default' => true],
+            'invoice_discount_amount' => ['label' => 'Desconto de fechamento', 'default' => true],
             'net_value' => ['label' => 'Valor Líquido', 'default' => true],
             'createdBy.name' => ['label' => 'Criado por', 'default' => false],
             'confirmed_at' => ['label' => 'Confirmado em', 'default' => false],
@@ -177,6 +181,8 @@ final class ExportSelectedInvoicesAction
             'status' => $record->status?->description() ?? '-',
             'gross_amount' => (float) $record->gross_amount,
             'discount_amount' => (float) $record->discount_amount,
+            'sale_discount_amount' => (float) $record->sale_discount_amount,
+            'invoice_discount_amount' => (float) $record->invoice_discount_amount,
             'net_value' => (float) $record->net_value,
             'createdBy.name' => (string) ($record->createdBy?->name ?? ''),
             'confirmed_at' => $record->confirmed_at?->format('d/m/Y H:i') ?? '',

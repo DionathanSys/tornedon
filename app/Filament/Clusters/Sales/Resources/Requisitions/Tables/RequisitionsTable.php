@@ -10,18 +10,17 @@ use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\PreviewRequ
 use App\Filament\Clusters\Sales\Resources\Requisitions\Pages\Actions\UnlinkServiceOrderAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RequisitionResource;
 use App\Models\Requisition;
+use App\Notification\NotifyService as notify;
 use App\Services\Requisition\RequisitionService;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Support\Enums\Size;
-use Filament\Support\Icons\Heroicon;
-use App\Notification\NotifyService as notify;
 use Filament\Facades\Filament;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
@@ -55,8 +54,8 @@ class RequisitionsTable
                     ->label('Status')
                     ->sortable()
                     ->badge()
-                    ->formatStateUsing(fn($state) => $state?->description() ?? '-')
-                    ->color(fn($state) => $state?->color() ?? 'gray'),
+                    ->formatStateUsing(fn ($state) => $state?->description() ?? '-')
+                    ->color(fn ($state) => $state?->color() ?? 'gray'),
                 TextColumn::make('salesperson.name')
                     ->label('Vendedor')
                     ->sortable()
@@ -77,14 +76,16 @@ class RequisitionsTable
                     ->toggleable(),
                 TextColumn::make('gross_amount')
                     ->label('Subtotal')
-                    ->state(fn(Requisition $record): float => (float) $record->gross_amount)
-                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->state(fn (Requisition $record): float => (float) $record->gross_amount)
+                    ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
-                    ->label('Valor Total')
-                    ->state(fn(Requisition $record): float => (float) $record->total_amount)
-                    ->formatStateUsing(fn($state): string => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->label('Líquido da venda')
+                    ->state(fn (Requisition $record): float => (float) $record->total_amount)
+                    ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->toggleable(),
+                TextColumn::make('invoice_discount_amount')->label('Desc. fechamento')->money('BRL')->toggleable(),
+                TextColumn::make('invoiced_net_amount')->label('Líquido após fechamento')->money('BRL')->toggleable(),
                 TextColumn::make('observations')
                     ->label('Observações')
                     ->toggleable(isToggledHiddenByDefault: false)
@@ -130,7 +131,7 @@ class RequisitionsTable
 
                             if ($service->hasError()) {
                                 Log::error($service->getMessage(), [
-                                    'metodo' => __METHOD__ . '@' . __LINE__,
+                                    'metodo' => __METHOD__.'@'.__LINE__,
                                     'message' => $service->getMessage(),
                                     'error_code' => $service->getErrorCode(),
                                     'errors' => $service->getErrors(),
@@ -157,7 +158,7 @@ class RequisitionsTable
                     ->label('Requisição')
                     ->icon(Heroicon::Plus)
                     ->size(Size::Small)
-                    ->schema(fn(Schema $schema) => $schema->components([
+                    ->schema(fn (Schema $schema) => $schema->components([
                         SelectPartner::make('customer_id', 'customer')
                             ->label('Cliente')
                             ->columnSpanFull(),
@@ -177,7 +178,7 @@ class RequisitionsTable
 
                         if ($service->hasError() || $requisition === null) {
                             Log::error($service->getMessage(), [
-                                'metodo' => __METHOD__ . '@' . __LINE__,
+                                'metodo' => __METHOD__.'@'.__LINE__,
                                 'message' => $service->getMessage(),
                                 'error_code' => $service->getErrorCode(),
                                 'errors' => $service->getErrors(),
@@ -192,13 +193,13 @@ class RequisitionsTable
                         }
 
                         Log::info('CreateRequisition: Requisição criada com sucesso', [
-                            'metodo' => __METHOD__ . '@' . __LINE__,
+                            'metodo' => __METHOD__.'@'.__LINE__,
                             'requisition_id' => $requisition->id,
                         ]);
 
                         return $requisition;
                     })
-                    ->successRedirectUrl(fn($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
+                    ->successRedirectUrl(fn ($record) => RequisitionResource::getUrl('edit', ['record' => $record])),
             ]);
     }
 }

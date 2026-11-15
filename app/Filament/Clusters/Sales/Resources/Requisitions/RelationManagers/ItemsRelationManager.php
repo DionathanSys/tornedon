@@ -2,40 +2,17 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers;
 
-use App\Filament\Clusters\Sales\Resources\Components\ItemValueGroup;
-use App\Filament\Clusters\Sales\Resources\Quotes\Schemas\Components\ModalSelectProductStock;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions\CreateItemAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions\DeleteItemAction;
 use App\Filament\Clusters\Sales\Resources\Requisitions\RelationManagers\Actions\EditItemAction;
-use Filament\Actions\AssociateAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Actions\ForceDeleteBulkAction;
-use Filament\Actions\RestoreAction;
-use Filament\Actions\RestoreBulkAction;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Leandrocfe\FilamentPtbrFormFields\Money;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
 
 class ItemsRelationManager extends RelationManager
@@ -46,7 +23,7 @@ class ItemsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                
+
             ]);
     }
 
@@ -104,10 +81,14 @@ class ItemsRelationManager extends RelationManager
                     ->sortable()
                     ->summarize(Sum::make('discount_amount')->label('TT Desconto')->money('BRL', 100)),
                 TextColumn::make('total_amount')
-                    ->label('Total Líquido')
+                    ->label('Líquido da venda')
                     ->money('BRL')
                     ->sortable()
                     ->summarize(Sum::make('total_amount')->label('TT Líquido')->money('BRL', 100)),
+                TextColumn::make('invoice_discount_amount')->label('Desc. fechamento')->money('BRL')
+                    ->summarize(Sum::make()->money('BRL', 100)),
+                TextColumn::make('invoiced_net_amount')->label('Líquido após fechamento')->money('BRL')
+                    ->summarize(Sum::make()->using(fn ($query) => $query->sum(DB::raw('total_amount - invoice_discount_amount')))->money('BRL', 100)),
                 IconColumn::make('stock_consumed')
                     ->label('Estoque Consumido')
                     ->boolean()
@@ -149,7 +130,7 @@ class ItemsRelationManager extends RelationManager
             ->filters([
             ])
             ->headerActions([
-                
+
             ])
             ->recordActions([
                 EditItemAction::make()
@@ -158,7 +139,7 @@ class ItemsRelationManager extends RelationManager
                     ->iconButton(),
             ])
             ->toolbarActions([
-                CreateItemAction::make()
+                CreateItemAction::make(),
             ])
             ->emptyStateDescription('Adicione itens à requisição para que eles sejam exibidos aqui.');
     }

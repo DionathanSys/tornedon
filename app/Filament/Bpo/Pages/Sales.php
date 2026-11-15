@@ -37,6 +37,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
@@ -207,8 +208,8 @@ class Sales extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table->query(app(SalesReportingService::class)->query(Filament::auth()->user(), Filament::getTenant())
-            ->with(['serviceOrder' => fn ($query) => $query->with('customer')->withSum('items as listing_items_amount', 'total_amount'),
-                'requisition' => fn ($query) => $query->with('customer')->withSum('items as listing_items_amount', 'total_amount'),
+            ->with(['serviceOrder' => fn ($query) => $query->with('customer')->withSum('items as listing_items_amount', DB::raw('total_amount - invoice_discount_amount')),
+                'requisition' => fn ($query) => $query->with('customer')->withSum('items as listing_items_amount', DB::raw('total_amount - invoice_discount_amount')),
                 'invoice.fiscalDocuments' => fn ($query) => $query->select(['id', 'company_id', 'invoice_id', 'document_type', 'nfe_status', 'nfse_status', 'emission_requested_at'])]))->columns([
                     TextColumn::make('id')->label('Venda')->sortable()->searchable(),
                     TextColumn::make('template_snapshot.name')->label('Modelo')->searchable(query: fn (Builder $query, string $search) => $query->where('template_snapshot->name', 'like', '%'.$search.'%')),

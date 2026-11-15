@@ -32,9 +32,12 @@ class InvoiceCompositionService
             }
 
             $amounts = [];
+            app(InvoiceDiscountService::class)->ensureValid($record);
             foreach (['gross_amount', 'discount_amount', 'services_amount', 'products_amount', 'total_amount', 'net_value'] as $key) {
                 $amounts[$key] = $this->cents($record->{$key});
             }
+            $amounts['invoice_discount_amount'] = $this->cents($record->invoice_discount_amount);
+            $amounts['sale_discount_amount'] = $this->cents($record->sale_discount_amount);
             $confirmation = $record->confirmations()->create([
                 'company_id' => $record->company_id,
                 'revision' => ((int) $record->confirmations()->max('revision')) + 1,
@@ -50,6 +53,7 @@ class InvoiceCompositionService
                     'payment_condition_details' => $record->payment_condition_details,
                     'financial_policy' => $record->financial_policy,
                     'financial_category_id' => $record->financial_category_id,
+                    'invoice_discount_reason' => $record->invoice_discount_reason,
                 ],
                 'confirmed_by' => $userId,
                 'confirmed_at' => now(),
@@ -94,6 +98,9 @@ class InvoiceCompositionService
                 'unit_price' => $this->cents($unitPrice),
                 'gross_amount' => $this->cents($production ? (float) $quantity * (float) $unitPrice : $item->gross_amount),
                 'discount_amount' => $this->cents($production ? 0 : $item->discount_amount),
+                'invoice_discount_amount' => $this->cents($production ? 0 : $item->invoice_discount_amount),
+                'invoice_discount_share_percentage' => $production ? 0 : $item->invoice_discount_share_percentage,
+                'invoiced_net_amount' => $this->cents($production ? (float) $quantity * (float) $unitPrice : $item->invoiced_net_amount),
                 'total_amount' => $this->cents($production ? (float) $quantity * (float) $unitPrice : $item->total_amount),
             ];
         })->all();
@@ -106,6 +113,7 @@ class InvoiceCompositionService
             // OP values are informational: the requisition already supplies financial totals.
             'contributes_to_total' => ! $production,
             'total_amount' => $production ? array_sum(array_column($items, 'total_amount')) : $this->cents($source->total_amount),
+            'invoiced_net_amount' => array_sum(array_column($items, 'invoiced_net_amount')) + $this->cents($type === 'service_order' ? $source->travel_value : 0),
         ];
     }
 

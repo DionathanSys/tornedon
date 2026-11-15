@@ -4,13 +4,13 @@ namespace App\Filament\Clusters\Financial\Resources\Invoices\Widgets;
 
 use App\Enum\Invoice\Status;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\ListInvoices;
+use App\Models\Invoice;
 use Carbon\Carbon;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Widgets\Concerns\InteractsWithPageTable;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 
 use function Livewire\trigger;
 
@@ -22,7 +22,7 @@ class InvoicesStatsOverview extends Widget
 
     protected string $view = 'filament.clusters.financial.resources.invoices.widgets.invoices-stats-overview';
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     protected function getTablePage(): string
     {
@@ -65,52 +65,21 @@ class InvoicesStatsOverview extends Widget
      */
     private function resolveTotals(Builder $query): array
     {
-        $invoiceIdsQuery = $query->select('invoices.id');
+        $totals = ['gross_value' => 0.0, 'net_value' => 0.0, 'services_value' => 0.0, 'products_value' => 0.0];
+        $query->reorder()->chunkById(200, function ($invoices) use (&$totals): void {
+            Invoice::preloadAmounts($invoices);
+            foreach ($invoices as $invoice) {
+                foreach (['gross_value' => 'gross_amount', 'net_value' => 'net_value', 'services_value' => 'services_amount', 'products_value' => 'products_amount'] as $key => $attribute) {
+                    $totals[$key] += $invoice->{$attribute};
+                }
+            }
+        }, 'invoices.id', 'id');
 
-        $serviceOrdersByInvoice = DB::table('service_orders')
-            ->leftJoin('service_order_items', 'service_order_items.service_order_id', '=', 'service_orders.id')
-            ->whereIn('service_orders.invoice_id', $invoiceIdsQuery)
-            ->groupBy('service_orders.id', 'service_orders.travel_value')
-            ->selectRaw('COALESCE(SUM(service_order_items.gross_amount), 0) + COALESCE(service_orders.travel_value, 0) as gross_amount')
-            ->selectRaw('COALESCE(SUM(service_order_items.total_amount), 0) + COALESCE(service_orders.travel_value, 0) as total_amount');
-
-        $requisitionsByInvoice = DB::table('requisitions')
-            ->leftJoin('requisition_items', 'requisition_items.requisition_id', '=', 'requisitions.id')
-            ->whereIn('requisitions.invoice_id', $invoiceIdsQuery)
-            ->groupBy('requisitions.id')
-            ->selectRaw('COALESCE(SUM(requisition_items.gross_amount), 0) as gross_amount')
-            ->selectRaw('COALESCE(SUM(requisition_items.total_amount), 0) as total_amount');
-
-        $servicesGross = round(((float) (DB::query()
-            ->fromSub($serviceOrdersByInvoice, 'service_order_totals')
-            ->selectRaw('COALESCE(SUM(service_order_totals.gross_amount), 0) as gross_amount')
-            ->value('gross_amount') ?? 0)) / 100, 2);
-
-        $servicesTotal = round(((float) (DB::query()
-            ->fromSub($serviceOrdersByInvoice, 'service_order_totals')
-            ->selectRaw('COALESCE(SUM(service_order_totals.total_amount), 0) as total_amount')
-            ->value('total_amount') ?? 0)) / 100, 2);
-
-        $productsGross = round(((float) (DB::query()
-            ->fromSub($requisitionsByInvoice, 'requisition_totals')
-            ->selectRaw('COALESCE(SUM(requisition_totals.gross_amount), 0) as gross_amount')
-            ->value('gross_amount') ?? 0)) / 100, 2);
-
-        $productsTotal = round(((float) (DB::query()
-            ->fromSub($requisitionsByInvoice, 'requisition_totals')
-            ->selectRaw('COALESCE(SUM(requisition_totals.total_amount), 0) as total_amount')
-            ->value('total_amount') ?? 0)) / 100, 2);
-
-        return [
-            'gross_value' => round($servicesGross + $productsGross, 2),
-            'net_value' => round($servicesTotal + $productsTotal, 2),
-            'services_value' => $servicesTotal,
-            'products_value' => $productsTotal,
-        ];
+        return array_map(fn (float $value): float => round($value, 2), $totals);
     }
 
     /**
-     * @param array{gross_value: float, net_value: float, services_value: float, products_value: float} $totals
+     * @param  array{gross_value: float, net_value: float, services_value: float, products_value: float}  $totals
      * @return array{label: string, value: string, footer_label: string, footer_value: string, icon: string, variant: string}
      */
     private function resolveCompositionCard(array $totals): array
@@ -261,7 +230,7 @@ class InvoicesStatsOverview extends Widget
 
     private function formatFilterRange(Carbon $start, Carbon $end, string $format): string
     {
-        return $start->format($format) . ' - ' . $end->format($format);
+        return $start->format($format).' - '.$end->format($format);
     }
 
     private function makeTablePageInstance(array $tableFilters): HasTable
@@ -292,7 +261,7 @@ class InvoicesStatsOverview extends Widget
 
     private function formatMoney(float $amount): string
     {
-        return 'R$ ' . number_format($amount, 2, ',', '.');
+        return 'R$ '.number_format($amount, 2, ',', '.');
     }
 
     private function toPercentage(int|float $value, int|float $total): string
@@ -301,18 +270,18 @@ class InvoicesStatsOverview extends Widget
             return '0%';
         }
 
-        return number_format(($value / $total) * 100, 1, ',', '.') . '%';
+        return number_format(($value / $total) * 100, 1, ',', '.').'%';
     }
 
     private function formatSignedPercentage(float $value): string
     {
         $prefix = $value > 0 ? '+' : '';
 
-        return $prefix . number_format($value, 1, ',', '.') . '%';
+        return $prefix.number_format($value, 1, ',', '.').'%';
     }
 
     private function toHeroicon(Heroicon $icon): string
     {
-        return 'heroicon-m-' . $icon->value;
+        return 'heroicon-m-'.$icon->value;
     }
 }

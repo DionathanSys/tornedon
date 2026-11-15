@@ -25,6 +25,7 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfseConfigService;
 use App\Services\Invoice\InvoiceActionEligibilityService;
 use App\Services\Invoice\InvoiceCompositionService;
+use App\Services\Invoice\InvoiceDiscountService;
 use App\Services\Invoice\InvoiceService;
 use App\Support\Financial\InstallmentSchedule;
 use App\Support\Financial\PaymentTerms;
@@ -66,6 +67,7 @@ class ConfirmInvoiceAction
     {
         try {
             app(InvoiceActionEligibilityService::class)->ensureAllowed($this->invoice, InvoiceAction::CONFIRM);
+            app(InvoiceDiscountService::class)->ensureValid($this->invoice);
             $audit = app(AuditRecorder::class);
             $before = $audit->snapshot($this->invoice);
 

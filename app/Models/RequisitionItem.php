@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Models\Concerns\HasInvoiceDiscount;
 use App\Models\Concerns\ProtectsInvoicedItem;
 use App\Services\Product\ProductUnitConversionService;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RequisitionItem extends Model
 {
+    use HasInvoiceDiscount;
     use ProtectsInvoicedItem;
 
     protected static function booted(): void
@@ -33,6 +35,8 @@ class RequisitionItem extends Model
         'unit_cost',
         'discount_percentage',
         'discount_amount',
+        'invoice_discount_amount',
+        'invoice_discount_share_percentage',
         'stock_consumed',
         'stock_consumed_at',
         'stock_control_snapshot',
@@ -53,6 +57,8 @@ class RequisitionItem extends Model
         'unit_cost' => MoneyCast::class,
         'discount_percentage' => 'decimal:2',
         'discount_amount' => MoneyCast::class,
+        'invoice_discount_amount' => MoneyCast::class,
+        'invoice_discount_share_percentage' => 'decimal:6',
         'stock_consumed' => 'boolean',
         'stock_control_snapshot' => 'boolean',
         'stock_consumed_at' => 'datetime',

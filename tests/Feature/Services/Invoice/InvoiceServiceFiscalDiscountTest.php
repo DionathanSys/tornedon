@@ -40,15 +40,35 @@ use App\Models\Service;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderItem;
 use App\Models\User;
+use App\Services\Invoice\InvoiceDiscountService;
 use App\Services\Invoice\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class InvoiceServiceFiscalDiscountTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_copies_requisition_item_discount_to_nfe_items(): void
+    public static function closingDiscounts(): array
+    {
+        return ['sale discount only' => [0.0], 'sale and invoice discount' => [10.0]];
+    }
+
+    private function applyClosingDiscount(Invoice $invoice, User $user, float $amount): void
+    {
+        if ($amount === 0.0) {
+            return;
+        }
+        $user->companies()->syncWithoutDetaching([$invoice->company_id => ['role' => 'owner', 'is_active' => true]]);
+        $service = app(InvoiceDiscountService::class);
+        $weights = array_map(fn (array $row): int => $row['base'], $service->rows($invoice));
+        $shares = array_map(fn (int $value): float => $value / 1000000, $service->allocate(100000000, $weights));
+        $service->apply($invoice, $amount, $shares, 'Fechamento', $user->id);
+    }
+
+    #[DataProvider('closingDiscounts')]
+    public function test_it_copies_requisition_item_discount_to_nfe_items(float $closingDiscount): void
     {
         $user = User::factory()->create();
         [$company, $customer, $invoice] = $this->createInvoiceContext($user);
@@ -93,6 +113,7 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
             'created_by' => $user->id,
         ]);
 
+        $this->applyClosingDiscount($invoice, $user, $closingDiscount);
         $service = app(InvoiceService::class);
         $document = $service->createFiscalDocument($invoice->fresh(), [
             'document_type' => DocumentModel::NFE->value,
@@ -114,7 +135,7 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
 
         $this->assertNotNull($item);
         $this->assertSame(100.0, (float) $item->total_price);
-        $this->assertSame(15.0, (float) $item->discount_amount);
+        $this->assertSame(15.0 + $closingDiscount, (float) $item->discount_amount);
     }
 
     public function test_it_generates_taxable_fields_in_base_unit_when_requisition_item_uses_alternative_unit(): void
@@ -194,7 +215,8 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $this->assertEquals(40.0, (float) $item->taxable_unit_price);
     }
 
-    public function test_it_consolidates_service_order_discounts_into_single_nfse_item(): void
+    #[DataProvider('closingDiscounts')]
+    public function test_it_consolidates_service_order_discounts_into_single_nfse_item(float $closingDiscount): void
     {
         $user = User::factory()->create();
         [$company, $customer, $invoice] = $this->createInvoiceContext($user);
@@ -246,6 +268,7 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
             'created_by' => $user->id,
         ]);
 
+        $this->applyClosingDiscount($invoice, $user, $closingDiscount);
         $service = app(InvoiceService::class);
         $document = $service->createFiscalDocument($invoice->fresh(), [
             'document_type' => DocumentModel::NFSE->value,
@@ -260,10 +283,11 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
 
         $this->assertNotNull($item);
         $this->assertSame(150.0, (float) $item->total_price);
-        $this->assertSame(15.0, (float) $item->discount_amount);
+        $this->assertSame(15.0 + $closingDiscount, (float) $item->discount_amount);
     }
 
-    public function test_it_uses_net_service_total_when_unconditional_discount_is_not_allowed(): void
+    #[DataProvider('closingDiscounts')]
+    public function test_it_uses_net_service_total_when_unconditional_discount_is_not_allowed(float $closingDiscount): void
     {
         $user = User::factory()->create();
         [$company, $customer, $invoice] = $this->createInvoiceContext($user);
@@ -302,6 +326,7 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
             'created_by' => $user->id,
         ]);
 
+        $this->applyClosingDiscount($invoice, $user, $closingDiscount);
         $service = app(InvoiceService::class);
         $document = $service->createFiscalDocument($invoice->fresh(), [
             'document_type' => DocumentModel::NFSE->value,
@@ -315,7 +340,7 @@ class InvoiceServiceFiscalDiscountTest extends TestCase
         $item = $document->items()->first();
 
         $this->assertNotNull($item);
-        $this->assertSame(100.0, (float) $item->total_price);
+        $this->assertSame(100.0 - $closingDiscount, (float) $item->total_price);
         $this->assertSame(0.0, (float) $item->discount_amount);
     }
 

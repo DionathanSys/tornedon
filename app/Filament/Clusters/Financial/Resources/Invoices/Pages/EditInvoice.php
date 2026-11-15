@@ -10,6 +10,7 @@ use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\DownloadInv
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateAccountReceivablesAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\GenerateFiscalDocumentAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ImportRecordsAction;
+use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\InvoiceDiscountAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\PreviewInvoicePdfAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ReturnInvoiceToPendingAction;
 use App\Filament\Clusters\Financial\Resources\Invoices\Pages\Actions\ReverseInvoiceBillingAction;
@@ -85,6 +86,7 @@ class EditInvoice extends EditRecord
                     ->icon(Heroicon::Bookmark),
             ])->buttonGroup(),
             ActionGroup::make([
+                InvoiceDiscountAction::make(),
                 ConfirmInvoiceAction::make()
                     ->size(Size::Small),
                 ReturnInvoiceToPendingAction::make()

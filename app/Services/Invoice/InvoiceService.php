@@ -668,7 +668,7 @@ class InvoiceService
             'quantity' => $quantity,
             'unit_price' => $unitPrice,
             'total_price' => $totalPrice,
-            'discount_amount' => round((float) ($reqItem->discount_amount ?? 0), 2),
+            'discount_amount' => $reqItem->combined_discount_amount,
             'included_in_total' => true,
         ];
 
@@ -837,7 +837,7 @@ class InvoiceService
             fn (array $row): float => FiscalItemAmounts::grossTotal($row['item']->quantity, $row['item']->unit_price)
         ), 2);
         $totalDiscount = round($sourceItems->sum(
-            fn (array $row): float => (float) ($row['item']->discount_amount ?? 0)
+            fn (array $row): float => (float) $row['item']->combined_discount_amount
         ), 2);
         $allowUnconditionalDiscount = (bool) ($profile?->allow_unconditional_discount_nfse ?? false);
 
@@ -951,7 +951,9 @@ class InvoiceService
                                     'quantity' => (float) $item->quantity,
                                     'unit_price' => (float) $item->unit_price,
                                     'total_price' => FiscalItemAmounts::grossTotal($item->quantity, $item->unit_price),
-                                    'discount_amount' => round((float) ($item->discount_amount ?? 0), 2),
+                                    'discount_amount' => $item->combined_discount_amount,
+                                    'sale_discount_amount' => (float) $item->discount_amount,
+                                    'invoice_discount_amount' => (float) $item->invoice_discount_amount,
                                     'service_code' => $service?->service_code,
                                     'municipal_tax_code' => $service?->municipal_tax_code,
                                     'nbs_code' => $service?->nbs_code,

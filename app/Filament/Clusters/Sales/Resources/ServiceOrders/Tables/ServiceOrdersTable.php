@@ -132,11 +132,15 @@ class ServiceOrdersTable
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('grand_total_amount')
-                    ->label('Total Geral')
+                    ->label('Total Geral da venda')
                     ->state(fn (ServiceOrder $record): float => (float) $record->grand_total_amount)
                     ->formatStateUsing(fn ($state): string => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->width('1%')
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('closing_discount_total')->label('Desc. fechamento (geral)')->money('BRL')->toggleable()
+                    ->state(fn (ServiceOrder $record): float => round($record->invoice_discount_amount + ($record->requisition?->invoice_discount_amount ?? 0), 2)),
+                TextColumn::make('invoiced_grand_total_amount')->label('Líquido após fechamento (geral)')->money('BRL')->toggleable()
+                    ->state(fn (ServiceOrder $record): float => round($record->grand_total_amount - $record->invoice_discount_amount - ($record->requisition?->invoice_discount_amount ?? 0), 2)),
                 TextColumn::make('scheduled_date')
                     ->label('Dt. Agendada')
                     ->date('d/m/Y')
