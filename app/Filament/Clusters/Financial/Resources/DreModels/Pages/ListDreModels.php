@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\DreModels\Pages;
 
+use App\Filament\Clusters\Financial\Resources\DreModels\Actions\SetupDreAction;
 use App\Filament\Clusters\Financial\Resources\DreModels\DreModelResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
@@ -12,6 +13,6 @@ class ListDreModels extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [CreateAction::make()];
+        return [SetupDreAction::make(), CreateAction::make()->label('Criar modelo manual')];
     }
 }

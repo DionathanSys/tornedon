@@ -1,253 +1,129 @@
-# Como Preencher uma DRE
+# Como montar e utilizar a DRE
 
-A DRE, Demonstração do Resultado do Exercício, é um relatório usado para entender se a empresa teve lucro ou prejuízo em determinado período.
+A DRE mostra as receitas, custos, despesas e o resultado da empresa em um período. A maneira recomendada de começar é usar **Montar minha DRE**.
 
-No sistema, a DRE é configurável por empresa e é montada a partir de linhas vinculadas ao Plano de Contas.
+## 1. Preparar os cadastros
 
-## 1. Antes de preencher a DRE
+- Cadastre o **Plano de Contas** da empresa.
+- Vincule as **categorias financeiras** às respectivas contas do plano.
+- Classifique as parcelas a pagar e a receber. Parcelas sem conta contábil não aparecem nos grupos da DRE.
+- Informe a competência nos lançamentos. Na ausência dela, o relatório usa o vencimento; para movimentos manuais, usa a data da transação.
 
-Antes de montar uma DRE, verifique se já existem:
+## 2. Montar a DRE sem cadastrar linhas manualmente
 
-- Plano de Contas cadastrado
-- Categorias financeiras vinculadas ao Plano de Contas
-- Lançamentos financeiros com categoria
-- Competência preenchida nos lançamentos
-- Centros de custo ou resultado, se forem usados no relatório
+1. Entre na empresa desejada e abra **Financeiro → Relatórios financeiros → DRE**.
+2. Clique em **Montar minha DRE**, no topo da página. O botão também está disponível na listagem de **Cadastros financeiros → Modelos de DRE**.
+3. Informe o nome, por exemplo **DRE Gerencial**, e mantenha **Usar como modelo padrão** marcado se quiser abri-lo automaticamente nas próximas consultas.
+4. Confira o grupo sugerido para **cada conta**. A sugestão usa o tipo cadastrado no plano, por isso deve ser revisada:
 
-## 2. Criar o modelo de DRE
+   | Grupo | Exemplos |
+   |---|---|
+   | Receitas de vendas e serviços | Vendas de peças, prestação de serviços |
+   | Deduções e impostos sobre vendas | Impostos incidentes sobre faturamento |
+   | Custos | Materiais e serviços consumidos na operação |
+   | Despesas operacionais | Aluguel, administração, despesas comerciais |
+   | Receitas e despesas financeiras | Rendimentos, juros, tarifas bancárias |
+   | Outros resultados | Outros ganhos e perdas |
+   | Não incluir nesta DRE | Contas patrimoniais, transferências e contas sem efeito no resultado |
 
-Acesse:
+5. Clique em **Criar DRE pronta para usar**.
 
-`Financeiro > Modelos DRE`
+O sistema cria a estrutura, os vínculos, os sinais e os resultados automaticamente. Na tela do relatório, a nova DRE já fica selecionada. Na listagem de modelos, você será levado à edição do modelo criado.
 
-Crie um novo modelo informando:
+Cada conta é vinculada **uma única vez e sem incluir suas filhas automaticamente**. Todas as contas existentes são apresentadas para conferência, inclusive as contas-pai. Isso evita somar a mesma conta filha duas vezes. Se o plano estiver vazio, cadastre as contas antes de concluir.
 
-- Nome: exemplo `DRE Gerencial`
-- Chave do modelo: exemplo `dre_gerencial`
-- Ativo: sim
-- Modelo padrão: sim, se este for o principal da empresa
+É necessário ter permissão para criar modelos de DRE para utilizar a montagem guiada.
 
-A chave do modelo é importante para comparar ou consolidar DREs entre empresas.
-
-## 3. Criar as linhas da DRE
-
-Dentro do modelo, cadastre as linhas que aparecerão no relatório.
-
-Exemplo de estrutura:
-
-| Código | Nome | Tipo | Operação |
-|---|---|---|---|
-| RECEITA_BRUTA | Receita Bruta | Grupo de Contas | Soma |
-| DEDUCOES | Deduções da Receita | Grupo de Contas | Subtrai |
-| RECEITA_LIQUIDA | Receita Líquida | Subtotal | Soma |
-| CUSTOS | Custos | Grupo de Contas | Subtrai |
-| LUCRO_BRUTO | Lucro Bruto | Subtotal | Soma |
-| DESPESAS | Despesas Operacionais | Grupo de Contas | Subtrai |
-| RESULTADO | Resultado Operacional | Subtotal | Soma |
-
-## 4. Tipos de linha
-
-Cada linha pode ter um tipo.
-
-### Grupo de Contas
-
-Usado quando a linha deve buscar valores do Plano de Contas.
-
-Exemplo:
-
-`Receita Bruta` vinculada às contas de receita.
-
-### Subtotal
-
-Usado para somar linhas filhas.
-
-Exemplo:
-
-`Lucro Bruto` pode somar `Receita Líquida` menos `Custos`.
-
-### Linha Informativa
-
-Usada apenas para organizar visualmente a DRE.
-
-Exemplo:
-
-`Resultado Financeiro`
-
-## 5. Vincular contas do Plano de Contas
-
-Nas linhas do tipo `Grupo de Contas`, vincule uma ou mais contas contábeis.
-
-Exemplo:
-
-Linha:
-
-`Receita Bruta`
-
-Contas vinculadas:
-
-- `Receitas de Serviços`
-- `Receitas de Produtos`
-- `Receitas Operacionais`
-
-Se a opção `Incluir descendentes` estiver marcada, o sistema também considera as contas filhas da conta selecionada.
-
-## 6. Definir a operação
-
-A operação define se o valor da linha entra somando ou subtraindo.
-
-Use:
-
-- `Soma` para receitas e resultados positivos
-- `Subtrai` para custos, despesas, impostos e deduções
-
-Exemplo:
-
-| Linha | Operação |
-|---|---|
-| Receita Bruta | Soma |
-| Deduções | Subtrai |
-| Custos | Subtrai |
-| Despesas | Subtrai |
-
-## 7. Configurar a hierarquia
-
-As linhas podem ter linha pai.
-
-Exemplo simples:
+## 3. Estrutura criada automaticamente
 
 ```text
-Receita Bruta
-Deduções
-Receita Líquida
+Receitas de vendas e serviços
+Deduções e impostos sobre vendas
+Receita líquida
 Custos
-Lucro Bruto
-Despesas Operacionais
-Resultado Operacional
+Lucro bruto
+Despesas operacionais
+Resultado operacional
+Receitas e despesas financeiras
+Despesas financeiras — descontos concedidos
+Outros resultados
+Resultado final
 ```
 
-Exemplo com agrupamento:
+Receita líquida, lucro bruto, resultado operacional e resultado final são **resultados acumulados**: somam os grupos anteriores, sem somar novamente os outros resultados intermediários.
 
-```text
-Receitas
-  Receita de Serviços
-  Receita de Produtos
+Os valores conservam o sinal natural dos lançamentos: recebimentos positivos e pagamentos negativos. **Não é preciso configurar “Subtrair” para despesas no modelo guiado.** Essa operação inverte o sinal que o lançamento já possui.
 
-Custos
-  Combustível
-  Peças
-  Mão de obra
+## 4. Consultar o relatório
 
-Despesas
-  Administrativas
-  Comerciais
-  Financeiras
-```
+Escolha modelo, período, modo e visão, e clique em **Aplicar filtros**.
 
-## 8. Configurar a exibição
+### Modo
 
-Cada linha pode ter configurações visuais:
+- **Competência:** usa a competência da parcela, ou seu vencimento se não houver competência. Um desconto concedido em recebimento posterior fica associado à competência da parcela. Assim, uma concessão ou estorno pode atualizar o resultado de um período anterior.
+- **Caixa:** usa as movimentações financeiras efetivas e suas datas. Recebimentos sem movimento de caixa/banco não compõem o realizado desse modo.
 
-- Ordem
-- Negrito
-- Visível ou oculta
-- Profundidade visual
+### Visão
 
-A profundidade visual controla o recuo da linha no relatório, sem depender da profundidade real do Plano de Contas.
+- **Realizado:** valores já recebidos/pagos; em competência, usa a competência das parcelas, não a data do recebimento/pagamento.
+- **Previsto:** saldos ainda em aberto. Não repete descontos já concedidos.
+- **Previsto + realizado:** combina os valores realizados com os saldos em aberto.
+- **Previsto e realizado separados:** apresenta as duas bases separadamente.
+- **Comparativo:** compara os períodos informados usando a base selecionada.
 
-## 9. Preencher os lançamentos financeiros
+Centros de custo e resultado permitem segmentar a análise de uma empresa. Para consolidar empresas, cada uma precisa de modelo equivalente, com a mesma chave e estrutura. A montagem guiada utiliza a chave `dre_gerencial_guiada_v1`; confira o mapeamento das contas em cada empresa.
 
-A DRE depende dos lançamentos financeiros.
+## 5. Desconto concedido na hora de receber
 
-Para que os valores apareçam corretamente:
+Registre normalmente o recebimento da parcela, preenchendo o **valor efetivamente recebido** e o **desconto concedido** nos respectivos campos.
 
-- A categoria financeira deve estar vinculada a uma conta do Plano de Contas
-- O lançamento deve ter data de competência
-- O lançamento não pode estar cancelado
-- O lançamento deve pertencer à empresa selecionada
+Exemplo: parcela de R$ 1.000,00, com desconto de R$ 50,00, recebida por R$ 950,00:
 
-## 10. Competência ou caixa
+| Linha da DRE | Valor |
+|---|---:|
+| Receitas de vendas e serviços | R$ 1.000,00 |
+| Despesas financeiras — descontos concedidos | − R$ 50,00 |
+| Resultado final, sem outros lançamentos | R$ 950,00 |
 
-Na hora de gerar o relatório, escolha o modo.
+O sistema recompõe a receita antes do desconto no recebimento e apresenta o desconto como despesa financeira. **Não lance outra despesa ou saída de caixa para o mesmo desconto.** No banco entram apenas R$ 950,00; a separação acontece no relatório.
 
-### Competência
+### Recebimento parcial
 
-Considera a data de competência do lançamento.
+Parcela de R$ 1.000,00, recebimento de R$ 400,00 e desconto de R$ 50,00:
 
-Use quando quiser analisar o resultado econômico do período.
+| Visão | Receita antes do desconto | Desconto | Resultado líquido |
+|---|---:|---:|---:|
+| Realizado | R$ 450,00 | − R$ 50,00 | R$ 400,00 |
+| Previsto | R$ 550,00 | R$ 0,00 | R$ 550,00 |
+| Previsto + realizado | R$ 1.000,00 | − R$ 50,00 | R$ 950,00 |
 
-### Caixa
+### Estorno
 
-Considera movimentações financeiras realizadas no caixa ou banco.
+- No modo caixa, o estorno desfaz a composição da receita e do desconto **na data do movimento de estorno**, inclusive se ocorrer em outro mês.
+- Em competência, recebimentos devolvidos deixam de contribuir com o desconto automático, acompanhando a recomposição da parcela.
 
-Use quando quiser analisar o que efetivamente entrou ou saiu no período.
+A linha automática considera somente descontos de recebimentos das contas incluídas no modelo e respeita empresa e filtros por centro. Descontos comerciais aplicados na venda ou na fatura não são reclassificados como descontos financeiros de recebimento. Juros e multas mantêm o tratamento existente; esta funcionalidade separa especificamente os descontos concedidos no recebimento.
 
-## 11. Visões da DRE
+## 6. Conferir e ajustar depois
 
-O relatório pode ser gerado em diferentes visões.
+- A seção **Contas fora deste relatório** informa contas sem vínculo. Confira se a exclusão é intencional.
+- Contas cadastradas depois da montagem não são incluídas automaticamente. Abra **Cadastros financeiros → Modelos de DRE**, edite o modelo e ajuste suas linhas.
+- No grupo desejado, selecione a conta nova. Para mudar uma conta de grupo, remova-a do anterior e inclua-a no novo.
+- Uma conta não deve aparecer em dois grupos. Nos modelos com descontos automáticos, o relatório bloqueia vínculos sobrepostos para evitar duplicidade.
+- Mantenha **uma única** linha do tipo **Descontos concedidos no recebimento**. Ela não precisa de contas vinculadas diretamente.
+- O botão **Montar minha DRE** cria um novo modelo; não altera os modelos anteriores.
 
-### Realizado
+## 7. Modelos manuais e modelos já existentes
 
-Mostra apenas valores já pagos ou recebidos.
+O cadastro manual continua disponível em **Criar modelo manual**. Os tipos de linha são:
 
-### Previsto + Realizado
+- **Grupo de contas:** apura valores das contas vinculadas.
+- **Subtotal:** soma as linhas-filhas.
+- **Resultado acumulado:** soma os grupos anteriores no mesmo nível, sem repetir resultados acumulados anteriores.
+- **Descontos concedidos no recebimento:** separa os descontos financeiros e recompõe a receita dos grupos correspondentes.
+- **Cabeçalho:** organiza e totaliza suas linhas-filhas.
+- **Separador:** organização visual.
 
-Mostra valores em aberto e realizados dentro do período.
+Modelos anteriores, sem a linha automática de descontos, continuam apresentando os valores líquidos como antes. Para adotar a estrutura recomendada, crie um modelo pelo botão **Montar minha DRE**, confira as contas e use-o como padrão.
 
-### Comparativo
-
-Reservado para comparação entre períodos, como mês atual contra mês anterior.
-
-## 12. Centros de custo e resultado
-
-Se quiser analisar uma operação específica, filtre por:
-
-- Centro de custo
-- Centro de resultado
-
-Exemplos:
-
-- `Resultado Transporte`
-- `Resultado Oficina`
-- `Resultado Venda de Peças`
-
-Use esses filtros quando quiser uma DRE segmentada.
-
-## 13. DRE consolidada entre empresas
-
-Para consolidar várias empresas, elas precisam ter modelos DRE equivalentes.
-
-Isso significa que os modelos devem ter:
-
-- Mesma chave do modelo
-- Mesma estrutura de linhas
-- Mesmos códigos
-- Mesmas operações
-- Mesma configuração estrutural
-
-Se os modelos forem diferentes, o sistema não consolida os resultados.
-
-## 14. Exemplo prático
-
-Estrutura sugerida:
-
-| Código | Linha | Tipo | Operação | Contas |
-|---|---|---|---|---|
-| RECEITA_BRUTA | Receita Bruta | Grupo de Contas | Soma | Receitas |
-| IMPOSTOS | Impostos sobre Receita | Grupo de Contas | Subtrai | Impostos |
-| RECEITA_LIQUIDA | Receita Líquida | Subtotal | Soma | - |
-| CUSTOS | Custos Operacionais | Grupo de Contas | Subtrai | Custos |
-| LUCRO_BRUTO | Lucro Bruto | Subtotal | Soma | - |
-| DESPESAS | Despesas Operacionais | Grupo de Contas | Subtrai | Despesas |
-| RESULTADO | Resultado Operacional | Subtotal | Soma | - |
-
-## 15. Conferência final
-
-Antes de usar a DRE oficialmente, confira:
-
-- Todas as linhas importantes foram cadastradas
-- As contas corretas foram vinculadas
-- As operações de soma/subtração estão corretas
-- As categorias financeiras apontam para o Plano de Contas
-- Os lançamentos possuem competência
-- O período do relatório está correto
-- Os centros de custo e resultado foram preenchidos quando necessário
+Vínculos antigos que incluíam descendentes são preservados ao editar uma linha. Novos vínculos consideram somente a conta selecionada. Revise vínculos entre contas-pai e contas-filhas caso adapte um modelo antigo.

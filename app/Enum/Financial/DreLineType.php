@@ -9,6 +9,8 @@ enum DreLineType: string
     case FORMULA = 'formula';
     case HEADER = 'header';
     case SEPARATOR = 'separator';
+    case RUNNING_TOTAL = 'running_total';
+    case RECEIPT_DISCOUNTS = 'receipt_discounts';
 
     public function description(): string
     {
@@ -18,6 +20,8 @@ enum DreLineType: string
             self::FORMULA => 'Fórmula',
             self::HEADER => 'Cabeçalho',
             self::SEPARATOR => 'Separador',
+            self::RUNNING_TOTAL => 'Resultado acumulado',
+            self::RECEIPT_DISCOUNTS => 'Descontos concedidos no recebimento',
         };
     }
 

@@ -42,6 +42,23 @@
     </style>
 
     <div class="space-y-8" style="display: grid; gap: 2rem;">
+        @if(empty($this->data['dre_model_id']))
+            <x-filament::section heading="Comece pela montagem da sua DRE">
+                Clique em <strong>Montar minha DRE</strong> no topo da página e confira em qual grupo cada conta deve entrar. A estrutura, os resultados e a separação dos descontos serão criados automaticamente.
+            </x-filament::section>
+        @else
+            @php($unmapped = $this->unmappedAccounts())
+            @if(count($unmapped))
+                <x-filament::section heading="Contas fora deste relatório" collapsible collapsed>
+                    <p>Estas contas não estão vinculadas ao modelo. Confira se a exclusão é intencional; para incluí-las, edite as linhas em Cadastros financeiros → Modelos de DRE.</p>
+                    <ul class="list-disc pl-5">
+                        @foreach($unmapped as $accountName)
+                            <li>{{ $accountName }}</li>
+                        @endforeach
+                    </ul>
+                </x-filament::section>
+            @endif
+        @endif
         <form wire:submit="applyFilters" class="space-y-5" style="display: grid; gap: 1.5rem;">
             {{ $this->form }}
 

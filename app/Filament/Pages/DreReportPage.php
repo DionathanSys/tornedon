@@ -3,10 +3,13 @@
 namespace App\Filament\Pages;
 
 use App\Enum\Financial\DreDisplaySign;
+use App\Enum\Financial\DreLineType;
 use App\Enum\Financial\DreMode;
 use App\Enum\Financial\DreView;
 use App\Filament\Clusters\Financial\FinancialReportsCluster;
+use App\Filament\Clusters\Financial\Resources\DreModels\Actions\SetupDreAction;
 use App\Filament\Concerns\AuthorizesCompanyPermission;
+use App\Models\ChartAccount;
 use App\Models\Company;
 use App\Models\CostCenter;
 use App\Models\DreModel;
@@ -64,6 +67,11 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
     }
 
     public ?array $data = [];
+
+    protected function getHeaderActions(): array
+    {
+        return [SetupDreAction::make()];
+    }
 
     public function mount(): void
     {
@@ -160,6 +168,29 @@ class DreReportPage extends Page implements Forms\Contracts\HasForms
     public function applyFilters(): void
     {
         $this->form->getState();
+    }
+
+    public function unmappedAccounts(): array
+    {
+        $model = DreModel::forCompany(Filament::getTenant()->id)->find($this->data['dre_model_id'] ?? null);
+        if (! $model) {
+            return [];
+        }
+        $included = [];
+        foreach ($model->lines()->where('line_type', DreLineType::ACCOUNT_GROUP->value)->with('chartAccounts')->get() as $line) {
+            foreach ($line->chartAccounts as $account) {
+                $included[] = $account->id;
+                if ($account->pivot->include_descendants) {
+                    foreach ($account->descendants() as $child) {
+                        $included[] = $child->id;
+                    }
+                }
+            }
+        }
+
+        return ChartAccount::forCompany(Filament::getTenant()->id)
+            ->whereNotIn('id', $included)->orderBy('code')->get()
+            ->map(fn ($account) => $account->display_name)->all();
     }
 
     public function getRowsProperty(): Collection

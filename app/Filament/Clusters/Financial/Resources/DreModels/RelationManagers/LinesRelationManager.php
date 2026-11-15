@@ -34,7 +34,7 @@ class LinesRelationManager extends RelationManager
     {
         return $schema->components([
             Section::make('Linha')
-                ->description('Uma linha de grupo apura valores pelas contas vinculadas. Subtotal soma as linhas-filhas; cabeçalho e separador apenas organizam a apresentação.')
+                ->description('Grupo de contas apura lançamentos. Subtotal soma filhas. Resultado acumulado soma os grupos anteriores. Descontos concedidos busca automaticamente os descontos dos recebimentos das contas incluídas no modelo; use apenas uma linha desse tipo.')
                 ->columns(['sm' => 1, 'md' => 4, 'lg' => 8])
                 ->schema([
                     TextInput::make('code')
@@ -60,6 +60,8 @@ class LinesRelationManager extends RelationManager
                             DreLineType::SUBTOTAL->value => DreLineType::SUBTOTAL->description(),
                             DreLineType::HEADER->value => DreLineType::HEADER->description(),
                             DreLineType::SEPARATOR->value => DreLineType::SEPARATOR->description(),
+                            DreLineType::RUNNING_TOTAL->value => DreLineType::RUNNING_TOTAL->description(),
+                            DreLineType::RECEIPT_DISCOUNTS->value => DreLineType::RECEIPT_DISCOUNTS->description(),
                         ])
                         ->helperText('Para apurar valores, selecione Grupo de contas.')
                         ->default(DreLineType::ACCOUNT_GROUP->value)
@@ -73,7 +75,7 @@ class LinesRelationManager extends RelationManager
                         ->default(DreOperation::ADD->value)
                         ->required()
                         ->native(false)
-                        ->helperText('Use Subtrair para despesas e custos; Somar para receitas.')
+                        ->helperText('Somar preserva o sinal natural: receitas positivas e pagamentos negativos. Subtrair inverte esse sinal. Resultado acumulado soma os grupos anteriores, sem repetir outros totais.')
                         ->columnSpan(['md' => 2, 'lg' => 4]),
                     Select::make('display_sign')
                         ->label('Sinal Visual')
@@ -111,12 +113,12 @@ class LinesRelationManager extends RelationManager
                         ->columnSpan(['md' => 1, 'lg' => 2]),
                 ]),
             Section::make('Contas do Plano')
-                ->description('Vincule contas para linhas do tipo Grupo de contas. Os descendentes são incluídos por padrão no cálculo.')
+                ->description('Vincule contas para linhas do tipo Grupo de contas. Novos vínculos consideram somente a conta selecionada, sem incluir filhas automaticamente.')
                 ->visible(fn (Get $get): bool => $get('line_type') === DreLineType::ACCOUNT_GROUP->value)
                 ->schema([
                     CheckboxList::make('chart_accounts')
                         ->label('Contas')
-                        ->helperText('Selecione ao menos uma conta. Contas-filhas são incluídas automaticamente.')
+                        ->helperText('Selecione as contas, incluindo as filhas desejadas. Vínculos antigos que já incluíam descendentes são preservados.')
                         ->options(fn (): array => ChartAccount::optionsForCompany(Filament::getTenant()->id))
                         ->columns(2)
                         ->bulkToggleable()
@@ -162,7 +164,9 @@ class LinesRelationManager extends RelationManager
     private function syncChartAccounts(DreLine $record, array $data): void
     {
         $accountIds = array_values(array_filter((array) ($data['chart_accounts'] ?? [])));
-        $record->chartAccounts()->sync(collect($accountIds)->mapWithKeys(fn (int|string $id): array => [(int) $id => ['include_descendants' => true]])->all());
+        $existing = $record->chartAccounts()->pluck('include_descendants', 'chart_accounts.id');
+        $allowed = ChartAccount::forCompany(Filament::getTenant()->id)->whereIn('id', $accountIds)->pluck('id');
+        $record->chartAccounts()->sync($allowed->mapWithKeys(fn ($id): array => [(int) $id => ['include_descendants' => $existing->get($id, false)]])->all());
         $record->dreModel->refreshStructureHash();
     }
 
