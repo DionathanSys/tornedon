@@ -25,7 +25,7 @@ trait HasServiceOrderProducts
     #[Locked]
     public ?int $editingProductId = null;
 
-    public array $productData = [];
+    public array $productData = ['product_stock_id' => null, 'unit_of_measure' => null, 'quantity' => 1, 'unit_price' => '', 'discount_percentage' => 0, 'discount_amount' => 0, 'observations' => ''];
 
     public array $products = [];
 
@@ -82,7 +82,8 @@ trait HasServiceOrderProducts
         }
         $this->products = $records->map(fn ($stock): array => [
             'id' => $stock->id,
-            'name' => "[{$stock->product->product_code}] {$stock->product->name} · Disponível: ".number_format((float) $stock->quantity_available, 3, ',', '.').' '.$stock->product->unit->value,
+            'name' => "[{$stock->product->product_code}] {$stock->product->name}",
+            'availability' => 'Disponível: '.number_format((float) $stock->quantity_available, 3, ',', '.').' '.$stock->product->unit->value,
         ])->values()->all();
     }
 
@@ -155,6 +156,9 @@ trait HasServiceOrderProducts
             'productData.discount_percentage' => 'required|numeric|min:0|max:100',
             'productData.discount_amount' => 'required|numeric|min:0',
             'productData.observations' => 'nullable|string|max:1000',
+        ], [
+            'productData.product_stock_id.required' => 'Selecione um produto em estoque.',
+            'productData.unit_of_measure.required' => 'Selecione a unidade do produto.',
         ])['productData'];
         $stock = $this->productStocks()->find($data['product_stock_id']);
         if (! $stock) {

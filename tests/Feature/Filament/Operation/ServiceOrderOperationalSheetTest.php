@@ -110,15 +110,72 @@ class ServiceOrderOperationalSheetTest extends TestCase
         $order = $this->order();
         $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
             ->assertSee('Defeitos relatados')->assertDontSee('Nome de quem relatou')->assertDontSee('Diagnóstico técnico')
-            ->call('addDefect')->set('formData.defects.0.report', 'Vazamento de óleo')
-            ->call('save')->assertHasNoErrors()->assertSee('Defeito citado');
+            ->set('formData.solution', 'Solução ainda não salva')
+            ->call('addDefect')->assertSet('showDefectModal', true)
+            ->set('defectData.report', 'Vazamento de óleo')
+            ->call('saveDefect')->assertHasNoErrors()->assertSet('showDefectModal', false)
+            ->assertSet('formData.solution', 'Solução ainda não salva')
+            ->assertSee('Vazamento de óleo');
         $defect = $order->defects()->sole();
-        $page->set('formData.defects.0.report', 'Vazamento de óleo com motor quente')->call('save')->assertHasNoErrors();
+        $this->assertNull($order->fresh()->solution);
+        $page->call('openEditDefect', $defect->id)->assertSet('defectData.report', 'Vazamento de óleo')
+            ->set('defectData.report', 'Vazamento de óleo com motor quente')
+            ->call('saveDefect')->assertHasNoErrors()->assertSet('showDefectModal', false)
+            ->assertSet('formData.solution', 'Solução ainda não salva');
         $this->assertSame('Vazamento de óleo com motor quente', $defect->fresh()->report);
         $this->assertSame($this->user->id, $defect->fresh()->updated_by);
         $this->assertDatabaseHas('audit_entries', ['auditable_id' => $order->id, 'event' => 'service_order.operational_sheet.updated']);
-        $page->call('removeDefect', 0)->call('save')->assertHasNoErrors();
+        $page->call('removeDefect', $defect->id)->assertHasNoErrors()
+            ->assertSet('order.defects', [])->assertSet('formData.defects', [])
+            ->assertSet('formData.solution', 'Solução ainda não salva');
         $this->assertSame(0, $order->defects()->count());
+    }
+
+    public function test_defect_modal_validates_and_cancelling_does_not_change_the_saved_list(): void
+    {
+        $order = $this->order();
+        $existing = $order->defects()->create($this->defect());
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])
+            ->call('addDefect')->call('saveDefect')->assertHasErrors('defectData.report')
+            ->assertSet('showDefectModal', true)
+            ->set('defectData.report', str_repeat('a', 10001))
+            ->call('saveDefect')->assertHasErrors('defectData.report')
+            ->set('showDefectModal', false)
+            ->call('openEditDefect', $existing->id)->assertHasNoErrors()
+            ->set('defectData.report', 'Edição cancelada')->set('showDefectModal', false);
+
+        $this->assertSame('Barulho na suspensão', $existing->fresh()->report);
+        $page->call('addDefect')->assertSet('defectData.report', '')
+            ->set('defectData.report', 'Segundo defeito')->call('saveDefect')->assertHasNoErrors()
+            ->call('save')->assertHasNoErrors();
+        $this->assertSame(2, $order->defects()->count());
+        $this->assertSame('Barulho na suspensão', $existing->fresh()->report);
+    }
+
+    public function test_defect_modal_actions_reject_foreign_records_read_only_orders_and_revoked_access(): void
+    {
+        $order = $this->order();
+        $foreignOrder = $this->order();
+        $foreignDefect = $foreignOrder->defects()->create($this->defect());
+        foreach (['openEditDefect', 'removeDefect'] as $method) {
+            Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->call($method, $foreignDefect->id)->assertNotFound();
+        }
+
+        foreach ([State::CANCELLED, State::INVOICED] as $state) {
+            $order->update(['status' => $state]);
+            foreach (['addDefect', 'openEditDefect', 'saveDefect', 'removeDefect'] as $method) {
+                Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->call($method, $foreignDefect->id)->assertForbidden();
+            }
+        }
+
+        $order->update(['status' => State::CLOSED]);
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $order->id])->call('addDefect')
+            ->set('defectData.report', 'Relato em OS encerrada')->call('saveDefect')->assertHasNoErrors();
+        $this->assertSame('Relato em OS encerrada', $order->defects()->sole()->report);
+
+        CompanyEntitlement::query()->update(['enabled' => false]);
+        $page->call('saveDefect')->assertForbidden();
+        $this->assertNotNull($foreignDefect->fresh());
     }
 
     public function test_foreign_defect_ids_are_rejected_without_changing_sheet_or_order(): void

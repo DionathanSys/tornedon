@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Filament\Operation;
 
+use App\Domain\DTO\Cnpj\CnpjVO;
 use App\Enum\Requisition\Status as RequisitionStatus;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
@@ -23,6 +24,8 @@ use App\Models\Service;
 use App\Models\ServiceOrder;
 use App\Models\ServiceOrderSignatureLink;
 use App\Models\User;
+use App\Services\Address\AddressService;
+use App\Services\Cnpj\CnpjConsultationService;
 use App\Services\ServiceOrder\ServiceOrderSignatureLinkService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -140,6 +143,103 @@ class OperationPanelTest extends TestCase
 
         $this->assertSame($company->id, $requisition->company_id);
         $this->assertSame(RequisitionStatus::OPEN, $requisition->status);
+    }
+
+    public function test_operation_creator_registers_customer_with_queried_cnpj_address_and_contact(): void
+    {
+        [$user, $company] = $this->authenticateTenant();
+        $vo = $this->customerCnpjResult();
+        $this->mock(CnpjConsultationService::class, function ($mock) use ($vo, $user, $company): void {
+            $mock->shouldReceive('consult')->once()->with('12.345.678/0001-95', [
+                'company_id' => $company->id, 'user_id' => $user->id, 'source' => 'operation_create_customer',
+            ])->andReturn($vo);
+        });
+
+        $creator = Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'service-order')
+            ->set('showNewCustomer', true)
+            ->assertSee('Buscar CNPJ')
+            ->set('newCustomer.document_number', '12.345.678/0001-95')
+            ->call('lookupCnpj')->assertHasNoErrors()
+            ->assertSet('newCustomer.name', 'Cliente consultado')
+            ->assertSet('newCustomer.state_tax_id', '123456789')
+            ->assertSet('newCustomer.state_tax_indicator', '1')
+            ->call('createCustomer')->assertHasNoErrors()
+            ->assertSet('showNewCustomer', false);
+
+        $partner = Partner::where('document_number', '12.345.678/0001-95')->firstOrFail();
+        $creator->assertSet('customerId', $partner->id);
+        $link = CompanyPartner::where('partner_id', $partner->id)->where('company_id', $company->id)->firstOrFail();
+        $this->assertDatabaseHas('addresses', ['company_partner_id' => $link->id, 'street' => 'Rua Teste', 'postal_code' => '01001-000']);
+        $this->assertDatabaseHas('contacts', ['company_partner_id' => $link->id, 'email' => 'cliente@example.com']);
+    }
+
+    public function test_operation_creator_handles_cnpj_validation_failure_and_document_changes(): void
+    {
+        $this->authenticateTenant();
+        $this->mock(CnpjConsultationService::class, function ($mock): void {
+            $mock->shouldReceive('consult')->once()->withArgs(fn ($cnpj, $context) => $cnpj === '12345678000195')->andReturn(null);
+            $mock->shouldReceive('getMessageUser')->andReturn('Consulta indisponível.');
+        });
+
+        Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'service-order')->set('showNewCustomer', true)
+            ->set('newCustomer.document_number', '123')
+            ->call('lookupCnpj')->assertHasErrors(['newCustomer.document_number'])
+            ->set('newCustomer.document_number', '12345678000195')
+            ->call('lookupCnpj')->assertHasErrors(['newCustomer.document_number'])
+            ->assertSee('Consulta indisponível.')
+            ->assertSet('cnpjLookup', []);
+    }
+
+    public function test_operation_creator_discards_lookup_when_document_changes(): void
+    {
+        $this->authenticateTenant();
+        $this->mock(CnpjConsultationService::class, function ($mock): void {
+            $mock->shouldReceive('consult')->once()->andReturn($this->customerCnpjResult());
+        });
+
+        Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'requisition')->set('showNewCustomer', true)
+            ->set('newCustomer.document_number', '12345678000195')
+            ->call('lookupCnpj')->assertHasNoErrors()
+            ->assertSet('cnpjLookup.document_number', '12.345.678/0001-95')
+            ->set('newCustomer.document_type', 'cpf')
+            ->assertSet('cnpjLookup', [])
+            ->assertSet('newCustomer.document_number', '')
+            ->assertDontSee('Buscar CNPJ');
+    }
+
+    public function test_operation_cnpj_registration_rolls_back_when_address_cannot_be_saved(): void
+    {
+        $this->authenticateTenant();
+        $this->mock(CnpjConsultationService::class, function ($mock): void {
+            $mock->shouldReceive('consult')->once()->andReturn($this->customerCnpjResult());
+        });
+        $this->mock(AddressService::class, function ($mock): void {
+            $mock->shouldReceive('create')->once()->andReturn(null);
+            $mock->shouldReceive('getMessageUser')->andReturn('Endereço inválido.');
+        });
+
+        Livewire::test(OperationRecordCreator::class)
+            ->call('open', 'service-order')->set('showNewCustomer', true)
+            ->set('newCustomer.document_number', '12345678000195')
+            ->call('lookupCnpj')->assertHasNoErrors()
+            ->call('createCustomer')->assertHasErrors(['newCustomer.document_number'])
+            ->assertSet('showNewCustomer', true);
+
+        $this->assertDatabaseMissing('partners', ['document_number' => '12.345.678/0001-95']);
+    }
+
+    private function customerCnpjResult(): CnpjVO
+    {
+        return CnpjVO::fromApiResponse([
+            'taxId' => '12345678000195',
+            'company' => ['name' => 'Cliente consultado'],
+            'address' => ['street' => 'Rua Teste', 'number' => '10', 'city' => 'São Paulo', 'state' => 'SP', 'zip' => '01001000'],
+            'registrations' => [['number' => '123456789', 'state' => 'SP', 'enabled' => true]],
+            'emails' => [['address' => 'cliente@example.com']],
+        ]);
     }
 
     public function test_service_order_queue_is_scoped_to_the_current_tenant(): void

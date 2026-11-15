@@ -6,10 +6,13 @@ use App\Enum\Requisition\Status;
 use App\Enum\ServiceOrder\Priority;
 use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
+use App\Enum\Tax\StateTaxIndicator;
 use App\Filament\Operation\OperationModules;
 use App\Filament\Operation\Pages\Requisitions\RequisitionDetail;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderDetail;
 use App\Models\Partner;
+use App\Services\Cnpj\CnpjConsultationService;
+use App\Services\Partner\CompanyPartnerCnpjImportService;
 use App\Services\Partner\PartnerService;
 use App\Services\Partner\QuickCreateCustomerPartnerService;
 use App\Services\Requisition\RequisitionService;
@@ -47,6 +50,9 @@ class OperationRecordCreator extends Component
 
     public array $newCustomer = [];
 
+    #[Locked]
+    public array $cnpjLookup = [];
+
     #[On('operation-create-record')]
     public function open(string $kind): void
     {
@@ -56,6 +62,7 @@ class OperationRecordCreator extends Component
         $this->kind = $kind;
         $this->customerId = null;
         $this->showNewCustomer = false;
+        $this->cnpjLookup = [];
         $this->newCustomer = ['name' => '', 'document_type' => 'cnpj', 'document_number' => '', 'state_tax_indicator' => '9', 'state_tax_id' => ''];
         $this->searchCustomers();
         $this->showModal = true;
@@ -91,7 +98,12 @@ class OperationRecordCreator extends Component
             ? preg_replace('/^(\d{3})(\d{3})(\d{3})(\d{2})$/', '$1.$2.$3-$4', $digits)
             : preg_replace('/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/', '$1.$2.$3/$4-$5', $digits);
         $service = app(QuickCreateCustomerPartnerService::class);
-        $record = $service->create((int) Auth::id(), Filament::getTenant()->getKey(), [...$data, 'invoice_threshold' => 0]);
+        $lookup = $data['document_type'] === 'cnpj'
+            && ($this->cnpjLookup['document_number'] ?? null) === $data['document_number']
+            && ($this->cnpjLookup['company_id'] ?? null) === Filament::getTenant()->getKey()
+                ? $this->cnpjLookup
+                : null;
+        $record = $service->create((int) Auth::id(), Filament::getTenant()->getKey(), [...$data, 'invoice_threshold' => 0], $lookup);
 
         if (! $record) {
             $this->addError('newCustomer.document_number', $service->getMessageUser());
@@ -103,6 +115,50 @@ class OperationRecordCreator extends Component
         $this->showNewCustomer = false;
         $this->searchCustomers();
         $this->success('Cliente cadastrado.');
+    }
+
+    public function lookupCnpj(): void
+    {
+        $this->authorizeModule($this->kind);
+        $tenant = Filament::getTenant();
+        abort_unless($tenant, 403);
+        $this->cnpjLookup = [];
+        $this->resetValidation();
+        $this->validate([
+            'newCustomer.document_type' => ['required', Rule::in(['cnpj'])],
+            'newCustomer.document_number' => ['required', 'regex:/^(\d{14}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})$/'],
+        ], [
+            'newCustomer.document_number.regex' => 'Informe um CNPJ completo para realizar a consulta.',
+        ]);
+
+        $service = app(CnpjConsultationService::class);
+        $vo = $service->consult($this->newCustomer['document_number'], [
+            'company_id' => $tenant->getKey(),
+            'user_id' => Auth::id(),
+            'source' => 'operation_create_customer',
+        ]);
+
+        if (! $vo) {
+            $this->addError('newCustomer.document_number', $service->getMessageUser() ?: 'Não foi possível consultar o CNPJ informado.');
+
+            return;
+        }
+
+        $registration = $vo->getMainStateRegistration();
+        $this->newCustomer = array_replace($this->newCustomer, [
+            'name' => $vo->companyName,
+            'document_number' => $vo->formattedTaxId(),
+            'state_tax_id' => $registration?->number ?? '',
+            'state_tax_indicator' => $registration?->number
+                ? StateTaxIndicator::CONTRIBUINTE_ICMS->value
+                : StateTaxIndicator::NAO_CONTRIBUINTE->value,
+        ]);
+        $this->cnpjLookup = [
+            'company_id' => $tenant->getKey(),
+            'document_number' => $vo->formattedTaxId(),
+            'address' => CompanyPartnerCnpjImportService::mapAddressFromVo($vo),
+            'contact' => CompanyPartnerCnpjImportService::mapContactFromVo($vo),
+        ];
     }
 
     public function create(): void
@@ -142,6 +198,11 @@ class OperationRecordCreator extends Component
 
     public function updatedNewCustomer(mixed $value, ?string $key = null): void
     {
+        if (in_array($key, ['document_type', 'document_number'], true)) {
+            $this->cnpjLookup = [];
+            $this->resetValidation();
+        }
+
         if ($key === 'document_type') {
             $this->newCustomer['document_number'] = '';
         }

@@ -5,6 +5,8 @@ namespace App\Services\Partner;
 use App\Enum\Partner\Type as PartnerType;
 use App\Jobs\ImportCompanyPartnerCnpjDataJob;
 use App\Models\CompanyPartner;
+use App\Services\Address\AddressService;
+use App\Services\Contact\ContactService;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,7 +15,7 @@ class QuickCreateCustomerPartnerService
 {
     use HandlesServiceResponse;
 
-    public function create(int $userId, int $companyId, array $data): ?CompanyPartner
+    public function create(int $userId, int $companyId, array $data, ?array $cnpjLookup = null): ?CompanyPartner
     {
         $this->resetResponse();
 
@@ -52,7 +54,8 @@ class QuickCreateCustomerPartnerService
                 $userId,
                 $companyId,
                 $partnerPayload,
-                $companyPartnerPayload
+                $companyPartnerPayload,
+                $cnpjLookup
             ): ?CompanyPartner {
                 $partnerService = app(PartnerService::class);
                 $partner = $partnerService->findOrCreatePartner($userId, $partnerPayload);
@@ -111,6 +114,24 @@ class QuickCreateCustomerPartnerService
                     return null;
                 }
 
+                if ($cnpjLookup !== null) {
+                    $addressService = app(AddressService::class);
+
+                    if (! $addressService->create($updatedCompanyPartner->id, $cnpjLookup['address'], $userId)) {
+                        throw new \RuntimeException($addressService->getMessageUser() ?: 'Não foi possível cadastrar o endereço do cliente.');
+                    }
+
+                    $contact = $cnpjLookup['contact'];
+
+                    if (filled($contact['email']) || filled($contact['phone']) || filled($contact['mobile'])) {
+                        $contactService = app(ContactService::class);
+
+                        if (! $contactService->create($updatedCompanyPartner->id, $contact, $userId)) {
+                            throw new \RuntimeException($contactService->getMessageUser() ?: 'Não foi possível cadastrar o contato do cliente.');
+                        }
+                    }
+                }
+
                 return $updatedCompanyPartner;
             });
 
@@ -132,7 +153,7 @@ class QuickCreateCustomerPartnerService
         } catch (\Throwable $e) {
             $this->setError('Erro ao cadastrar parceiro rapidamente.', [$e->getMessage()], 500);
 
-            Log::error(__METHOD__ . '@' . __LINE__, [
+            Log::error(__METHOD__.'@'.__LINE__, [
                 'message' => 'Falha ao executar cadastro rápido de parceiro',
                 'company_id' => $companyId,
                 'user_id' => $userId,

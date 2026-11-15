@@ -1,31 +1,23 @@
 <x-mary-collapse id="service-order-defects" class="bg-base-100 rounded-box border-base-300" separator>
-    <x-slot:heading>Defeitos relatados</x-slot:heading>
-    <x-slot:content>
-    @if($order['can_edit'])
-        <x-mary-form wire:submit="save" no-separator class="gap-2">
-            @foreach($formData['defects'] ?? [] as $index => $defect)
-                <div class="flex items-end gap-2" wire:key="defect-{{ $defect['id'] ?? 'new' }}-{{ $index }}">
-                    <div class="min-w-0 flex-1">
-                        <x-mary-textarea :label="'Defeito citado '.($index + 1)" :wire:model="'formData.defects.'.$index.'.report'" rows="2" maxlength="10000" class="textarea-sm" />
-                    </div>
-                    <x-mary-button icon="o-trash" class="btn-ghost btn-sm btn-square shrink-0" :aria-label="'Remover defeito '.($index + 1)" tooltip="Remover defeito" :wire:click="'removeDefect('.$index.')'" wire:confirm="Remover este defeito da ficha? A alteração será efetivada ao salvar." />
-                </div>
-            @endforeach
-            @error('formData.defects')<p class="text-error text-sm">{{ $message }}</p>@enderror
-            <div class="flex flex-wrap gap-2">
-                <x-mary-button label="Adicionar defeito" icon="o-plus" wire:click="addDefect" class="btn-outline btn-sm" />
-                <x-mary-button label="Salvar ficha" type="submit" class="btn-primary btn-sm" spinner="save" />
-            </div>
-            <p class="text-xs text-base-content/60">Salve antes de imprimir pelo menu Mais.</p>
-        </x-mary-form>
-    @else
-        <ol class="space-y-2">
+    <x-slot:heading class="px-5 py-4 sm:px-6">Defeitos relatados ({{ count($order['defects']) }})</x-slot:heading>
+    <x-slot:content class="px-5 pb-5 pt-2 sm:px-6">
+        <div class="space-y-3">
             @forelse($order['defects'] as $defect)
-                <li class="flex gap-2 text-sm"><span class="font-semibold">{{ $loop->iteration }}.</span><p class="whitespace-pre-wrap break-words min-w-0">{{ $defect['report'] }}</p></li>
+                <div class="flex items-start justify-between gap-3 rounded-box bg-base-200 p-4" wire:key="service-order-defect-{{ $defect['id'] }}">
+                    <p class="min-w-0 whitespace-pre-wrap break-words"><span class="font-semibold">{{ $loop->iteration }}.</span> {{ $defect['report'] }}</p>
+                    @if($order['can_edit'])
+                        <div class="flex shrink-0">
+                            <x-mary-button icon="o-pencil-square" class="btn-ghost btn-sm btn-circle" :wire:click="'openEditDefect('.$defect['id'].')'" aria-label="Editar defeito" tooltip="Editar defeito" />
+                            <x-mary-button icon="o-trash" class="btn-ghost btn-sm btn-circle text-error" :wire:click="'removeDefect('.$defect['id'].')'" wire:confirm="Remover este defeito da ficha?" aria-label="Remover defeito" tooltip="Remover defeito" />
+                        </div>
+                    @endif
+                </div>
             @empty
-                <li class="text-sm text-base-content/60">Nenhum defeito registrado na lista.</li>
+                <p class="text-sm text-base-content/60">Nenhum defeito registrado na lista.</p>
             @endforelse
-        </ol>
-    @endif
+            @if($order['can_edit'] && ! $order['is_open'])
+                <x-mary-button label="Adicionar defeito" icon="o-plus" wire:click="addDefect" class="btn-outline btn-sm" />
+            @endif
+        </div>
     </x-slot:content>
 </x-mary-collapse>

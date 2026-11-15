@@ -58,6 +58,13 @@ class ServiceOrderDetail extends OperationPage
 
     public array $services = [];
 
+    public bool $showDefectModal = false;
+
+    #[Locked]
+    public ?int $editingDefectId = null;
+
+    public array $defectData = ['report' => ''];
+
     public bool $showSignatureModal = false;
 
     public bool $showReplaceSignatureModal = false;
@@ -232,17 +239,94 @@ class ServiceOrderDetail extends OperationPage
 
     public function addDefect(): void
     {
-        abort_unless($this->operationalSheetEnabled, 403);
-        abort_unless(in_array($this->tenantOrder()?->status, [State::OPEN, State::CLOSED], true), 403);
-        $this->formData['defects'][] = ['id' => null, 'report' => ''];
+        $this->editableDefectOrder();
+        $this->resetValidation();
+        $this->editingDefectId = null;
+        $this->defectData = ['report' => ''];
+        $this->showDefectModal = true;
     }
 
-    public function removeDefect(int $index): void
+    public function openEditDefect(int $defectId): void
     {
+        $order = $this->editableDefectOrder();
+        $defect = $order->defects()->find($defectId);
+        abort_unless($defect, 404);
+        $this->resetValidation();
+        $this->editingDefectId = $defect->id;
+        $this->defectData = $defect->only(['report']);
+        $this->showDefectModal = true;
+    }
+
+    public function saveDefect(): void
+    {
+        $order = $this->editableDefectOrder();
+        $data = $this->validate(['defectData.report' => 'required|string|max:10000'], [
+            'defectData.report.required' => 'Descreva o defeito relatado.',
+        ])['defectData'];
+        $defects = $order->defects()->get()->map(fn ($defect): array => $defect->only(['id', 'report']));
+
+        if ($this->editingDefectId !== null) {
+            abort_unless($defects->contains('id', $this->editingDefectId), 404);
+            $defects = $defects->map(fn (array $defect): array => $defect['id'] === $this->editingDefectId ? array_replace($defect, $data) : $defect);
+        } else {
+            $defects->push($data);
+        }
+
+        if ($this->persistDefects($order, $defects->all())) {
+            $this->showDefectModal = false;
+        }
+    }
+
+    public function removeDefect(int $defectId): void
+    {
+        $order = $this->editableDefectOrder();
+        abort_unless($order->defects()->whereKey($defectId)->exists(), 404);
+        $defects = $order->defects()->whereKeyNot($defectId)->get()->map(fn ($defect): array => $defect->only(['id', 'report']))->all();
+        $this->persistDefects($order, $defects);
+    }
+
+    private function editableDefectOrder(): ServiceOrder
+    {
+        $order = $this->tenantOrder();
+        abort_unless($order, 404);
         abort_unless($this->operationalSheetEnabled, 403);
-        abort_unless(in_array($this->tenantOrder()?->status, [State::OPEN, State::CLOSED], true), 403);
-        unset($this->formData['defects'][$index]);
-        $this->formData['defects'] = array_values($this->formData['defects']);
+        abort_unless(in_array($order->status, [State::OPEN, State::CLOSED], true), 403);
+
+        return $order;
+    }
+
+    private function persistDefects(ServiceOrder $order, array $defects): bool
+    {
+        $service = app(ServiceOrderService::class);
+        $updated = $service->update($order, ['defects' => $defects], (int) Auth::id());
+
+        if ($service->hasError() || ! $updated) {
+            $this->error($service->getMessageUser());
+
+            return false;
+        }
+
+        $this->loadOrder(preserveForm: true);
+        $this->formData['defects'] = $this->order['defects'];
+        $this->success('Defeitos atualizados.');
+
+        return true;
+    }
+
+    #[Computed]
+    public function floatingActions(): array
+    {
+        $actions = [];
+
+        if ($this->order['can_edit_products'] ?? false) {
+            $actions[] = ['label' => 'Adicionar produto', 'icon' => 'o-cube', 'method' => 'openAddProduct'];
+        }
+
+        if ($this->operationalSheetEnabled && ($this->order['can_edit'] ?? false)) {
+            $actions[] = ['label' => 'Adicionar defeito', 'icon' => 'o-wrench-screwdriver', 'method' => 'addDefect'];
+        }
+
+        return array_merge($actions, array_values(array_filter($this->getOperationActions(), fn ($action) => ($action['method'] ?? null) !== 'printOperationalSheet')));
     }
 
     public function printOperationalSheet(): StreamedResponse

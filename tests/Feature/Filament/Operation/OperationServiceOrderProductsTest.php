@@ -76,6 +76,38 @@ class OperationServiceOrderProductsTest extends TestCase
         $this->assertDatabaseMissing('requisition_items', ['id' => $item->id]);
     }
 
+    public function test_product_fields_exist_before_modal_opens_and_selection_loads_units_and_stock(): void
+    {
+        $stock = $this->stock();
+        $name = str_repeat('Produto com nome longo ', 5);
+        $stock->product->update(['name' => $name]);
+        $stock->product->alternativeUnitConversions()->create(['unit' => Unit::CX, 'conversion_factor' => 5]);
+
+        $page = Livewire::test(ServiceOrderDetail::class, ['record' => $this->order->id]);
+        $this->assertArrayHasKey('product_stock_id', $page->get('productData'));
+        $this->assertArrayHasKey('unit_of_measure', $page->get('productData'));
+        $this->assertFalse($page->get('showProductModal'));
+
+        $page->call('openAddProduct')
+            ->assertSet('products.0.name', "[{$stock->product->product_code}] {$name}")
+            ->assertSet('products.0.availability', 'Disponível: 100,000 UN')
+            ->assertSee('Disponível: 100,000 UN')
+            ->set('productData.product_stock_id', $stock->id)
+            ->assertSet('productData.unit_of_measure', 'UN')
+            ->assertSet('productData.unit_price', 50);
+
+        $this->assertSame([
+            ['id' => 'UN', 'name' => 'UN'],
+            ['id' => 'CX', 'name' => 'CX'],
+        ], $page->get('productUnits'));
+        $this->assertStringContainsString('Disponível: 100,000 UN', $page->get('productHint'));
+
+        $page->set('productData.unit_of_measure', 'CX')->call('saveProduct')->assertHasNoErrors();
+        $item = $this->order->requisition()->sole()->items()->sole();
+        $this->assertSame($stock->product_id, $item->product_id);
+        $this->assertSame(5.0, $item->resolvedBaseQuantity());
+    }
+
     public function test_units_are_converted_and_closing_preserves_stock_reservations(): void
     {
         $stock = $this->stock();

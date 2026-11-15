@@ -11,62 +11,64 @@
         @if($this->operationalSheetEnabled)
             @include('filament.operation.pages.partials.operational-sheet')
         @endif
-        <x-operation.panel :title="'Serviços ('.count($order['items']).')'">
-            <div class="space-y-3">
-                @forelse ($order['items'] as $item)
-                    <div class="rounded-box bg-base-200 p-4" wire:key="service-order-item-{{ $item['id'] }}">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <p class="font-semibold">{{ $item['name'] }}</p>
-                                <p class="mt-1 text-sm text-base-content/60">{{ $item['quantity'] }} × {{ $item['unit_price'] }} = {{ $item['total'] }}</p>
-                            </div>
-                            @if ($order['is_open'])
-                                <x-mary-button icon="o-pencil-square" class="btn-ghost btn-sm btn-circle" :wire:click="'openEditService('.$item['id'].')'" aria-label="Editar serviço" tooltip="Editar serviço" />
-                            @endif
-                        </div>
-                        @if ($item['observations'])
-                            <p class="mt-2 text-sm text-base-content/60">{{ $item['observations'] }}</p>
-                        @endif
-                    </div>
-                @empty
-                    <p class="text-sm text-base-content/60">Nenhum serviço adicionado. Use o botão + para incluir.</p>
-                @endforelse
-            </div>
-        </x-operation.panel>
-
-        <x-operation.panel :title="'Produtos ('.count($order['products']).')'" :subtitle="$order['requisition_label']">
-            <div class="space-y-3">
-                @if ($order['can_edit_products'])
-                    <x-mary-button label="Adicionar produto" icon="o-plus" class="btn-primary btn-sm" wire:click="openAddProduct" />
-                @endif
-                @forelse ($order['products'] as $product)
-                    <div class="rounded-box bg-base-200 p-4" wire:key="service-order-product-{{ $product['id'] }}">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <p class="font-semibold">[{{ $product['code'] }}] {{ $product['name'] }}</p>
-                                <p class="mt-1 text-sm">{{ $product['quantity'] }} {{ $product['unit'] }} × {{ $product['unit_price'] }} · Desconto: {{ $product['discount'] }}</p>
-                                <p class="font-semibold">Total: {{ $product['total'] }}</p>
-                            </div>
-                            @if ($order['can_edit_products'])
-                                <div class="flex shrink-0">
-                                    <x-mary-button icon="o-pencil-square" class="btn-ghost btn-sm btn-circle" :wire:click="'openEditProduct('.$product['id'].')'" aria-label="Editar produto" tooltip="Editar produto" />
-                                    <x-mary-button icon="o-trash" class="btn-ghost btn-sm btn-circle text-error" :wire:click="'deleteProduct('.$product['id'].')'" wire:confirm="Excluir este produto da requisição vinculada?" aria-label="Excluir produto" tooltip="Excluir produto" />
+        <x-mary-collapse id="service-order-services" class="bg-base-100 rounded-box border-base-300" separator>
+            <x-slot:heading class="px-5 py-4 sm:px-6">Serviços ({{ count($order['items']) }})</x-slot:heading>
+            <x-slot:content class="px-5 pb-5 pt-2 sm:px-6">
+                <div class="space-y-3">
+                    @forelse ($order['items'] as $item)
+                        <div class="rounded-box bg-base-200 p-4" wire:key="service-order-item-{{ $item['id'] }}">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-semibold">{{ $item['name'] }}</p>
+                                    <p class="mt-1 text-sm text-base-content/60">{{ $item['quantity'] }} × {{ $item['unit_price'] }} = {{ $item['total'] }}</p>
                                 </div>
+                                @if ($order['is_open'])
+                                    <x-mary-button icon="o-pencil-square" class="btn-ghost btn-sm btn-circle" :wire:click="'openEditService('.$item['id'].')'" aria-label="Editar serviço" tooltip="Editar serviço" />
+                                @endif
+                            </div>
+                            @if ($item['observations'])
+                                <p class="mt-2 text-sm text-base-content/60">{{ $item['observations'] }}</p>
                             @endif
                         </div>
-                        @if ($product['observations'])
-                            <p class="mt-2 whitespace-pre-wrap text-sm text-base-content/60">{{ $product['observations'] }}</p>
-                        @endif
-                    </div>
-                @empty
-                    <p class="text-sm text-base-content/60">Nenhum produto adicionado.</p>
-                @endforelse
-                <div class="grid grid-cols-2 gap-3">
-                    <x-operation.stat title="Serviços e deslocamento" :value="$order['services_total']" />
-                    <x-operation.stat title="Produtos" :value="$order['products_total']" />
+                    @empty
+                        <p class="text-sm text-base-content/60">Nenhum serviço adicionado. Use o botão + para incluir.</p>
+                    @endforelse
                 </div>
-            </div>
-        </x-operation.panel>
+            </x-slot:content>
+        </x-mary-collapse>
+
+        <x-mary-collapse id="service-order-products" class="bg-base-100 rounded-box border-base-300" separator>
+            <x-slot:heading class="px-5 py-4 sm:px-6">Produtos ({{ count($order['products']) }})</x-slot:heading>
+            <x-slot:content class="px-5 pb-5 pt-2 sm:px-6">
+                @if ($order['requisition_label'])
+                    <p class="mb-3 text-sm text-base-content/60">{{ $order['requisition_label'] }}</p>
+                @endif
+                <div class="space-y-3">
+                    @forelse ($order['products'] as $product)
+                        <div class="rounded-box bg-base-200 p-4" wire:key="service-order-product-{{ $product['id'] }}">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="font-semibold">[{{ $product['code'] }}] {{ $product['name'] }}</p>
+                                    <p class="mt-1 text-sm">{{ $product['quantity'] }} {{ $product['unit'] }} × {{ $product['unit_price'] }} · Desconto: {{ $product['discount'] }}</p>
+                                    <p class="font-semibold">Total: {{ $product['total'] }}</p>
+                                </div>
+                                @if ($order['can_edit_products'])
+                                    <div class="flex shrink-0">
+                                        <x-mary-button icon="o-pencil-square" class="btn-ghost btn-sm btn-circle" :wire:click="'openEditProduct('.$product['id'].')'" aria-label="Editar produto" tooltip="Editar produto" />
+                                        <x-mary-button icon="o-trash" class="btn-ghost btn-sm btn-circle text-error" :wire:click="'deleteProduct('.$product['id'].')'" wire:confirm="Excluir este produto da requisição vinculada?" aria-label="Excluir produto" tooltip="Excluir produto" />
+                                    </div>
+                                @endif
+                            </div>
+                            @if ($product['observations'])
+                                <p class="mt-2 whitespace-pre-wrap text-sm text-base-content/60">{{ $product['observations'] }}</p>
+                            @endif
+                        </div>
+                    @empty
+                        <p class="text-sm text-base-content/60">Nenhum produto adicionado.</p>
+                    @endforelse
+                </div>
+            </x-slot:content>
+        </x-mary-collapse>
 
         @if ($order['can_edit'])
             <x-mary-form wire:submit="save" no-separator class="space-y-6">
@@ -114,7 +116,7 @@
         @livewire(\App\Livewire\OperationAttachments::class, ['orderId' => $order['id']], key('operation-attachments-'.$order['id']))
 
         @if ($order['is_open'])
-            <x-operation.fab label="Adicionar serviço" method="openAddService" :actions="array_values(array_filter($this->getFooter()->getData()['actions'], fn ($action) => ($action['method'] ?? null) !== 'printOperationalSheet'))" />
+            <x-operation.fab label="Adicionar serviço" method="openAddService" :actions="$this->floatingActions" />
         @endif
     @else
         <x-mary-alert title="Ordem de serviço não encontrada." icon="o-exclamation-circle" class="alert-warning" />
@@ -122,7 +124,7 @@
 
     {{ $this->getFooter() }}
 
-    <x-mary-modal wire:model="showServiceModal" :title="$editingItemId ? 'Editar serviço' : 'Adicionar serviço'" subtitle="Defina o serviço, a quantidade e os valores." box-class="max-w-2xl" class="backdrop-blur-sm">
+    <x-operation.bottom-sheet wire:model="showServiceModal" :title="$editingItemId ? 'Editar serviço' : 'Adicionar serviço'" subtitle="Defina o serviço, a quantidade e os valores.">
         <x-mary-form wire:submit="saveService" no-separator>
             <x-operation.search-select label="Serviço" wire:model.live="serviceData.service_id" :options="$services" search-function="searchServices" placeholder="Buscar nome ou código" debounce="300ms" />
             <div class="grid grid-cols-2 gap-4">
@@ -138,11 +140,11 @@
                 <x-mary-button :label="$editingItemId ? 'Salvar serviço' : 'Adicionar serviço'" class="btn-primary" type="submit" spinner="saveService" />
             </x-slot:actions>
         </x-mary-form>
-    </x-mary-modal>
+    </x-operation.bottom-sheet>
     @include('filament.operation.signature-modals')
-    <x-mary-modal wire:model="showProductModal" :title="$editingProductId ? 'Editar produto' : 'Adicionar produto'" box-class="max-w-2xl" class="backdrop-blur-sm">
+    <x-operation.bottom-sheet wire:model="showProductModal" :title="$editingProductId ? 'Editar produto' : 'Adicionar produto'">
         <x-mary-form wire:submit="saveProduct" no-separator>
-            <x-operation.search-select label="Produto em estoque" wire:model.live="productData.product_stock_id" :options="$products" search-function="searchProducts" placeholder="Buscar nome ou código" debounce="300ms" />
+            <x-operation.search-select label="Produto em estoque" wire:model.live="productData.product_stock_id" :options="$products" option-sub-label="availability" search-function="searchProducts" placeholder="Buscar nome ou código" debounce="300ms" />
             <p class="text-sm text-base-content/60">{{ $this->productHint }}</p>
             <div class="grid grid-cols-2 gap-4">
                 <x-mary-select label="Unidade" wire:model.live="productData.unit_of_measure" :options="$this->productUnits" placeholder="Selecione" />
@@ -158,7 +160,18 @@
                 <x-mary-button label="Salvar produto" class="btn-primary" type="submit" spinner="saveProduct" />
             </x-slot:actions>
         </x-mary-form>
-    </x-mary-modal>
+    </x-operation.bottom-sheet>
+    @if ($this->operationalSheetEnabled && ($order['can_edit'] ?? false))
+        <x-operation.bottom-sheet wire:model="showDefectModal" :title="$editingDefectId ? 'Editar defeito' : 'Adicionar defeito'" subtitle="Descreva o defeito relatado pelo cliente.">
+            <x-mary-form wire:submit="saveDefect" no-separator>
+                <x-mary-textarea label="Defeito relatado" wire:model="defectData.report" rows="5" maxlength="10000" required />
+                <x-slot:actions>
+                    <x-mary-button label="Voltar" @click="$wire.showDefectModal = false" />
+                    <x-mary-button :label="$editingDefectId ? 'Salvar defeito' : 'Adicionar defeito'" class="btn-primary" type="submit" spinner="saveDefect" />
+                </x-slot:actions>
+            </x-mary-form>
+        </x-operation.bottom-sheet>
+    @endif
     <x-mary-modal wire:model="showPdfModal" title="PDF da ordem de serviço" box-class="max-w-5xl" class="backdrop-blur-sm">
         <x-mary-checkbox label="Incluir fotos do serviço no PDF" wire:model.live="includeServicePhotos" />
         <p class="my-3 text-sm text-base-content/60">Inclui somente imagens dos anexos do tipo Foto do Serviço ao final do documento.</p>
