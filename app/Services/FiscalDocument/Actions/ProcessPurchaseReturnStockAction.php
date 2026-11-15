@@ -50,7 +50,8 @@ class ProcessPurchaseReturnStockAction
             if (StockMovement::query()
                 ->where('source_type', 'fiscal_document_item')
                 ->where('source_id', $item->id)
-                ->where('type', MovementType::RETURN->value)
+                ->where('company_id', $document->company_id)
+                ->whereIn('type', [MovementType::EXIT->value, MovementType::RETURN->value])
                 ->exists()) {
                 continue;
             }
@@ -76,11 +77,15 @@ class ProcessPurchaseReturnStockAction
             }
 
             $movement = $this->stockMovementService->create(array_merge($movementData, [
-                'type' => MovementType::RETURN->value,
-                'unit_price' => (float) $item->unit_price,
+                'type' => MovementType::EXIT->value,
+                // Devolução ao fornecedor não é venda e não redefine o custo do saldo.
+                'unit_price' => 0,
                 'reason' => "Devolução de compra NF #{$document->document_number} - Produto: {$product->product_code}",
                 'source_type' => 'fiscal_document_item',
                 'source_id' => $item->id,
+                'additional_info' => [
+                    'purchase_return_unit_price' => (float) $item->unit_price,
+                ],
             ]), $userId);
 
             if ($this->stockMovementService->hasError() || ! $movement) {

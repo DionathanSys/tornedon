@@ -27,6 +27,7 @@ use App\Models\User;
 use App\Services\FiscalDocument\Actions\ProcessAuthorizedPurchaseReturnAction;
 use App\Services\FiscalDocument\Actions\ReversePurchaseReturnFinancialImpactAction;
 use App\Services\FiscalDocument\Actions\ReversePurchaseReturnStockAction;
+use App\Services\StockMovement\StockMovementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -65,10 +66,15 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         $this->assertDatabaseHas('stock_movements', [
             'source_type' => 'fiscal_document_item',
             'source_id' => $returnItem->id,
-            'type' => StockMovementType::RETURN->value,
+            'type' => StockMovementType::EXIT->value,
         ]);
         $this->assertNotNull($returnDocument->fresh()->return_financial_processed_at);
         $this->assertNotNull($returnDocument->fresh()->return_stock_processed_at);
+        $stock = ProductStock::query()->sole();
+        $this->assertEquals(9.0, (float) $stock->quantity_total);
+        $this->assertEquals(35.0, (float) $stock->average_cost);
+        $this->assertEquals(40.0, (float) $stock->last_cost);
+        $this->assertEquals(75.0, (float) $stock->last_sale_price);
     }
 
     public function test_it_cancels_open_payables_when_configured_to_cancel(): void
@@ -90,7 +96,7 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         $this->assertDatabaseHas('stock_movements', [
             'source_type' => 'fiscal_document_item',
             'source_id' => $returnItem->id,
-            'type' => StockMovementType::RETURN->value,
+            'type' => StockMovementType::EXIT->value,
         ]);
     }
 
@@ -123,7 +129,7 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         $this->assertDatabaseHas('stock_movements', [
             'source_type' => 'fiscal_document_item',
             'source_id' => $returnItem->id,
-            'type' => StockMovementType::RETURN->value,
+            'type' => StockMovementType::EXIT->value,
         ]);
     }
 
@@ -146,13 +152,13 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         $this->assertDatabaseHas('stock_movements', [
             'source_type' => 'fiscal_document_item',
             'source_id' => $returnItem->id,
-            'type' => StockMovementType::RETURN->value,
+            'type' => StockMovementType::EXIT->value,
         ]);
     }
 
     public function test_it_reverses_return_stock_once_after_the_return_is_canceled(): void
     {
-        [$user, $originDocument, $returnDocument] = $this->createScenario(
+        [$user, $originDocument, $returnDocument, $returnItem] = $this->createScenario(
             PurchaseReturnSettlementMode::NONE,
             100,
             [],
@@ -160,6 +166,10 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         );
 
         app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+
+        $this->assertEquals(9.0, (float) ProductStock::query()->sole()->quantity_total);
+        // O estorno deve usar a quantidade lançada, não os dados atuais do item.
+        $returnItem->update(['quantity' => 2, 'taxable_quantity' => 2]);
 
         $reverseAction = app(ReversePurchaseReturnStockAction::class);
         $firstReverse = $reverseAction->execute($returnDocument->fresh(), $user->id);
@@ -171,13 +181,88 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         $this->assertSame([], $firstReverse['errors']);
         $this->assertSame(0, $secondReverse['reversed_movements']);
         $this->assertSame([], $secondReverse['errors']);
-        $this->assertEquals(0.0, (float) $stock->quantity_total);
+        $this->assertEquals(10.0, (float) $stock->quantity_total);
+        $this->assertEquals(35.0, (float) $stock->average_cost);
+        $this->assertEquals(40.0, (float) $stock->last_cost);
+        $this->assertEquals(75.0, (float) $stock->last_sale_price);
         $this->assertDatabaseCount('stock_movements', 2);
         $this->assertNotNull($returnDocument->fresh()->return_stock_reversed_at);
         $this->assertDatabaseHas('stock_movements', [
             'source_type' => 'fiscal_document_item_return_reversal',
+            'type' => StockMovementType::ENTRY->value,
+        ]);
+    }
+
+    public function test_it_does_not_process_a_purchase_return_without_available_stock(): void
+    {
+        [$user, , $returnDocument] = $this->createScenario(
+            PurchaseReturnSettlementMode::NONE, 100, [], false,
+        );
+        $stock = ProductStock::query()->sole();
+        $stock->update(['quantity_reserved' => 10]);
+
+        $result = app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+
+        $this->assertNotEmpty($result['errors']);
+        $this->assertSame(0, $result['stock_movements']);
+        $this->assertDatabaseCount('stock_movements', 0);
+        $this->assertEquals(10.0, (float) $stock->fresh()->quantity_total);
+        $this->assertNull($returnDocument->fresh()->return_stock_processed_at);
+    }
+
+    public function test_it_does_not_duplicate_and_can_reverse_a_legacy_inbound_purchase_return(): void
+    {
+        [$user, , $returnDocument, $returnItem] = $this->createScenario(
+            PurchaseReturnSettlementMode::NONE, 100, [], false,
+        );
+        $stock = ProductStock::query()->sole();
+        $legacyMovement = app(StockMovementService::class)->create([
+            'product_stock_id' => $stock->id,
+            'product_id' => $stock->product_id,
+            'company_id' => $stock->company_id,
+            'type' => StockMovementType::RETURN->value,
+            'quantity' => 1,
+            'unit_price' => 100,
+            'reason' => 'Devolução registrada antes da correção',
+            'source_type' => 'fiscal_document_item',
+            'source_id' => $returnItem->id,
+        ], $user->id);
+        $this->assertNotNull($legacyMovement);
+        $this->assertEquals(11.0, (float) $stock->fresh()->quantity_total);
+
+        $process = app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+        $reverse = app(ReversePurchaseReturnStockAction::class)->execute($returnDocument->fresh(), $user->id);
+        $again = app(ReversePurchaseReturnStockAction::class)->execute($returnDocument->fresh(), $user->id);
+
+        $this->assertSame(0, $process['stock_movements']);
+        $this->assertSame([], $process['errors']);
+        $this->assertSame(1, $reverse['reversed_movements']);
+        $this->assertSame([], $reverse['errors']);
+        $this->assertSame(0, $again['reversed_movements']);
+        $this->assertDatabaseCount('stock_movements', 2);
+        $this->assertEquals(10.0, (float) $stock->fresh()->quantity_total);
+        $this->assertDatabaseHas('stock_movements', [
+            'source_type' => 'fiscal_document_item_return_reversal',
+            'source_id' => $returnItem->id,
             'type' => StockMovementType::EXIT->value,
         ]);
+    }
+
+    public function test_it_does_not_process_a_purchase_return_without_physical_stock(): void
+    {
+        [$user, , $returnDocument] = $this->createScenario(
+            PurchaseReturnSettlementMode::NONE, 100, [], false,
+        );
+        $stock = ProductStock::query()->sole();
+        $stock->update(['quantity_total' => 0]);
+
+        $result = app(ProcessAuthorizedPurchaseReturnAction::class)->execute($returnDocument, $user->id);
+
+        $this->assertNotEmpty($result['errors']);
+        $this->assertSame(0, $result['stock_movements']);
+        $this->assertDatabaseCount('stock_movements', 0);
+        $this->assertEquals(0.0, (float) $stock->fresh()->quantity_total);
+        $this->assertNull($returnDocument->fresh()->return_stock_processed_at);
     }
 
     public function test_it_restores_canceled_origin_payable_when_return_is_canceled(): void
@@ -293,8 +378,11 @@ class ProcessAuthorizedPurchaseReturnActionTest extends TestCase
         ProductStock::query()->create([
             'product_id' => $product->id,
             'company_id' => $company->id,
-            'quantity_total' => 0,
+            'quantity_total' => 10,
             'quantity_reserved' => 0,
+            'average_cost' => 35,
+            'last_cost' => 40,
+            'last_sale_price' => 75,
             'is_active' => true,
             'allow_negative' => false,
             'created_by' => $user->id,
