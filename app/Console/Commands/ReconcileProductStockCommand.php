@@ -50,14 +50,14 @@ class ReconcileProductStockCommand extends Command
     {
         $this->tolerance = (float) $this->option('tolerance');
         $this->calculator = app(CalculateProductStockSnapshotAction::class);
-        $fix             = (bool)  $this->option('fix');
-        $companyId       = $this->option('company')  ? (int) $this->option('company')  : null;
-        $stockId         = $this->option('stock')     ? (int) $this->option('stock')    : null;
+        $fix = (bool) $this->option('fix');
+        $companyId = $this->option('company') ? (int) $this->option('company') : null;
+        $stockId = $this->option('stock') ? (int) $this->option('stock') : null;
 
         $this->info('');
         $this->info('════════════════════════════════════════════════════════');
-        $this->info('  Reconciliação de Estoque — ' . now()->format('d/m/Y H:i:s'));
-        $this->info('  Modo: ' . ($fix ? '<fg=yellow>CORREÇÃO AUTOMÁTICA</>' : '<fg=cyan>SOMENTE RELATÓRIO</>'));
+        $this->info('  Reconciliação de Estoque — '.now()->format('d/m/Y H:i:s'));
+        $this->info('  Modo: '.($fix ? '<fg=yellow>CORREÇÃO AUTOMÁTICA</>' : '<fg=cyan>SOMENTE RELATÓRIO</>'));
         $this->info('════════════════════════════════════════════════════════');
 
         $query = ProductStock::query()->withTrashed(false); // somente ativos
@@ -68,11 +68,11 @@ class ReconcileProductStockCommand extends Command
             $query->where('company_id', $companyId);
         }
 
-        $stocks  = $query->get();
-        $total   = $stocks->count();
+        $stocks = $query->get();
+        $total = $stocks->count();
         $checked = 0;
         $diverged = 0;
-        $fixed   = 0;
+        $fixed = 0;
 
         $this->info("  Registros a verificar: {$total}");
         $this->info('');
@@ -131,10 +131,10 @@ class ReconcileProductStockCommand extends Command
             $this->renderDiff($diff);
 
             Log::warning('ReconcileProductStockCommand: Divergência detectada', [
-                'product_stock_id'       => $stock->id,
-                'product_id'             => $stock->product_id,
-                'company_id'             => $stock->company_id,
-                'diff'                   => $diff,
+                'product_stock_id' => $stock->id,
+                'product_id' => $stock->product_id,
+                'company_id' => $stock->company_id,
+                'diff' => $diff,
             ]);
         }
 
@@ -142,14 +142,16 @@ class ReconcileProductStockCommand extends Command
 
         if ($hasDivergence && $fix) {
             try {
-                DB::transaction(function () use ($stock, $expected) {
+                DB::transaction(function () use ($stock, &$expected) {
                     // Bloqueia o registro para evitar race condition durante a correção
                     $locked = ProductStock::where('id', $stock->id)->lockForUpdate()->first();
 
-                    if (!$locked) {
+                    if (! $locked) {
                         return;
                     }
 
+                    // Recalcula sob o bloqueio: movimentos podem ter chegado desde o diagnóstico.
+                    $expected = $this->calculator->calculate($locked);
                     $locked->update($this->onlyFixableFields($expected));
                 });
 
@@ -158,21 +160,21 @@ class ReconcileProductStockCommand extends Command
 
                 Log::info('ReconcileProductStockCommand: Divergência corrigida', [
                     'product_stock_id' => $stock->id,
-                    'applied'          => $expected,
+                    'applied' => $expected,
                 ]);
             } catch (\Throwable $e) {
                 $this->error("     → Falha ao corrigir: {$e->getMessage()}");
 
                 Log::error('ReconcileProductStockCommand: Falha ao corrigir divergência', [
                     'product_stock_id' => $stock->id,
-                    'exception'        => $e->getMessage(),
+                    'exception' => $e->getMessage(),
                 ]);
             }
         }
 
         return [
             'has_divergence' => $hasDivergence,
-            'fixed'          => $wasFixed,
+            'fixed' => $wasFixed,
         ];
     }
 

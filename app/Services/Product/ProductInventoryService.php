@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Access\UserAccessService;
 use App\Services\Audit\AuditRecorder;
+use App\Services\StockMovement\Actions\ApplyMovementToProductStockAction;
+use App\Services\StockMovement\Actions\CaptureProductStockOpeningSnapshotAction;
 use App\Services\StockMovement\StockMovementService;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
@@ -75,7 +77,36 @@ class ProductInventoryService
         DB::transaction(function () use ($product, $data, $user, $company): void {
             $stock = $this->stock($product, $company);
             $before = $stock->only(['average_cost', 'last_cost']);
-            $stock->update(['average_cost' => $data['average_cost'], 'last_cost' => $data['last_cost'], 'updated_by' => $user->id]);
+            app(CaptureProductStockOpeningSnapshotAction::class)->execute($stock);
+            // Evento sem quantidade física: mantém o ajuste reproduzível no histórico.
+            $movement = new StockMovement([
+                'product_stock_id' => $stock->id,
+                'product_id' => $product->id,
+                'company_id' => $company->id,
+                'type' => 'adjustment',
+                'quantity' => 0,
+                'base_quantity' => 0,
+                'operational_quantity' => 0,
+                'base_unit' => $product->unit->value,
+                'operational_unit' => $product->unit->value,
+                'conversion_factor_snapshot' => 1,
+                'unit_price' => 0,
+                'source_type' => 'manual',
+                'source_id' => 0,
+                'reason' => $data['reason'],
+                'additional_info' => [
+                    'operation' => 'administrative_cost_adjustment',
+                    'average_cost' => round((float) $data['average_cost'], 4),
+                    'last_cost' => round((float) $data['last_cost'], 4),
+                    'previous_costs' => $before,
+                ],
+                'created_by' => $user->id,
+            ]);
+            // Evento derivado do ajuste já autorizado acima; não exige permissão
+            // adicional de entrada/saída de mercadorias. A auditoria segue abaixo.
+            $movement->saveQuietly();
+            app(ApplyMovementToProductStockAction::class)->apply($stock, $movement);
+            $stock->update(['updated_by' => $user->id]);
             $this->record($product, 'product.costs.updated', 'Ajuste administrativo de custos', $before, $stock->only(['average_cost', 'last_cost']), $user, ['reason' => $data['reason']]);
         });
     }

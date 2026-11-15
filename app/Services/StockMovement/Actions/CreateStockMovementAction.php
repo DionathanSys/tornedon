@@ -53,6 +53,7 @@ class CreateStockMovementAction
                 throw ValidationException::withMessages(['product_stock_id' => 'Estoque, produto e empresa devem corresponder.']);
             }
 
+            app(CaptureProductStockOpeningSnapshotAction::class)->execute($stock);
             $movement = StockMovement::create($validated);
 
             // Aplica o efeito do movimento no estoque de forma incremental

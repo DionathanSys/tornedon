@@ -20,19 +20,15 @@ class UpdateStockMovementAction
 
     /**
      * Atualiza uma movimentação de estoque e recalcula o ProductStock do zero.
-     *
-     * @param StockMovement $movement
-     * @param array $data
-     * @return StockMovement|null
      */
     public function execute(StockMovement $movement, array $data): ?StockMovement
     {
         try {
             Log::debug('UpdateStockMovementAction: Iniciando atualização de movimentação', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'user_id'            => $this->updatedBy,
-                'data'               => $data,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'user_id' => $this->updatedBy,
+                'data' => $data,
             ]);
 
             $validated = StockMovementValidator::validateUpdate($data);
@@ -44,24 +40,26 @@ class UpdateStockMovementAction
                 ->lockForUpdate()
                 ->first();
 
-            if (!$stock) {
+            if (! $stock) {
                 $this->setError('Registro de estoque não encontrado para recálculo', [], 422);
+
                 return null;
             }
 
             // Atualiza o registro da movimentação
+            app(CaptureProductStockOpeningSnapshotAction::class)->execute($stock);
             $movement->update($validated);
             $movement->refresh();
 
             // Recalcula o estoque do zero a partir de todas as movimentações ativas
-            (new RecalculateProductStockFromMovementsAction())->recalculate($stock);
+            (new RecalculateProductStockFromMovementsAction)->recalculate($stock);
 
             $this->setSuccess();
 
             Log::info('UpdateStockMovementAction: Movimentação de estoque atualizada com sucesso', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'product_id'         => $movement->product_id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'product_id' => $movement->product_id,
             ]);
 
             return $movement;
@@ -69,9 +67,9 @@ class UpdateStockMovementAction
             $this->setError('Erro de validação', $e->errors());
 
             Log::error('UpdateStockMovementAction: Erro de validação', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'errors'             => $e->errors(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'errors' => $e->errors(),
             ]);
 
             return null;
@@ -79,10 +77,10 @@ class UpdateStockMovementAction
             $this->setError('Erro ao atualizar movimentação de estoque', [], 422);
 
             Log::error('UpdateStockMovementAction: Erro ao atualizar movimentação', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;
@@ -90,10 +88,10 @@ class UpdateStockMovementAction
             $this->setError('Erro inesperado ao atualizar movimentação', [], 500);
 
             Log::error('UpdateStockMovementAction: Erro inesperado', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return null;

@@ -8,8 +8,11 @@ use App\Models\CompanyRole;
 use App\Models\CompanyRoleAssignment;
 use App\Models\Product;
 use App\Models\ProductStock;
+use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Product\ProductInventoryService;
+use App\Services\StockMovement\Actions\CalculateProductStockSnapshotAction;
+use App\Services\StockMovement\Actions\RecalculateProductStockFromMovementsAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -65,6 +68,32 @@ class ProductInventoryServiceTest extends TestCase
         $this->assertEquals(5, $entry->diff['average_cost']['before']);
         $this->assertEquals(7.1234, $entry->diff['average_cost']['after']);
         $this->assertSame('Correção de implantação', $entry->metadata['reason']);
+        $this->assertEquals(8.5678, $this->stock->fresh()->last_cost);
+        $this->assertEquals(10, $this->stock->fresh()->quantity_total);
+        $movement = StockMovement::query()->sole();
+        $this->assertTrue($movement->isAdministrativeCostAdjustment());
+        $this->assertEquals(0, $movement->quantity);
+        app(RecalculateProductStockFromMovementsAction::class)->recalculate($this->stock->fresh());
+        $this->assertEquals(7.1234, $this->stock->fresh()->average_cost);
+        $this->assertEquals(8.5678, $this->stock->fresh()->last_cost);
+        $this->assertSame([], app(CalculateProductStockSnapshotAction::class)->diff(
+            $this->stock->fresh(), app(CalculateProductStockSnapshotAction::class)->calculate($this->stock->fresh()),
+        ));
+    }
+
+    public function test_cost_adjustment_survives_later_purchases_and_cannot_be_deleted(): void
+    {
+        $inventory = app(ProductInventoryService::class);
+        $inventory->adjustCosts($this->product, ['average_cost' => 7, 'last_cost' => 8, 'reason' => 'Correção'], $this->user, $this->company);
+        $adjustment = StockMovement::query()->sole();
+        $inventory->move($this->product, ['type' => 'entry', 'quantity' => 10, 'operational_unit' => 'UN',
+            'unit_price' => 13, 'reason' => 'Compra'], $this->user, $this->company);
+
+        app(RecalculateProductStockFromMovementsAction::class)->recalculate($this->stock->fresh());
+        $this->assertEquals(10, $this->stock->fresh()->average_cost);
+        $this->assertEquals(13, $this->stock->fresh()->last_cost);
+        $this->expectException(\LogicException::class);
+        $adjustment->delete();
     }
 
     public function test_regular_member_cannot_adjust_costs_even_if_platform_admin(): void
@@ -133,6 +162,20 @@ class ProductInventoryServiceTest extends TestCase
         $this->assignRole(['products.update' => 'company', 'product_stocks.update' => 'company', 'settings.manage' => 'company']);
         app(ProductInventoryService::class)->adjustCosts($this->product, ['average_cost' => 8, 'last_cost' => 9, 'reason' => 'Correção'], $this->user, $this->company);
         $this->assertEquals(8, $this->stock->fresh()->average_cost);
+    }
+
+    public function test_cost_reconstruction_includes_movements_not_visible_to_the_cost_administrator(): void
+    {
+        $inventory = app(ProductInventoryService::class);
+        $inventory->move($this->product, ['type' => 'entry', 'quantity' => 10, 'operational_unit' => 'UN',
+            'unit_price' => 15, 'reason' => 'Compra'], $this->user, $this->company);
+        $this->assignRole(['products.update' => 'company', 'product_stocks.update' => 'company', 'settings.manage' => 'company']);
+        $inventory->adjustCosts($this->product, ['average_cost' => 0, 'last_cost' => 0, 'reason' => 'Zerar custo'], $this->user, $this->company);
+
+        $expected = app(CalculateProductStockSnapshotAction::class)->calculate($this->stock->fresh());
+        $this->assertEquals(20, $expected['quantity_total']);
+        $this->assertEquals(0, $expected['average_cost']);
+        $this->assertEquals(0, $expected['last_cost']);
     }
 
     public function test_product_update_scope_is_rechecked_when_adjusting_costs(): void

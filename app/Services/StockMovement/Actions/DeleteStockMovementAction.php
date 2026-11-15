@@ -19,8 +19,8 @@ class DeleteStockMovementAction
     {
         try {
             Log::debug('DeleteStockMovementAction: Iniciando exclusao de movimentacao', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
             ]);
 
             $stock = ProductStock::where('id', $movement->product_stock_id)
@@ -28,17 +28,20 @@ class DeleteStockMovementAction
                 ->first();
 
             // Exclui primeiro para que o recalculo ignore este movimento.
+            if ($stock) {
+                app(CaptureProductStockOpeningSnapshotAction::class)->execute($stock);
+            }
             $movement->delete();
 
             if ($stock) {
-                (new RecalculateProductStockFromMovementsAction())->recalculate($stock);
+                (new RecalculateProductStockFromMovementsAction)->recalculate($stock);
             }
 
             $this->setSuccess();
 
             Log::info('DeleteStockMovementAction: Movimentacao de estoque excluida com sucesso', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
             ]);
 
             return true;
@@ -46,10 +49,10 @@ class DeleteStockMovementAction
             $this->setError('Erro ao excluir movimentacao de estoque', [], 422);
 
             Log::error('DeleteStockMovementAction: Erro ao excluir movimentacao', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -57,10 +60,10 @@ class DeleteStockMovementAction
             $this->setError('Erro inesperado ao excluir movimentacao', [], 500);
 
             Log::error('DeleteStockMovementAction: Erro inesperado', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -74,8 +77,8 @@ class DeleteStockMovementAction
     {
         try {
             Log::debug('DeleteStockMovementAction: Iniciando exclusao permanente', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
             ]);
 
             $stock = ProductStock::where('id', $movement->product_stock_id)
@@ -83,17 +86,20 @@ class DeleteStockMovementAction
                 ->first();
 
             // Force delete primeiro para que o recalculo ignore este movimento.
+            if ($stock) {
+                app(CaptureProductStockOpeningSnapshotAction::class)->execute($stock);
+            }
             $movement->forceDelete();
 
             if ($stock) {
-                (new RecalculateProductStockFromMovementsAction())->recalculate($stock);
+                (new RecalculateProductStockFromMovementsAction)->recalculate($stock);
             }
 
             $this->setSuccess();
 
             Log::info('DeleteStockMovementAction: Movimentacao excluida permanentemente com sucesso', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
             ]);
 
             return true;
@@ -101,10 +107,10 @@ class DeleteStockMovementAction
             $this->setError('Erro ao excluir permanentemente movimentacao', [], 422);
 
             Log::error('DeleteStockMovementAction: Erro ao excluir permanentemente', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;
@@ -112,10 +118,10 @@ class DeleteStockMovementAction
             $this->setError('Erro inesperado ao excluir permanentemente', [], 500);
 
             Log::error('DeleteStockMovementAction: Erro inesperado ao excluir permanentemente', [
-                'metodo'             => __METHOD__ . '@' . __LINE__,
-                'stock_movement_id'  => $movement->id,
-                'exception'          => $e->getMessage(),
-                'trace'              => $e->getTraceAsString(),
+                'metodo' => __METHOD__.'@'.__LINE__,
+                'stock_movement_id' => $movement->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;

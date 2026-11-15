@@ -2,10 +2,9 @@
 
 namespace App\Services\StockMovement\Actions;
 
-use App\Enum\StockMovement\Type;
 use App\Models\ProductStock;
 use App\Models\StockMovement;
-use Illuminate\Support\Facades\Log;
+use App\Services\Access\RoleRecordScope;
 
 class CalculateProductStockSnapshotAction
 {
@@ -25,74 +24,30 @@ class CalculateProductStockSnapshotAction
     public function calculate(ProductStock $stock): array
     {
         $movements = StockMovement::query()
+            // A valorização não pode depender dos movimentos visíveis ao operador.
+            ->withoutGlobalScope(RoleRecordScope::class)
             ->where('product_stock_id', $stock->id)
+            ->where('company_id', $stock->company_id)
+            ->where('product_id', $stock->product_id)
             ->orderBy('created_at', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
-        $quantityTotal    = 0.0;
-        $quantityReserved = 0.0;
-        $totalInboundCost = 0.0;
-        $totalInboundQty  = 0.0;
+        $calculator = app(CalculateStockMovementStateAction::class);
+        $state = $stock->additional_info['movement_opening_snapshot'] ?? null;
 
-        $lastCost         = null;
-        $lastSalePrice    = null;
-        $lastMovementDate = null;
-        $lastMovementType = null;
+        // Sem histórico nem abertura registrada, não há fonte para substituir o saldo.
+        if ($state === null && $movements->isEmpty()) {
+            return $calculator->fromStock($stock);
+        }
+
+        $state ??= $calculator->emptyState();
 
         foreach ($movements as $movement) {
-            /** @var Type $type */
-            $type      = $movement->type;
-            $quantity  = $movement->resolvedBaseQuantity();
-            $unitPrice = $movement->unit_price !== null ? (float) $movement->unit_price : null;
-
-            if ($type->isReservationType()) {
-                $quantityReserved += $type->applyReservationDelta($quantity);
-            } else {
-                $delta = $type->applyDelta($quantity);
-                $quantityTotal += $delta;
-
-                if ($type->isInbound() && $unitPrice !== null && $unitPrice > 0) {
-                    $totalInboundQty  += abs($quantity);
-                    $totalInboundCost += abs($quantity) * $unitPrice;
-                    $lastCost = $unitPrice;
-                } elseif ($type === Type::ADJUSTMENT && $delta > 0 && $unitPrice !== null && $unitPrice > 0) {
-                    $totalInboundQty  += $delta;
-                    $totalInboundCost += $delta * $unitPrice;
-                    $lastCost = $unitPrice;
-                }
-
-                if ($type->isOutbound() && $unitPrice !== null && $unitPrice > 0) {
-                    $lastSalePrice = $unitPrice;
-                }
-            }
-
-            $lastMovementDate = $movement->created_at->toDateString();
-            $lastMovementType = $type->value;
+            $state = $calculator->calculate($state, $movement);
         }
 
-        if ($quantityReserved < 0) {
-            Log::warning('CalculateProductStockSnapshotAction: Reserva liquida negativa detectada, valor ajustado para zero', [
-                'product_stock_id' => $stock->id,
-                'reserved_raw'     => $quantityReserved,
-            ]);
-
-            $quantityReserved = 0.0;
-        }
-
-        $averageCost = $totalInboundQty > 0
-            ? round($totalInboundCost / $totalInboundQty, 4)
-            : round((float) $stock->average_cost, 4);
-
-        return [
-            'quantity_total'     => round($quantityTotal, 3),
-            'quantity_reserved'  => round($quantityReserved, 3),
-            'average_cost'       => $averageCost,
-            'last_cost'          => $lastCost !== null ? round($lastCost, 4) : null,
-            'last_sale_price'    => $lastSalePrice !== null ? round($lastSalePrice, 4) : null,
-            'last_movement_date' => $lastMovementDate,
-            'last_movement_type' => $lastMovementType,
-        ];
+        return $state;
     }
 
     /**
@@ -123,7 +78,7 @@ class CalculateProductStockSnapshotAction
 
         if (abs($stored - $expected) > $tolerance) {
             $diff[$field] = [
-                'stored'   => $stored,
+                'stored' => $stored,
                 'expected' => $expected,
             ];
         }
@@ -155,7 +110,7 @@ class CalculateProductStockSnapshotAction
     {
         if ($stored !== $expected) {
             $diff[$field] = [
-                'stored'   => $stored,
+                'stored' => $stored,
                 'expected' => $expected,
             ];
         }
