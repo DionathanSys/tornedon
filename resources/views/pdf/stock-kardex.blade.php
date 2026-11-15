@@ -64,6 +64,16 @@
             margin-bottom: 6px;
         }
 
+        .kardex-table {
+            font-size: 8px;
+        }
+
+        .explanation {
+            margin-top: 6px;
+            font-size: 9px;
+            color: #6b7280;
+        }
+
         .text-right {
             text-align: right;
         }
@@ -102,6 +112,12 @@
                 <td class="meta-label">Saldo Inicial</td>
                 <td>{{ $pdfData['opening']['stock_balance'] }}</td>
             </tr>
+            <tr>
+                <td class="meta-label">Custo Médio Inicial</td>
+                <td>{{ $pdfData['opening']['average_cost'] }}</td>
+                <td class="meta-label">Valor Inicial do Estoque</td>
+                <td>{{ $pdfData['opening']['stock_value'] }}</td>
+            </tr>
         </table>
     </div>
 
@@ -136,6 +152,24 @@
     </div>
 
     <div class="section">
+        <div class="section-title">Valorização ao Final do Período</div>
+        <table class="summary-table">
+            <tr>
+                <th>Custo Médio / Un. Base</th>
+                <th>Valor do Estoque Físico</th>
+                <th>Valor Reservado a Custo</th>
+                <th>Valor Disponível a Custo</th>
+            </tr>
+            <tr>
+                <td class="text-right">{{ $pdfData['summary']['closing_average_cost'] }}</td>
+                <td class="text-right">{{ $pdfData['summary']['closing_stock_value'] }}</td>
+                <td class="text-right">{{ $pdfData['summary']['closing_reserved_value'] }}</td>
+                <td class="text-right">{{ $pdfData['summary']['closing_available_value'] }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
         <div class="section-title">Movimentações</div>
         <table class="kardex-table">
             <tr>
@@ -152,8 +186,9 @@
                 <th>Saldo</th>
                 <th>Reservado</th>
                 <th>Disponível</th>
-                <th>Custo Un.</th>
-                <th>Custo Total</th>
+                <th>Preço Oper.</th>
+                <th>Custo Médio / Base</th>
+                <th>Valor Estoque</th>
             </tr>
             @forelse ($pdfData['rows'] as $row)
                 <tr>
@@ -170,15 +205,22 @@
                     <td class="text-right">{{ $row['stock_balance'] }}</td>
                     <td class="text-right">{{ $row['reserved_balance'] }}</td>
                     <td class="text-right">{{ $row['available_balance'] }}</td>
-                    <td class="text-right">{{ $row['unit_price'] }}</td>
-                    <td class="text-right">{{ $row['total_amount'] }}</td>
+                    <td class="text-right">{{ $row['operational_unit_price'] }}</td>
+                    <td class="text-right">{{ $row['average_cost'] }}</td>
+                    <td class="text-right">{{ $row['stock_value'] }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="15" class="text-center">Nenhuma movimentação encontrada para o período informado.</td>
+                    <td colspan="16" class="text-center">Nenhuma movimentação encontrada para o período informado.</td>
                 </tr>
             @endforelse
         </table>
+        <div class="explanation">
+            Preço Oper.: preço por unidade operacional registrado no movimento (na reserva, preço de venda do item).
+            Custo Médio / Base: custo médio por unidade base após o movimento.
+            Valor Estoque: saldo físico × custo médio; inclui as unidades reservadas.
+            Reservas e liberações não alteram o custo médio nem o valor do estoque físico.
+        </div>
     </div>
 
     <div class="pdf-footer">Gerado em: {{ $pdfData['generated_at'] }}</div>

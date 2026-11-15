@@ -3,12 +3,15 @@
 namespace App\Services\StockMovement\Support;
 
 use App\Models\Product;
+use App\Models\ProductStock;
 use App\Models\StockMovement;
+use App\Services\StockMovement\Actions\CalculateStockMovementStateAction;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 
 class KardexPdfDataFormatter
 {
+    public function __construct(private readonly CalculateStockMovementStateAction $calculator) {}
+
     /**
      * @param  array{start_date?: string|null, end_date?: string|null}  $filters
      * @return array<string, mixed>
@@ -35,7 +38,12 @@ class KardexPdfDataFormatter
                 ->get()
             : collect();
 
-        $openingBalances = $this->calculateBalances($openingMovements);
+        $stock = ProductStock::query()->where('company_id', $companyId)->where('product_id', $product->id)->first();
+        $state = $stock?->additional_info['movement_opening_snapshot'] ?? $this->calculator->emptyState();
+        foreach ($openingMovements as $movement) {
+            $state = $this->calculator->calculate($state, $movement);
+        }
+        $openingState = $state;
 
         $movements = (clone $baseQuery)
             ->when($startDate, fn ($query) => $query->where('created_at', '>=', $startDate))
@@ -45,14 +53,12 @@ class KardexPdfDataFormatter
             ->orderBy('id')
             ->get();
 
-        $runningTotal = $openingBalances['stock_balance'];
-        $runningReserved = $openingBalances['reserved_balance'];
         $totalEntries = 0.0;
         $totalExits = 0.0;
         $totalReservations = 0.0;
         $totalReservationReleases = 0.0;
 
-        $rows = $movements->map(function (StockMovement $movement) use ($product, &$runningTotal, &$runningReserved, &$totalEntries, &$totalExits, &$totalReservations, &$totalReservationReleases): array {
+        $rows = $movements->map(function (StockMovement $movement) use ($product, &$state, &$totalEntries, &$totalExits, &$totalReservations, &$totalReservationReleases): array {
             $baseQuantity = $movement->resolvedBaseQuantity();
             $stockDelta = $movement->type->applyDelta($baseQuantity);
             $reservedDelta = $movement->type->applyReservationDelta($baseQuantity);
@@ -73,8 +79,9 @@ class KardexPdfDataFormatter
                 $totalReservationReleases += abs($reservedDelta);
             }
 
-            $runningTotal += $stockDelta;
-            $runningReserved = max(0, $runningReserved + $reservedDelta);
+            $state = $this->calculator->calculate($state, $movement);
+            $runningTotal = $state['quantity_total'];
+            $runningReserved = $state['quantity_reserved'];
 
             return [
                 'date' => $movement->created_at?->format('d/m/Y H:i') ?? '-',
@@ -92,8 +99,10 @@ class KardexPdfDataFormatter
                 'stock_balance' => $this->formatQuantity($runningTotal),
                 'reserved_balance' => $this->formatQuantity($runningReserved),
                 'available_balance' => $this->formatQuantity($runningTotal - $runningReserved),
-                'unit_price' => $movement->unit_price !== null ? 'R$ ' . number_format((float) $movement->unit_price, 2, ',', '.') : '-',
-                'total_amount' => $movement->total_amount !== null ? 'R$ ' . number_format((float) $movement->total_amount, 2, ',', '.') : '-',
+                'operational_unit_price' => ! $movement->isAdministrativeCostAdjustment() && $movement->unit_price !== null
+                    ? $this->formatMoney((float) $movement->unit_price) : '-',
+                'average_cost' => $this->formatMoney($state['average_cost'], 4),
+                'stock_value' => $this->formatMoney($runningTotal * $state['average_cost']),
             ];
         });
 
@@ -112,41 +121,26 @@ class KardexPdfDataFormatter
                 'end' => $endDate?->format('d/m/Y') ?? 'Atual',
             ],
             'opening' => [
-                'stock_balance' => $this->formatQuantity($openingBalances['stock_balance']),
-                'reserved_balance' => $this->formatQuantity($openingBalances['reserved_balance']),
-                'available_balance' => $this->formatQuantity($openingBalances['stock_balance'] - $openingBalances['reserved_balance']),
+                'stock_balance' => $this->formatQuantity($openingState['quantity_total']),
+                'reserved_balance' => $this->formatQuantity($openingState['quantity_reserved']),
+                'available_balance' => $this->formatQuantity($openingState['quantity_total'] - $openingState['quantity_reserved']),
+                'average_cost' => $this->formatMoney($openingState['average_cost'], 4),
+                'stock_value' => $this->formatMoney($openingState['quantity_total'] * $openingState['average_cost']),
             ],
             'summary' => [
                 'entries' => $this->formatQuantity($totalEntries),
                 'exits' => $this->formatQuantity($totalExits),
                 'reservations' => $this->formatQuantity($totalReservations),
                 'releases' => $this->formatQuantity($totalReservationReleases),
-                'closing_stock_balance' => $this->formatQuantity($runningTotal),
-                'closing_reserved_balance' => $this->formatQuantity($runningReserved),
-                'closing_available_balance' => $this->formatQuantity($runningTotal - $runningReserved),
+                'closing_stock_balance' => $this->formatQuantity($state['quantity_total']),
+                'closing_reserved_balance' => $this->formatQuantity($state['quantity_reserved']),
+                'closing_available_balance' => $this->formatQuantity($state['quantity_total'] - $state['quantity_reserved']),
+                'closing_average_cost' => $this->formatMoney($state['average_cost'], 4),
+                'closing_stock_value' => $this->formatMoney($state['quantity_total'] * $state['average_cost']),
+                'closing_reserved_value' => $this->formatMoney($state['quantity_reserved'] * $state['average_cost']),
+                'closing_available_value' => $this->formatMoney(($state['quantity_total'] - $state['quantity_reserved']) * $state['average_cost']),
             ],
             'rows' => $rows->all(),
-        ];
-    }
-
-    /**
-     * @param  Collection<int, StockMovement>  $movements
-     * @return array{stock_balance: float, reserved_balance: float}
-     */
-    private function calculateBalances(Collection $movements): array
-    {
-        $stockBalance = 0.0;
-        $reservedBalance = 0.0;
-
-        foreach ($movements as $movement) {
-            $baseQuantity = $movement->resolvedBaseQuantity();
-            $stockBalance += $movement->type->applyDelta($baseQuantity);
-            $reservedBalance = max(0, $reservedBalance + $movement->type->applyReservationDelta($baseQuantity));
-        }
-
-        return [
-            'stock_balance' => $stockBalance,
-            'reserved_balance' => $reservedBalance,
         ];
     }
 
@@ -165,5 +159,10 @@ class KardexPdfDataFormatter
     private function formatQuantity(float $quantity): string
     {
         return number_format($quantity, 3, ',', '.');
+    }
+
+    private function formatMoney(float $value, int $decimals = 2): string
+    {
+        return 'R$ '.number_format($value, $decimals, ',', '.');
     }
 }
