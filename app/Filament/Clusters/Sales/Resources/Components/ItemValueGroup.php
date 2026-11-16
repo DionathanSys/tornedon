@@ -33,6 +33,7 @@ class ItemValueGroup
      *     preserveDiscountOnValueChange?: bool,
      *     enforceEffectiveMinSalePrice?: bool,
      *     disableQuantity?: bool,
+     *     persistGrossTotal?: bool,
      * } $options
      */
     public static function make(array $options = []): Group
@@ -50,6 +51,7 @@ class ItemValueGroup
         $preserveDiscountOnValueChange = $options['preserveDiscountOnValueChange'] ?? false;
         $enforceEffectiveMinSalePrice = $options['enforceEffectiveMinSalePrice'] ?? false;
         $disableQuantity = $options['disableQuantity'] ?? false;
+        $persistGrossTotal = $options['persistGrossTotal'] ?? false;
 
         $schema = [
             TextInput::make($qty)
@@ -69,13 +71,16 @@ class ItemValueGroup
                     $discountPercentage,
                     $subtotal,
                     $totalAmount,
-                    $preserveDiscountOnValueChange
+                    $preserveDiscountOnValueChange,
+                    $persistGrossTotal
                 ) {
                     if (is_numeric($state) && $state < 0) {
                         $set($qty, number_format(0, 2, ',', '.'));
                     }
 
-                    if ($preserveDiscountOnValueChange) {
+                    if ($persistGrossTotal) {
+                        self::syncPercentageFromAmount($get, $set, $qty, $unitPrice, $discountAmount, $discountPercentage);
+                    } elseif ($preserveDiscountOnValueChange) {
                         self::syncDiscountFromPercentage($get, $set, $discountPercentage, $discountAmount, $subtotal);
                     } else {
                         $set($discountAmount, number_format(0, 2, ',', '.'));
@@ -95,7 +100,7 @@ class ItemValueGroup
                     $min = self::parseMoneyValue($get($minSalePrice));
 
                     if ($min > 0) {
-                        $messages[] = 'Preco minimo: R$ ' . number_format($min, 2, ',', '.');
+                        $messages[] = 'Preco minimo: R$ '.number_format($min, 2, ',', '.');
                     }
 
                     if ($enforceEffectiveMinSalePrice && filled($get($serviceId)) && $min > 0) {
@@ -111,9 +116,12 @@ class ItemValueGroup
                     $discountPercentage,
                     $subtotal,
                     $totalAmount,
-                    $preserveDiscountOnValueChange
+                    $preserveDiscountOnValueChange,
+                    $persistGrossTotal
                 ) {
-                    if ($preserveDiscountOnValueChange) {
+                    if ($persistGrossTotal) {
+                        self::syncPercentageFromAmount($get, $set, $qty, $unitPrice, $discountAmount, $discountPercentage);
+                    } elseif ($preserveDiscountOnValueChange) {
                         self::syncDiscountFromPercentage($get, $set, $discountPercentage, $discountAmount, $subtotal);
                     } else {
                         $set($discountAmount, number_format(0, 2, ',', '.'));
@@ -131,7 +139,17 @@ class ItemValueGroup
                 ->suffix('%')
                 ->prefix(null)
                 ->live(onBlur: true)
-                ->formatStateUsing(fn ($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
+                ->formatStateUsing(function ($state, Get $get) use ($persistGrossTotal, $qty, $unitPrice, $discountAmount) {
+                    if ($persistGrossTotal) {
+                        $sub = self::calculateSubtotal(
+                            self::parseMoneyValue($get($qty)),
+                            self::parseMoneyValue($get($unitPrice)),
+                        );
+                        $state = $sub > 0 ? self::parseMoneyValue($get($discountAmount)) / $sub * 100 : 0;
+                    }
+
+                    return number_format((float) ($state ?? 0), 2, ',', '.');
+                })
                 ->helperText(function (Get $get) use ($minSalePrice, $serviceId, $qty, $unitPrice, $enforceEffectiveMinSalePrice): ?string {
                     if (! $enforceEffectiveMinSalePrice || ! filled($get($serviceId))) {
                         return null;
@@ -148,9 +166,9 @@ class ItemValueGroup
                         minSalePrice: $min,
                     );
 
-                    return 'Desconto máximo: R$ ' . number_format($maxDiscount, 2, ',', '.');
+                    return 'Desconto máximo: R$ '.number_format($maxDiscount, 2, ',', '.');
                 })
-                ->afterStateUpdated(function ($state, Set $set, Get $get) use ($discountAmount, $discountPercentage, $subtotal, $qty, $unitPrice, $totalAmount) {
+                ->afterStateUpdated(function ($state, Set $set, Get $get) use ($discountAmount, $subtotal, $qty, $unitPrice, $totalAmount, $persistGrossTotal) {
                     $sub = self::calculateSubtotal(
                         self::parseMoneyValue($get($qty)),
                         self::parseMoneyValue($get($unitPrice))
@@ -158,8 +176,14 @@ class ItemValueGroup
                     $set($subtotal, number_format($sub, 2, ',', '.'));
 
                     $percentage = self::parseMoneyValue($state);
-                    $discount = $sub * ($percentage / 100);
-                    $set($discountAmount, number_format($discount, 2, ',', '.'));
+                    $currentDiscount = self::parseMoneyValue($get($discountAmount));
+                    $currentPercentage = $sub > 0 ? round($currentDiscount / $sub * 100, 2) : 0;
+
+                    // O percentual exibido é arredondado: perder o foco não deve alterar o valor exato.
+                    if (! $persistGrossTotal || round($percentage, 2) !== $currentPercentage) {
+                        $discount = $sub * ($percentage / 100);
+                        $set($discountAmount, number_format($discount, 2, ',', '.'));
+                    }
                     self::recalculate($get, $set, $qty, $unitPrice, $discountAmount, $subtotal, $totalAmount);
                 })
                 ->afterLabel(Action::make('reset_discount_percentage')
@@ -200,10 +224,28 @@ class ItemValueGroup
                 });
         }
 
-        $schema[] = Money::make($totalAmount)
+        $totalField = Money::make($totalAmount)
             ->label('Valor Total')
             ->formatStateUsing(fn ($state) => number_format((float) ($state ?? 0), 2, ',', '.'))
             ->readOnly();
+
+        if ($persistGrossTotal) {
+            // A tela mostra o líquido, mas o documento fiscal guarda o bruto e o desconto separados.
+            $totalField
+                ->formatStateUsing(fn (Get $get) => number_format(
+                    self::calculateSubtotal(
+                        self::parseMoneyValue($get($qty)),
+                        self::parseMoneyValue($get($unitPrice)),
+                    ) - self::parseMoneyValue($get($discountAmount)),
+                    2, ',', '.'
+                ))
+                ->dehydrateStateUsing(fn (Get $get): float => self::calculateSubtotal(
+                    self::parseMoneyValue($get($qty)),
+                    self::parseMoneyValue($get($unitPrice)),
+                ));
+        }
+
+        $schema[] = $totalField;
 
         return Group::make()
             ->columns($columns)
@@ -274,6 +316,23 @@ class ItemValueGroup
         $set($discountAmountField, number_format($discount, 2, ',', '.'));
     }
 
+    private static function syncPercentageFromAmount(
+        Get $get,
+        Set $set,
+        string $quantityField,
+        string $unitPriceField,
+        string $discountAmountField,
+        string $discountPercentageField,
+    ): void {
+        $subtotal = self::calculateSubtotal(
+            self::parseMoneyValue($get($quantityField)),
+            self::parseMoneyValue($get($unitPriceField)),
+        );
+        $discount = self::parseMoneyValue($get($discountAmountField));
+
+        $set($discountPercentageField, number_format($subtotal > 0 ? $discount / $subtotal * 100 : 0, 2, ',', '.'));
+    }
+
     private static function effectiveMinSalePriceRule(
         string $quantityField,
         string $unitPriceField,
@@ -319,8 +378,8 @@ class ItemValueGroup
                 }
 
                 $fail(
-                    'O preço efetivo após desconto não pode ficar abaixo de R$ ' .
-                    number_format($minSalePrice, 2, ',', '.') .
+                    'O preço efetivo após desconto não pode ficar abaixo de R$ '.
+                    number_format($minSalePrice, 2, ',', '.').
                     '.'
                 );
             };

@@ -111,6 +111,7 @@ class SchemaFormItemsNfse
                         'totalAmountField' => 'total_price',
                         'disableQuantity' => $disableQuantity,
                         'preserveDiscountOnValueChange' => true,
+                        'persistGrossTotal' => true,
                     ]),
                 ]),
 

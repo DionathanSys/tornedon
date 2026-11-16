@@ -26,6 +26,26 @@ class FiscalDocumentItemServiceUpdateTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_nfse_saves_gross_amount_and_subtracts_discount_only_once_in_totals(): void
+    {
+        [$user, $item] = $this->createScenario();
+        $item->fiscalDocument->update(['document_type' => DocumentModel::NFSE->value]);
+
+        $service = app(FiscalDocumentItemService::class);
+        $updated = $service->update($item, [
+            'quantity' => 1,
+            'unit_price' => 300,
+            'total_price' => 300,
+            'discount_amount' => 170,
+        ], $user->id);
+
+        $this->assertNotNull($updated, $service->getMessage());
+        $this->assertSame(300.0, $updated->total_price);
+        $this->assertSame(170.0, $updated->discount_amount);
+        $this->assertSame('300.00', data_get($updated->fiscalDocument->fresh()->tax_data, 'totais.valor_produtos'));
+        $this->assertSame('130.00', data_get($updated->fiscalDocument->fresh()->tax_data, 'totais.valor_nota'));
+    }
+
     public function test_it_persists_manual_tax_data_when_updating_item(): void
     {
         [$user, $item] = $this->createScenario();

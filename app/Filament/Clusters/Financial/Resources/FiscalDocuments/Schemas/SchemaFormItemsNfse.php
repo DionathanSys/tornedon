@@ -57,6 +57,7 @@ class SchemaFormItemsNfse
 
             ItemValueGroup::make([
                 'totalAmountField' => 'total_price',
+                'persistGrossTotal' => true,
             ]),
 
             Group::make()

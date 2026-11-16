@@ -196,6 +196,20 @@ class BuildNfseNacionalPayloadActionTest extends TestCase
         $this->assertSame(10.0, $payload['servico']['valor_desconto_incondicionado']);
     }
 
+    public function test_discount_is_applied_once_and_iss_uses_the_net_base(): void
+    {
+        $document = $this->createReadyDocument();
+        $item = $document->items()->firstOrFail();
+        $item->update(['unit_price' => 300, 'total_price' => 300, 'discount_amount' => 170, 'iss_rate' => 5]);
+
+        $payload = (new BuildNfseNacionalPayloadAction())->build($document->fresh());
+
+        $this->assertNotNull($payload);
+        $this->assertSame(300.0, $payload['servico']['valor_servicos']);
+        $this->assertSame(170.0, $payload['servico']['valor_desconto_incondicionado']);
+        $this->assertSame(130.0, $payload['servico']['tributos_municipais']['valor_base_calculo_iss']);
+    }
+
     public function test_nacional_uses_municipal_tax_code_even_when_internal_service_code_exists(): void
     {
         $document = $this->createReadyDocument();

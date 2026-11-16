@@ -8,6 +8,7 @@ use App\Enum\FiscalDocument\NationalWithholdingType;
 use App\Models\FiscalDocument;
 use App\Services\FiscalDocument\Contracts\NfsePayloadBuilder;
 use App\Services\FiscalDocument\Validators\NfseNacionalV1Validator;
+use App\Support\Fiscal\FiscalItemAmounts;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -401,6 +402,7 @@ class BuildNfseNacionalPayloadAction
         if (round($descontoIncondicionado, 2) > 0) {
             $servico['valor_desconto_incondicionado'] = round($descontoIncondicionado, 2);
         }
+        $baseCalculoIss = FiscalItemAmounts::taxableBase($valorServicosTotal, $descontoIncondicionado);
 
         // ------------------------------------------------------------------
         // Tributos municipais (ISS)
@@ -418,7 +420,7 @@ class BuildNfseNacionalPayloadAction
 
         if ($aliquota > 0) {
             $tributosMunicipais['aliquota_iss'] = round($aliquota, 2);
-            $tributosMunicipais['valor_base_calculo_iss'] = round($valorServicosTotal, 2);
+            $tributosMunicipais['valor_base_calculo_iss'] = $baseCalculoIss;
         }
 
         $servico['tributos_municipais'] = $tributosMunicipais;
@@ -476,7 +478,7 @@ class BuildNfseNacionalPayloadAction
                 'percentual_tributos_estaduais' => 0.0,
                 'valor_tributos_estaduais' => 0.0,
                 'percentual_tributos_municipais' => $specialTaxRegime === '6' ? 0.0 : round($aliquota, 2),
-                'valor_tributos_municipais' => $specialTaxRegime === '6' ? 0.0 : round($valorServicosTotal * $aliquota / 100, 2),
+                'valor_tributos_municipais' => $specialTaxRegime === '6' ? 0.0 : round($baseCalculoIss * $aliquota / 100, 2),
                 'percentual_tributos_simples_nacional' => 0.0,
             ];
         }
