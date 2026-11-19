@@ -99,9 +99,9 @@ class InvoicesTable
                     ->label('Dt. Fatura')
                     ->autoApply()
                     ->firstDayOfWeek(0)
-                    ->alwaysShowCalendar()
-                    ->defaultLast7Days(),
+                    ->alwaysShowCalendar(),
             ])
+            ->persistFiltersInSession()
             ->recordActions([
                 ActionGroup::make([
                     PreviewInvoicePdfAction::make(),
