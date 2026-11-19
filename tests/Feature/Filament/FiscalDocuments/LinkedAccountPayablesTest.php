@@ -8,9 +8,11 @@ use App\Enum\FiscalDocument\Status;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDocument;
 use App\Models\AccountPayable;
 use App\Models\Company;
+use App\Models\FinancialAccount;
 use App\Models\FiscalDocument;
 use App\Models\Partner;
 use App\Models\User;
+use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
@@ -80,6 +82,53 @@ class LinkedAccountPayablesTest extends TestCase
         Livewire::test(EditFiscalDocument::class, ['record' => (string) $document->getRouteKey()])
             ->assertSuccessful()
             ->assertSee('Nenhuma conta a pagar vinculada a esta nota.');
+    }
+
+    public function test_installment_can_be_paid_directly_from_the_entry_note(): void
+    {
+        [$company, $document, $supplier, $user] = $this->createScenario();
+        $account = $this->createAccount($company, $document, $supplier, $user, 'Compra para pagamento');
+        $account->update(['paid_amount' => 0]);
+        $installment = $account->installments()->create([
+            'company_id' => $company->id,
+            'sequence_number' => '01',
+            'status' => 'pending',
+            'due_date' => today(),
+            'original_amount' => 123.45,
+            'due_amount' => 123.45,
+            'paid_amount' => 0,
+            'balance_amount' => 123.45,
+        ]);
+        $financialAccount = FinancialAccount::create([
+            'company_id' => $company->id,
+            'name' => 'Conta para baixa da nota',
+            'type' => 'bank',
+            'opening_balance' => 1000,
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $page = Livewire::test(EditFiscalDocument::class, ['record' => (string) $document->getRouteKey()]);
+        $page->callAction(TestAction::make('register_payment')->schemaComponent('linked_account_payables.0.installments.0.installment_payment_actions'), data: [
+            'payment_date' => today()->toDateString(),
+            'amount' => '123,45',
+            'interest_amount' => '0,00',
+            'fine_amount' => '0,00',
+            'discount_amount' => '0,00',
+            'financial_account_id' => $financialAccount->id,
+        ])
+            ->assertHasNoActionErrors()
+            ->assertNotified()
+            ->call('$refresh')
+            ->assertSee('Pago')
+            ->assertActionDisabled(TestAction::make('register_payment')->schemaComponent('linked_account_payables.0.installments.0.installment_payment_actions'));
+
+        $this->assertSame(0.0, (float) $installment->fresh()->balance_amount);
+        $this->assertSame(123.45, (float) $account->fresh()->paid_amount);
+        $this->assertDatabaseHas('account_payable_installment_payments', [
+            'account_payable_installment_id' => $installment->id,
+            'financial_account_id' => $financialAccount->id,
+        ]);
     }
 
     private function createScenario(): array

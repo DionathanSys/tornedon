@@ -3,14 +3,19 @@
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Schemas;
 
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use App\Models\AccountPayable;
+use App\Models\AccountPayableInstallment;
 use App\Models\FiscalDocument;
+use App\Services\Access\CompanyAuthorization;
 use Filament\Facades\Filament;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\Section;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Gate;
 
 final class LinkedAccountPayablesSection
 {
@@ -69,6 +74,7 @@ final class LinkedAccountPayablesSection
                                 TableColumn::make('Situação'),
                                 TableColumn::make('Data do pagamento'),
                                 TableColumn::make('Consideração no módulo'),
+                                TableColumn::make('Ações'),
                             ])
                             ->schema([
                                 TextEntry::make('sequence_number'),
@@ -83,6 +89,19 @@ final class LinkedAccountPayablesSection
                                 TextEntry::make('paid_date')->date('d/m/Y')->placeholder('-'),
                                 TextEntry::make('consideration')
                                     ->state(fn ($record): string => $record->ignored_at ? 'Ignorada' : 'Considerada'),
+                                Actions::make([
+                                    RegisterInstallmentPaymentAction::make()
+                                        ->authorize(fn (AccountPayableInstallment $record): bool => (int) $record->company_id === (int) Filament::getTenant()?->id
+                                            && Gate::allows('view', $record->accountPayable)
+                                            && (! app(CompanyAuthorization::class)->requiresRoleAuthorization(
+                                                Filament::auth()->user(), Filament::getTenant(), Filament::getCurrentPanel()?->getId(),
+                                            ) || app(CompanyAuthorization::class)->allowsRecord(
+                                                Filament::auth()->user(),
+                                                Filament::getTenant(),
+                                                'account_payables.settle',
+                                                $record->accountPayable,
+                                            ))),
+                                ])->key('installment_payment_actions'),
                             ]),
                     ]),
             ]);
