@@ -151,7 +151,7 @@ class FiscalDocuments extends Page implements HasTable
                 DateRangeFilter::make('issued_at')->label('Emissão')->autoApply(),
                 DateRangeFilter::make('movement_at')->label('Entrada / saída')->autoApply(),
                 TernaryFilter::make('confirmed')->label('Confirmação'),
-            ])->recordActions([
+            ])->persistFiltersInSession()->recordActions([
                 Action::make('details')->label('Detalhes')->icon('heroicon-o-eye')->modalHeading('Documento fiscal')->modalSubmitAction(false)->modalCancelActionLabel('Fechar')
                     ->authorize(fn (FiscalDocument $record) => $this->canOperate($record, 'view'))
                     ->beforeFormFilled(function (FiscalDocument $record): void {
