@@ -219,12 +219,14 @@ class SefazDistributionPayableWorkflowTest extends TestCase
     {
         Livewire::test(ListSefazDistributionDocuments::class)
             ->callAction(TestAction::make('generateAccountPayable')->table($this->dfe), data: [
-                ...$this->paymentData(), 'installments_source' => 'manual', 'due_amount' => 150.99,
-                'installments' => [['due_date' => '2026-05-10', 'due_amount' => 50], ['due_date' => '2026-07-15', 'due_amount' => 100.99]],
+                ...$this->paymentData(), 'installments_source' => 'manual', 'due_amount' => '1.234,56',
+                'amount_difference_reason' => 'Valor negociado com o fornecedor',
+                'installments' => [['due_date' => '2026-05-10', 'due_amount' => '1.000,00'], ['due_date' => '2026-07-15', 'due_amount' => '234,56']],
             ])->assertHasNoActionErrors()->assertNotified()
-            ->assertSee('Em aberto')->assertSee('150,99')->assertSee('10/05/2026');
+            ->assertSee('Em aberto')->assertSee('1.234,56')->assertSee('10/05/2026');
         $this->assertDatabaseCount('account_payables', 1);
         $this->assertDatabaseCount('account_payable_installments', 2);
+        $this->assertSame(1234.56, (float) AccountPayable::query()->sole()->due_amount);
     }
 
     public function test_filament_can_link_an_existing_account_without_creating_another(): void
@@ -243,8 +245,8 @@ class SefazDistributionPayableWorkflowTest extends TestCase
     {
         Livewire::test(ViewSefazDistributionDocument::class, ['record' => $this->dfe->id])
             ->callAction('generateAccountPayable', data: [
-                ...$this->paymentData(), 'installments_source' => 'manual', 'due_amount' => 150.99,
-                'installments' => [['due_date' => '2026-05-10', 'due_amount' => 150.99]],
+                ...$this->paymentData(), 'installments_source' => 'manual', 'due_amount' => '150,99',
+                'installments' => [['due_date' => '2026-05-10', 'due_amount' => '150,99']],
             ])->assertHasNoActionErrors()->assertNotified()
             ->assertActionVisible('openAccountPayable')->assertActionHidden('generateAccountPayable')
             ->assertSee('Em aberto')->assertSee('150,99');
@@ -252,17 +254,36 @@ class SefazDistributionPayableWorkflowTest extends TestCase
 
     public function test_filament_can_calculate_the_installment_preview_before_submission(): void
     {
-        Livewire::test(ListSefazDistributionDocuments::class)
+        $page = Livewire::test(ListSefazDistributionDocuments::class)
             ->mountAction(TestAction::make('generateAccountPayable')->table($this->dfe))
+            ->assertSet('mountedActions.0.data.due_amount', '150,99')
             ->set('mountedActions.0.data.payment_condition', 'parcelado_3x')
-            ->set('mountedActions.0.data.due_amount', 150.99)
+            ->set('mountedActions.0.data.due_amount', '1.234,56')
             ->set('mountedActions.0.data.due_date', '2026-01-31')
             ->set('mountedActions.0.data.installment_due_mode', 'fixed_day_of_month')
             ->set('mountedActions.0.data.installment_fixed_day', 31)
             ->callAction(TestAction::make('calculateInstallments')->schemaComponent('calculate_installment_actions', 'mountedActionSchema0'))
             ->assertHasNoActionErrors()
             ->assertSet('mountedActions.0.data.installments.1.due_date', '2026-02-28')
-            ->assertSet('mountedActions.0.data.installments.2.due_amount', 50.33);
+            ->assertSet('mountedActions.0.data.installments.2.due_amount', '411,52');
+
+        $this->assertSame(1234.56, $page->instance()->getSchema('mountedActionSchema0')->getComponent('installments_total')->getState());
+    }
+
+    public function test_selecting_xml_duplicates_formats_money_and_preserves_whole_reais_on_submission(): void
+    {
+        $this->writeXml('<cobr><dup><dVenc>2026-05-10</dVenc><vDup>100.00</vDup></dup><dup><dVenc>2026-06-10</dVenc><vDup>50.99</vDup></dup></cobr>');
+        Livewire::test(ListSefazDistributionDocuments::class)
+            ->mountAction(TestAction::make('generateAccountPayable')->table($this->dfe))
+            ->set('mountedActions.0.data.installments_source', 'manual')
+            ->set('mountedActions.0.data.installments_source', 'xml')
+            ->assertSet('mountedActions.0.data.installments.0.due_amount', '100,00')
+            ->assertSet('mountedActions.0.data.installments.1.due_amount', '50,99')
+            ->callMountedAction()->assertHasNoActionErrors()->assertNotified();
+
+        $payable = AccountPayable::query()->sole();
+        $this->assertSame(150.99, (float) $payable->due_amount);
+        $this->assertSame([100.0, 50.99], $payable->installments()->orderBy('sequence_number')->get()->map(fn ($row) => (float) $row->due_amount)->all());
     }
 
     public function test_view_only_financial_role_cannot_generate_or_link_accounts(): void

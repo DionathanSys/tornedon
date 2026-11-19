@@ -32,6 +32,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class GenerateAccountPayableAction
 {
@@ -90,7 +91,9 @@ class GenerateAccountPayableAction
                     ->state($source['fiscal_amount'])->money('BRL'),
                 TextEntry::make('billing_amount')->label('Valor líquido da fatura no XML')
                     ->state($source['billing_amount'])->money('BRL')->placeholder('Não informado'),
-                TextInput::make('due_amount')->label('Valor total da conta')->numeric()->step('0.01')->minValue(0.01)->prefix('R$')->required()->live(onBlur: true),
+                Money::make('due_amount')->label('Valor total da conta')
+                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
+                    ->required()->live(onBlur: true),
                 Select::make('payment_method')->label('Forma de pagamento')->options(PaymentMethod::toSelectArray())->native(false)->required(),
                 Textarea::make('amount_difference_reason')->label('Justificativa da diferença em relação ao total fiscal')->maxLength(1000)
                     ->helperText('Obrigatória quando o valor da conta difere do total fiscal.')->columnSpanFull(),
@@ -105,47 +108,49 @@ class GenerateAccountPayableAction
                     'xml' => 'Usar duplicatas do XML', 'condition' => 'Calcular por condição de pagamento', 'manual' => 'Informar manualmente',
                 ])->disableOptionWhen(fn (string $value): bool => $value === 'xml' && $source['installments'] === [])
                     ->required()->native(false)->live()->afterStateUpdated(function (string $state, Set $set) use ($record): void {
-                        $set('installments', $state === 'xml' ? app(SefazDistributionPayablePlan::class)->source($record)['installments'] : []);
+                        $set('installments', $state === 'xml' ? self::formatInstallments(app(SefazDistributionPayablePlan::class)->source($record)['installments']) : []);
                     }),
                 Section::make('Condição de pagamento')->visible($conditionMode)->columns(2)->schema([
-                        Select::make('payment_condition')->label('Condição')->options(Condition::toGroupedSelectArray())->native(false)->live()->required()
-                            ->afterStateUpdated(function (?string $state, Set $set) use ($record): void {
-                                if ($state) {
-                                    $set('due_date', Carbon::parse($record->issued_at ?? now())->addDays(Condition::from($state)->days())->toDateString());
-                                    $set('installments', []);
-                                }
-                            }),
-                        PaymentConditionFields::make()->afterStateUpdated(fn (Set $set) => $set('installments', [])),
-                        DatePicker::make('due_date')->label('Primeiro vencimento')->displayFormat('d/m/Y')
-                            ->visible(fn (Get $get): bool => $get('payment_condition') !== Condition::CUSTOM->value)->required()
-                            ->afterStateUpdated(fn (Set $set) => $set('installments', []))->live(),
-                        Select::make('installment_due_mode')->label('Regra de vencimento')->options([
-                            InstallmentSchedule::CUSTOM_INTERVAL_DAYS => 'Intervalo da condição',
-                            InstallmentSchedule::FIXED_DAY_OF_MONTH => 'Dia fixo do mês',
+                    Select::make('payment_condition')->label('Condição')->options(Condition::toGroupedSelectArray())->native(false)->live()->required()
+                        ->afterStateUpdated(function (?string $state, Set $set) use ($record): void {
+                            if ($state) {
+                                $set('due_date', Carbon::parse($record->issued_at ?? now())->addDays(Condition::from($state)->days())->toDateString());
+                                $set('installments', []);
+                            }
+                        }),
+                    PaymentConditionFields::make()->afterStateUpdated(fn (Set $set) => $set('installments', [])),
+                    DatePicker::make('due_date')->label('Primeiro vencimento')->displayFormat('d/m/Y')
+                        ->visible(fn (Get $get): bool => $get('payment_condition') !== Condition::CUSTOM->value)->required()
+                        ->afterStateUpdated(fn (Set $set) => $set('installments', []))->live(),
+                    Select::make('installment_due_mode')->label('Regra de vencimento')->options([
+                        InstallmentSchedule::CUSTOM_INTERVAL_DAYS => 'Intervalo da condição',
+                        InstallmentSchedule::FIXED_DAY_OF_MONTH => 'Dia fixo do mês',
                     ])->placeholder('Intervalo da condição')->native(false)->live()
-                            ->afterStateUpdated(fn (Set $set) => $set('installments', [])),
-                        TextInput::make('installment_fixed_day')->label('Dia fixo')->integer()->minValue(1)->maxValue(31)
-                            ->visible(fn (Get $get): bool => $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
-                            ->required()->live()->afterStateUpdated(fn (Set $set) => $set('installments', [])),
-                        Actions::make([Action::make('calculateInstallments')->label('Calcular / atualizar parcelas')
-                            ->action(function (Get $get, Set $set) use ($record): void {
-                                $set('installments', app(SefazDistributionPayablePlan::class)->calculate($record, [
-                                    'due_amount' => $get('due_amount'), 'due_date' => $get('due_date'),
-                                    'payment_condition' => $get('payment_condition'), 'payment_condition_details' => $get('payment_condition_details'),
-                                    'installment_due_mode' => $get('installment_due_mode'), 'installment_fixed_day' => $get('installment_fixed_day'),
-                                ]));
-                            })])->key('calculate_installment_actions')->columnSpanFull(),
-                    ]),
+                        ->afterStateUpdated(fn (Set $set) => $set('installments', [])),
+                    TextInput::make('installment_fixed_day')->label('Dia fixo')->integer()->minValue(1)->maxValue(31)
+                        ->visible(fn (Get $get): bool => $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
+                        ->required()->live()->afterStateUpdated(fn (Set $set) => $set('installments', [])),
+                    Actions::make([Action::make('calculateInstallments')->label('Calcular / atualizar parcelas')
+                        ->action(function (Get $get, Set $set) use ($record): void {
+                            $set('installments', self::formatInstallments(app(SefazDistributionPayablePlan::class)->calculate($record, [
+                                'due_amount' => self::monetaryAmount($get('due_amount')), 'due_date' => $get('due_date'),
+                                'payment_condition' => $get('payment_condition'), 'payment_condition_details' => $get('payment_condition_details'),
+                                'installment_due_mode' => $get('installment_due_mode'), 'installment_fixed_day' => $get('installment_fixed_day'),
+                            ])));
+                        })])->key('calculate_installment_actions')->columnSpanFull(),
+                ]),
                 Repeater::make('installments')->label('Revise os valores e vencimentos')->minItems(1)->maxItems(999)->required()
                     ->addActionLabel('Adicionar parcela')
                     ->reorderable(false)->columns(4)->live()->schema([
-                            DatePicker::make('due_date')->label('Vencimento')->displayFormat('d/m/Y')->required(),
-                            TextInput::make('due_amount')->label('Valor')->numeric()->step('0.01')->minValue(0.01)->prefix('R$')->required(),
-                            TextInput::make('description')->label('Descrição')->maxLength(255),
-                            Textarea::make('notes')->label('Observações')->rows(1),
+                        DatePicker::make('due_date')->label('Vencimento')->displayFormat('d/m/Y')->required(),
+                        Money::make('due_amount')->label('Valor')
+                            ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
+                            ->required(),
+                        TextInput::make('description')->label('Descrição')->maxLength(255),
+                        Textarea::make('notes')->label('Observações')->rows(1),
                     ]),
                 TextEntry::make('installments_total')->label('Soma das parcelas')->money('BRL')
-                    ->state(fn (Get $get): float => round(collect($get('installments') ?? [])->sum(fn ($row) => (float) ($row['due_amount'] ?? 0)), 2)),
+                    ->state(fn (Get $get): float => round(collect($get('installments') ?? [])->sum(fn ($row) => self::monetaryAmount($row['due_amount'] ?? 0)), 2)),
             ]),
             Section::make('Pagamento automático')->collapsed()->collapsible()->columns(2)->schema([
                 Toggle::make('is_effective')->label('Conta efetivada')->live(),
@@ -156,5 +161,20 @@ class GenerateAccountPayableAction
                     ->required()->visible(fn (Get $get): bool => (bool) $get('is_effective') && (bool) $get('auto_register_payment_on_due_date')),
             ]),
         ];
+    }
+
+    private static function monetaryAmount(mixed $value): float
+    {
+        return is_string($value) && str_contains($value, ',')
+            ? (float) str_replace(',', '.', str_replace('.', '', $value))
+            : (float) $value;
+    }
+
+    private static function formatInstallments(array $installments): array
+    {
+        return array_map(fn (array $row): array => [
+            ...$row,
+            'due_amount' => number_format(self::monetaryAmount($row['due_amount'] ?? 0), 2, ',', '.'),
+        ], $installments);
     }
 }
