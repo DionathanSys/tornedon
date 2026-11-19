@@ -20,6 +20,7 @@ use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CashMovementService;
 use App\Services\Financial\FinancialClassificationService;
 use App\Support\Financial\AccountEditGuard;
+use App\Support\Financial\ExplicitPayableInstallments;
 use App\Support\Financial\InstallmentDescription;
 use App\Support\Financial\InstallmentPaymentGuard;
 use App\Support\Financial\InstallmentSchedule;
@@ -63,6 +64,7 @@ class AccountPayableService
                 unset($data['installment_count']);
 
                 $installments = $this->buildInstallmentsData($data, $installmentCount, $scheduleConfig);
+                unset($data['installments']);
                 unset($data['amount_input_mode']);
                 $action = new CreateAccountPayableAction($createdBy);
                 $headerData = $this->buildHeaderData($data, $installments);
@@ -158,6 +160,10 @@ class AccountPayableService
      */
     private function buildInstallmentsData(array $data, int $installmentCount, array $scheduleConfig = []): array
     {
+        if (array_key_exists('installments', $data)) {
+            return ExplicitPayableInstallments::build($data);
+        }
+
         $amountMode = (string) ($data['amount_input_mode'] ?? 'total');
         $inputAmountInCents = (int) round(((float) ($data['due_amount'] ?? 0)) * 100);
 

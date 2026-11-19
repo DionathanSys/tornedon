@@ -51,6 +51,8 @@ class SefazDistributionDocumentResource extends Resource
                 'partner',
                 'fiscalDocument',
                 'accountPayable',
+                'accountPayable.installments',
+                'fiscalDocument.accountPayables.installments',
                 'ignoredBy',
                 'auditEntries' => fn ($query) => $query->latest('occurred_at'),
             ])

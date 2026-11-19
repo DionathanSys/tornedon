@@ -4,7 +4,6 @@ namespace App\Services\Fiscal\Sefaz;
 
 use App\Enum\AccountPayable\Status as AccountPayableStatus;
 use App\Enum\Audit\AuditSource;
-use App\Enum\Payment\Condition;
 use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Models\AccountPayable;
 use App\Models\SefazDistributionDocument;
@@ -15,8 +14,6 @@ use Illuminate\Support\Facades\DB;
 class GenerateSefazDistributionPayableAction
 {
     public function __construct(
-        private readonly SefazDfeStorageService $storageService,
-        private readonly SefazDistributionFiscalDocumentXmlParser $parser,
         private readonly AccountPayableService $accountPayableService,
         private readonly AuditRecorder $auditRecorder,
     ) {}
@@ -38,38 +35,22 @@ class GenerateSefazDistributionPayableAction
             throw new \RuntimeException('Vincule um fornecedor antes de gerar contas a pagar.');
         }
 
-        $xml = $this->storageService->read($distributionDocument->full_xml_path);
-
-        if (! is_string($xml) || trim($xml) === '') {
-            throw new \RuntimeException('O XML completo do DF-e não foi encontrado no storage.');
-        }
-
-        $parsed = $this->parser->parse($xml);
-        $amount = $this->resolveAmount($parsed, $distributionDocument);
-
-        if ($amount <= 0) {
-            throw new \RuntimeException('Não foi possível identificar um valor válido para gerar a conta a pagar.');
-        }
-
-        return DB::transaction(function () use ($distributionDocument, $paymentData, $userId, $amount): AccountPayable {
+        return DB::transaction(function () use ($distributionDocument, $paymentData, $userId): AccountPayable {
             $locked = SefazDistributionDocument::query()
                 ->whereKey($distributionDocument->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($locked->account_payable_id !== null) {
-                $payable = AccountPayable::query()
-                    ->where('company_id', $locked->company_id)
-                    ->find($locked->account_payable_id);
-
-                if ($payable instanceof AccountPayable) {
-                    return $payable;
-                }
-
-                throw new \RuntimeException('O DF-e já possui referência para uma conta a pagar não encontrada.');
+            if ($locked->import_status === ImportStatus::IGNORED || ! $locked->full_xml_available || ! $locked->partner_id) {
+                throw new \RuntimeException('O DF-e deve possuir XML completo, fornecedor e não estar ignorado.');
             }
-
-            $condition = Condition::from($paymentData['payment_condition']);
+            $links = app(SefazDistributionFinancialLinkService::class);
+            if ($existing = $links->synchronize($locked, actorId: $userId)) {
+                return $existing;
+            }
+            $locked->refresh();
+            $plan = app(SefazDistributionPayablePlan::class)->resolve($locked, $paymentData);
+            $amount = $plan['amount'];
             $description = filled($paymentData['description'] ?? null)
                 ? (string) $paymentData['description']
                 : "DF-e NF #{$locked->document_number}";
@@ -77,31 +58,25 @@ class GenerateSefazDistributionPayableAction
             $payload = [
                 'supplier_id' => $locked->partner_id,
                 'company_id' => $locked->company_id,
-                'fiscal_document_id' => null,
+                'fiscal_document_id' => $locked->fiscal_document_id,
                 'sequence_number' => '01',
                 'status' => AccountPayableStatus::PENDING->value,
                 'payment_method' => $paymentData['payment_method'],
-                'due_date' => $paymentData['due_date'] ?? now()->toDateString(),
+                'due_date' => $plan['installments'][0]['due_date'] ?? now()->toDateString(),
                 'due_amount' => $amount,
                 'description' => $description,
                 'document_number' => $locked->document_key,
                 'note_number' => $locked->document_number,
+                'installments' => $plan['installments'],
+                'installment_count' => count($plan['installments']),
+                'financial_category_id' => $paymentData['financial_category_id'] ?? null,
+                'cost_center_id' => $paymentData['cost_center_id'] ?? null,
+                'result_center_id' => $paymentData['result_center_id'] ?? null,
+                'bank_slip_number' => $paymentData['bank_slip_number'] ?? null,
+                'is_effective' => (bool) ($paymentData['is_effective'] ?? true),
+                'auto_register_payment_on_due_date' => (bool) ($paymentData['auto_register_payment_on_due_date'] ?? false),
+                'auto_payment_financial_account_id' => $paymentData['auto_payment_financial_account_id'] ?? null,
             ];
-
-            $installmentCount = \App\Support\Financial\PaymentTerms::count($condition, $paymentData['payment_condition_details'] ?? null);
-            if ($condition === Condition::CUSTOM) {
-                $payload['due_date'] = \App\Support\Financial\PaymentTerms::firstDueDate($condition, \Carbon\Carbon::parse($locked->issued_at ?? now()), $paymentData['payment_condition_details'])->toDateString();
-                $payload['installment_due_mode'] = \App\Support\Financial\InstallmentSchedule::CUSTOM_INTERVAL_DAYS;
-                $payload['installment_interval_days'] = \App\Support\Financial\PaymentTerms::interval($condition, $paymentData['payment_condition_details']);
-            }
-
-            if ($installmentCount > 1) {
-                $payload['installment_count'] = $installmentCount;
-
-                if ($condition->isTerm()) {
-                    $payload['installment_due_mode'] = $condition->value;
-                }
-            }
 
             $payable = $this->accountPayableService->create($payload, $userId);
 
@@ -117,6 +92,7 @@ class GenerateSefazDistributionPayableAction
                 'last_error_code' => null,
                 'last_error_message' => null,
             ])->save();
+            $links->synchronize($locked, $payable, actorId: $userId);
 
             $this->auditRecorder->recordModelEvent(
                 $locked->fresh(),
@@ -129,22 +105,13 @@ class GenerateSefazDistributionPayableAction
                 [
                     'account_payable_id' => $payable->id,
                     'amount' => $amount,
+                    'fiscal_amount' => $plan['source']['fiscal_amount'],
+                    'amount_difference_reason' => $paymentData['amount_difference_reason'] ?? null,
+                    'installments_source' => $paymentData['installments_source'] ?? 'condition',
                 ],
             );
 
             return $payable;
         });
-    }
-
-    /**
-     * @param  array<string, mixed>  $parsed
-     */
-    private function resolveAmount(array $parsed, SefazDistributionDocument $distributionDocument): float
-    {
-        $amount = data_get($parsed, 'totals.ICMSTot.vNF')
-            ?? data_get($parsed, 'payment.detPag.vPag')
-            ?? $distributionDocument->total_amount;
-
-        return round((float) $amount, 2);
     }
 }

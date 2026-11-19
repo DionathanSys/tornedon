@@ -9,11 +9,14 @@ use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory
 use App\Filament\Forms\Components\PaymentConditionFields;
 use App\Models\CompanyCreditCard;
 use App\Models\FiscalDocument;
+use App\Models\SefazDistributionDocument;
 use App\Notification\NotifyService as notify;
 use App\Services\Access\UserAccessService;
+use App\Services\Fiscal\Sefaz\SefazDistributionFinancialLinkService;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryCardTransactionAction;
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
 use App\Services\FiscalDocument\Actions\ProcessFiscalEntryStockAction;
+use App\Support\Financial\FiscalEntryAmount;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -21,6 +24,7 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Support\Icons\Heroicon;
@@ -45,8 +49,8 @@ final class ConfirmEntryAction
             ->schema(fn (FiscalDocument $record): array => self::buildFormSchema($record))
             ->action(function (Action $action, FiscalDocument $record, array $data): void {
                 // Bloqueia reprocessamento
-                if ($record->accountPayables()->exists() || $record->confirmed) {
-                    notify::error(title: 'Falha ao confirmar', message: 'Este documento fiscal já gerou movimentações financeiras.');
+                if ($record->confirmed) {
+                    notify::error(title: 'Falha ao confirmar', message: 'Esta nota de entrada já foi confirmada.');
 
                     return;
                 }
@@ -54,6 +58,18 @@ final class ConfirmEntryAction
                 try {
                     DB::transaction(function () use ($record, $data) {
                         $userId = (int) Auth::id();
+                        $dfe = filled($record->document_key) ? SefazDistributionDocument::query()
+                            ->where('company_id', $record->company_id)->where('document_key', $record->document_key)
+                            ->lockForUpdate()->first() : null;
+                        if ($dfe) {
+                            app(SefazDistributionFinancialLinkService::class)->synchronize($dfe, note: $record, actorId: $userId);
+                        }
+                        FiscalDocument::query()->lockForUpdate()->findOrFail($record->id);
+                        $record->refresh();
+                        if ($record->confirmed) {
+                            throw new RuntimeException('Esta nota já foi confirmada.');
+                        }
+                        $hasPayable = $record->accountPayables()->exists();
                         $stockProcessor = app(ProcessFiscalEntryStockAction::class);
                         $stockResult = $stockProcessor->execute($record, $userId);
                         $payableResult = [
@@ -65,7 +81,7 @@ final class ConfirmEntryAction
                             'errors' => [],
                         ];
 
-                        if ((bool) ($data['generate_account_payable_now'] ?? false)) {
+                        if (! $hasPayable && (bool) ($data['generate_account_payable_now'] ?? false)) {
                             if (($data['payment_method'] ?? null) === PaymentMethod::CREDIT_CARD->value) {
                                 $cardProcessor = app(GenerateFiscalEntryCardTransactionAction::class);
                                 $cardResult = $cardProcessor->execute($record, $data, $userId);
@@ -94,7 +110,7 @@ final class ConfirmEntryAction
                             'confirmed_at' => now(),
                             'confirmed_by' => $userId,
                             'updated_by' => $userId,
-                            'financial_control_mode' => self::resolveFinancialControlMode($data),
+                            'financial_control_mode' => $hasPayable ? 'account_payable' : self::resolveFinancialControlMode($data),
                         ]);
 
                         Log::info('ConfirmEntryAction: Processamento concluído', [
@@ -110,6 +126,8 @@ final class ConfirmEntryAction
                             $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['card_transactions']} lançamento(s) no cartão corporativo gerados.";
                         } elseif ($result['payables'] > 0) {
                             $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque e {$result['payables']} conta(s) a pagar geradas.";
+                        } elseif ($hasPayable) {
+                            $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque processadas. O contas a pagar existente foi preservado.";
                         } else {
                             $msg = "Nota confirmada! {$result['stock_movements']} movimentação(ões) de estoque processadas. Nenhum lançamento financeiro foi gerado.";
                         }
@@ -134,7 +152,7 @@ final class ConfirmEntryAction
     {
         // Pré-calcula o total da nota a partir dos itens
         $record->loadMissing('items');
-        $totalAmount = $record->items->sum(fn ($i) => (float) $i->total_price);
+        $totalAmount = FiscalEntryAmount::fromDocument($record);
         $totalFormatted = 'R$ '.number_format($totalAmount, 2, ',', '.');
         $isBpo = Filament::getCurrentPanel()?->getId() === 'bpo';
         $allows = fn (string $permission) => ! $isBpo || app(UserAccessService::class)
@@ -145,10 +163,13 @@ final class ConfirmEntryAction
         $methods = array_filter(PaymentMethod::toSelectArray(), fn ($method) => $method === PaymentMethod::CREDIT_CARD->value ? $canCard : $canPayable, ARRAY_FILTER_USE_KEY);
 
         return [
+            TextEntry::make('existing_payable_notice')->label('Financeiro existente')
+                ->state('O contas a pagar já vinculado será preservado. A confirmação processará a entrada de estoque sem gerar outra conta.')
+                ->visible($record->accountPayables()->exists())->columnSpanFull(),
             Toggle::make('generate_account_payable_now')
                 ->label('Gerar conta a pagar agora?')
                 ->default(false)
-                ->visible($canPayable || $canCard)
+                ->visible(($canPayable || $canCard) && ! $record->accountPayables()->exists())
                 ->live()
                 ->columnSpanFull(),
 

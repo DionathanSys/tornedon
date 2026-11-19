@@ -9,6 +9,7 @@ use App\Enum\FiscalDocument\OperationNature;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
+use Illuminate\Support\Carbon;
 
 class SefazDistributionFiscalDocumentXmlParser
 {
@@ -20,6 +21,7 @@ class SefazDistributionFiscalDocumentXmlParser
      *     totals: array<string, mixed>,
      *     transport: array<string, mixed>,
      *     payment: array<string, mixed>,
+     *     billing: array<string, mixed>,
      *     additional_info: array<string, mixed>,
      *     protocol: array<string, mixed>,
      *     items: array<int, array<string, mixed>>
@@ -27,9 +29,9 @@ class SefazDistributionFiscalDocumentXmlParser
      */
     public function parse(string $xml): array
     {
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
 
-        if (! @ $dom->loadXML($xml)) {
+        if (! @$dom->loadXML($xml)) {
             throw new \RuntimeException('O XML completo armazenado para o DF-e é inválido.');
         }
 
@@ -46,6 +48,7 @@ class SefazDistributionFiscalDocumentXmlParser
         $total = $this->firstElement($xpath, './*[local-name()="total"]', $infNFe);
         $transp = $this->firstElement($xpath, './*[local-name()="transp"]', $infNFe);
         $pag = $this->firstElement($xpath, './*[local-name()="pag"]', $infNFe);
+        $cobr = $this->firstElement($xpath, './*[local-name()="cobr"]', $infNFe);
         $infAdic = $this->firstElement($xpath, './*[local-name()="infAdic"]', $infNFe);
         $protNFe = $this->firstElement($xpath, '//*[local-name()="protNFe"]');
 
@@ -93,6 +96,7 @@ class SefazDistributionFiscalDocumentXmlParser
                 'payload' => $transp instanceof DOMElement ? $this->elementToArray($transp) : [],
             ],
             'payment' => $pag instanceof DOMElement ? $this->elementToArray($pag) : [],
+            'billing' => $cobr instanceof DOMElement ? $this->elementToArray($cobr) : [],
             'additional_info' => [
                 'tax_observations' => $this->firstText($xpath, './*[local-name()="infAdFisco"]', $infAdic),
                 'taxpayer_observations' => $this->firstText($xpath, './*[local-name()="infCpl"]', $infAdic),
@@ -198,6 +202,7 @@ class SefazDistributionFiscalDocumentXmlParser
                 }
 
                 $children[$child->localName][] = $value;
+
                 continue;
             }
 
@@ -287,7 +292,7 @@ class SefazDistributionFiscalDocumentXmlParser
         }
 
         try {
-            return \Illuminate\Support\Carbon::parse($value)->toIso8601String();
+            return Carbon::parse($value)->toIso8601String();
         } catch (\Throwable) {
             return null;
         }

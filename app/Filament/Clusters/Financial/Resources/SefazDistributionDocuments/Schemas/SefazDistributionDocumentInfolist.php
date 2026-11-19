@@ -5,7 +5,10 @@ namespace App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\S
 use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
+use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\PayableSummary;
 use App\Filament\Clusters\Partners\Resources\CompanyPartners\CompanyPartnerResource;
+use App\Livewire\SefazDistributionDocumentItemsTable;
 use App\Models\SefazDistributionDocument;
 use Filament\Actions\Action;
 use Filament\Infolists\Components\RepeatableEntry;
@@ -69,7 +72,15 @@ class SefazDistributionDocumentInfolist
                             ->placeholder('Ainda não importado'),
                         TextEntry::make('accountPayable.id')
                             ->label('Conta a pagar')
+                            ->visible(fn (SefazDistributionDocument $record): bool => $record->accountPayable === null || AccountPayableResource::canView($record->accountPayable))
+                            ->url(fn (SefazDistributionDocument $record): ?string => $record->account_payable_id ? AccountPayableResource::getUrl('view', ['record' => $record->account_payable_id]) : null)
                             ->placeholder('Ainda não gerada'),
+                        TextEntry::make('financial_status')->label('Situação financeira')->badge()
+                            ->state(fn (SefazDistributionDocument $record): string => PayableSummary::status($record)),
+                        TextEntry::make('financial_balance')->label('Saldo financeiro')->money('BRL')
+                            ->state(fn (SefazDistributionDocument $record): float => PayableSummary::balance($record)),
+                        TextEntry::make('next_financial_due_date')->label('Próximo vencimento')->date('d/m/Y')->placeholder('-')
+                            ->state(fn (SefazDistributionDocument $record) => PayableSummary::nextDueDate($record)),
                         TextEntry::make('issued_at')
                             ->label('Emissão')
                             ->dateTime('d/m/Y H:i'),
@@ -161,7 +172,7 @@ class SefazDistributionDocumentInfolist
                 Section::make('Itens detectados')
                     ->columnSpanFull()
                     ->schema([
-                        Livewire::make(\App\Livewire\SefazDistributionDocumentItemsTable::class, fn (SefazDistributionDocument $record): array => [
+                        Livewire::make(SefazDistributionDocumentItemsTable::class, fn (SefazDistributionDocument $record): array => [
                             'documentId' => $record->id,
                         ])
                             ->key('sefaz-distribution-document-items-table')

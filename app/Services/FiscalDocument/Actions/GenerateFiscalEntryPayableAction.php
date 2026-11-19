@@ -5,12 +5,19 @@ namespace App\Services\FiscalDocument\Actions;
 use App\Enum\AccountPayable\Status as AccountPayableStatus;
 use App\Enum\Payment\Condition;
 use App\Models\FiscalDocument;
+use App\Models\SefazDistributionDocument;
 use App\Services\AccountPayable\AccountPayableService;
+use App\Services\Fiscal\Sefaz\SefazDistributionFinancialLinkService;
+use App\Support\Financial\FiscalEntryAmount;
+use App\Support\Financial\InstallmentSchedule;
+use App\Support\Financial\PaymentTerms;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class GenerateFiscalEntryPayableAction
 {
     public function __construct(
-        private readonly AccountPayableService $accountPayableService = new AccountPayableService(),
+        private readonly AccountPayableService $accountPayableService = new AccountPayableService,
     ) {}
 
     /**
@@ -24,6 +31,28 @@ class GenerateFiscalEntryPayableAction
      */
     public function execute(FiscalDocument $document, array $paymentData, int $userId): array
     {
+        return DB::transaction(function () use ($document, $paymentData, $userId): array {
+            $dfe = filled($document->document_key) ? SefazDistributionDocument::query()
+                ->where('company_id', $document->company_id)->where('document_key', $document->document_key)
+                ->lockForUpdate()->first() : null;
+            if ($dfe && app(SefazDistributionFinancialLinkService::class)->synchronize($dfe, note: $document, actorId: $userId)) {
+                return ['payables' => 0, 'errors' => []];
+            }
+            $document = FiscalDocument::query()->lockForUpdate()->findOrFail($document->id);
+            if ($document->accountPayables()->exists()) {
+                return ['payables' => 0, 'errors' => []];
+            }
+            $result = $this->createPayable($document, $paymentData, $userId);
+            if ($dfe && $result['payables'] > 0) {
+                app(SefazDistributionFinancialLinkService::class)->synchronize($dfe, note: $document, actorId: $userId);
+            }
+
+            return $result;
+        });
+    }
+
+    private function createPayable(FiscalDocument $document, array $paymentData, int $userId): array
+    {
         if ($document->isOperationalHistory()) {
             return ['payables' => 0, 'errors' => []];
         }
@@ -31,7 +60,7 @@ class GenerateFiscalEntryPayableAction
         $document->loadMissing('items');
 
         $condition = Condition::from($paymentData['payment_condition']);
-        $totalAmount = $document->items->sum(fn ($item) => (float) $item->total_price);
+        $totalAmount = FiscalEntryAmount::fromDocument($document);
         $description = $paymentData['description'] ?? "NF #{$document->document_number}";
         $result = [
             'payables' => 0,
@@ -51,11 +80,11 @@ class GenerateFiscalEntryPayableAction
             'document_number' => $document->document_number,
         ];
 
-        $installmentCount = \App\Support\Financial\PaymentTerms::count($condition, $paymentData['payment_condition_details'] ?? null);
+        $installmentCount = PaymentTerms::count($condition, $paymentData['payment_condition_details'] ?? null);
         if ($condition === Condition::CUSTOM) {
-            $payload['due_date'] = \App\Support\Financial\PaymentTerms::firstDueDate($condition, \Carbon\Carbon::parse($document->issued_at ?? now()), $paymentData['payment_condition_details'])->toDateString();
-            $payload['installment_due_mode'] = \App\Support\Financial\InstallmentSchedule::CUSTOM_INTERVAL_DAYS;
-            $payload['installment_interval_days'] = \App\Support\Financial\PaymentTerms::interval($condition, $paymentData['payment_condition_details']);
+            $payload['due_date'] = PaymentTerms::firstDueDate($condition, Carbon::parse($document->issued_at ?? now()), $paymentData['payment_condition_details'])->toDateString();
+            $payload['installment_due_mode'] = InstallmentSchedule::CUSTOM_INTERVAL_DAYS;
+            $payload['installment_interval_days'] = PaymentTerms::interval($condition, $paymentData['payment_condition_details']);
         }
 
         if ($installmentCount > 1) {
@@ -70,7 +99,7 @@ class GenerateFiscalEntryPayableAction
 
         if ($this->accountPayableService->hasError() || ! $payable) {
             $result['errors'][] = 'Erro ao criar conta a pagar: '
-                . $this->accountPayableService->getMessageUser();
+                .$this->accountPayableService->getMessageUser();
 
             return $result;
         }

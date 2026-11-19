@@ -6,7 +6,6 @@ use App\Enum\Audit\AuditSource;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status as FiscalDocumentStatus;
-use App\Models\AccountPayable;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentItem;
 use App\Models\Product;
@@ -14,6 +13,7 @@ use App\Models\SefazDistributionDocument;
 use App\Services\Audit\AuditRecorder;
 use App\Services\FiscalDocument\Actions\UpsertFiscalDocumentPayloadAction;
 use App\Services\FiscalDocument\Actions\UpsertFiscalDocumentTaxDetailAction;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class SefazDistributionFiscalDocumentImportService
@@ -57,7 +57,7 @@ class SefazDistributionFiscalDocumentImportService
                     $fiscalDocument = FiscalDocument::query()->find($locked->fiscal_document_id);
 
                     if ($fiscalDocument instanceof FiscalDocument) {
-                        $this->linkPendingPayableToFiscalDocument($locked, $fiscalDocument);
+                        $this->linkPendingPayableToFiscalDocument($locked, $fiscalDocument, $actorUserId);
                         $this->distributionDocumentService->markImportSucceeded($locked, $fiscalDocument, $actorUserId, reusedExisting: true);
 
                         return $fiscalDocument;
@@ -70,7 +70,7 @@ class SefazDistributionFiscalDocumentImportService
                     ->first();
 
                 if ($existing instanceof FiscalDocument) {
-                    $this->linkPendingPayableToFiscalDocument($locked, $existing);
+                    $this->linkPendingPayableToFiscalDocument($locked, $existing, $actorUserId);
                     $this->distributionDocumentService->markImportSucceeded($locked, $existing, $actorUserId, reusedExisting: true);
 
                     return $existing;
@@ -197,7 +197,7 @@ class SefazDistributionFiscalDocumentImportService
                     ],
                 );
 
-                $this->linkPendingPayableToFiscalDocument($locked, $fiscalDocument);
+                $this->linkPendingPayableToFiscalDocument($locked, $fiscalDocument, $actorUserId);
                 $this->distributionDocumentService->markImportSucceeded($locked, $fiscalDocument, $actorUserId);
 
                 return $fiscalDocument;
@@ -341,36 +341,15 @@ class SefazDistributionFiscalDocumentImportService
         }
 
         try {
-            return \Illuminate\Support\Carbon::parse($value)->toDateString();
+            return Carbon::parse($value)->toDateString();
         } catch (\Throwable) {
             return null;
         }
     }
 
-    private function linkPendingPayableToFiscalDocument(SefazDistributionDocument $distributionDocument, FiscalDocument $fiscalDocument): void
+    private function linkPendingPayableToFiscalDocument(SefazDistributionDocument $distributionDocument, FiscalDocument $fiscalDocument, ?int $actorId = null): void
     {
-        if ($distributionDocument->account_payable_id === null) {
-            return;
-        }
-
-        $payable = AccountPayable::query()
-            ->where('company_id', $distributionDocument->company_id)
-            ->whereKey($distributionDocument->account_payable_id)
-            ->lockForUpdate()
-            ->first();
-
-        if (! $payable instanceof AccountPayable) {
-            throw new \RuntimeException('A conta a pagar vinculada ao DF-e não foi encontrada.');
-        }
-
-        if ($payable->fiscal_document_id === null) {
-            $payable->update(['fiscal_document_id' => $fiscalDocument->id]);
-
-            return;
-        }
-
-        if ((int) $payable->fiscal_document_id !== (int) $fiscalDocument->id) {
-            throw new \RuntimeException('A conta a pagar vinculada ao DF-e já está associada a outra nota de entrada.');
-        }
+        app(SefazDistributionFinancialLinkService::class)->synchronize($distributionDocument, note: $fiscalDocument, actorId: $actorId);
+        $distributionDocument->refresh();
     }
 }

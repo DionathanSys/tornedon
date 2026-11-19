@@ -6,6 +6,7 @@ use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
 use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\Actions\SefazDistributionDocumentRecordActions;
+use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\PayableSummary;
 use App\Models\SefazDistributionDocument;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -98,6 +99,15 @@ class SefazDistributionDocumentsTable
                     ->placeholder('Não gerada')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
+                TextColumn::make('financial_status')->label('Situação financeira')->badge()
+                    ->state(fn (SefazDistributionDocument $record): string => PayableSummary::status($record))
+                    ->color(fn (string $state): string => match ($state) {
+                        'Quitado' => 'success', 'Em aberto', 'Parcialmente pago' => 'warning', default => 'gray'
+                    }),
+                TextColumn::make('financial_balance')->label('Saldo financeiro')->money('BRL')
+                    ->state(fn (SefazDistributionDocument $record): float => PayableSummary::balance($record)),
+                TextColumn::make('next_financial_due_date')->label('Próximo vencimento')->date('d/m/Y')->placeholder('-')
+                    ->state(fn (SefazDistributionDocument $record) => PayableSummary::nextDueDate($record)),
                 TextColumn::make('partner_id')
                     ->label('Fornecedor')
                     ->badge()
@@ -136,6 +146,22 @@ class SefazDistributionDocumentsTable
                 Filter::make('ready_to_import')
                     ->label('Prontos para importar')
                     ->query(fn ($query) => $query->where('import_status', ImportStatus::READY_TO_IMPORT->value)),
+                Filter::make('without_financial')->label('Sem financeiro')
+                    ->query(fn ($query) => $query->whereNull('account_payable_id')->whereDoesntHave('fiscalDocument.accountPayables')),
+                Filter::make('pending_financial_links')->label('Com vínculo financeiro pendente')
+                    ->query(fn ($query) => $query->where(function ($query) {
+                        $query->where(function ($query) {
+                            $query->whereNull('account_payable_id')->whereHas('fiscalDocument.accountPayables');
+                        })->orWhere(function ($query) {
+                            $query->whereNotNull('fiscal_document_id')->whereHas('accountPayable', fn ($query) => $query->whereNull('fiscal_document_id'));
+                        })->orWhere(function ($query) {
+                            $query->whereNull('fiscal_document_id')->whereNotNull('account_payable_id')->whereExists(function ($query) {
+                                $query->selectRaw('1')->from('fiscal_documents')
+                                    ->whereColumn('fiscal_documents.company_id', 'sefaz_distribution_documents.company_id')
+                                    ->whereColumn('fiscal_documents.document_key', 'sefaz_distribution_documents.document_key');
+                            });
+                        });
+                    })),
                 Filter::make('with_errors')
                     ->label('Com erro')
                     ->query(fn ($query) => $query->where(function ($subQuery) {
