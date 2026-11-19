@@ -229,6 +229,9 @@ class FiscalDocumentForm
                                             ->columnSpan(['md' => 2, 'lg' => 4]),
                                         DatePicker::make('issued_at')
                                             ->label('Data de Emissão')
+                                            ->helperText(fn (Get $get): ?string => $get('document_type') === DocumentModel::NFE->value
+                                                ? 'Na NF-e, a data do rascunho será atualizada para a data do envio aceito para processamento.'
+                                                : null)
                                             ->displayFormat('d/m/Y')
                                             ->default(now())
                                             ->required()

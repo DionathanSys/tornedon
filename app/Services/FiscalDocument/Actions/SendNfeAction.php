@@ -2,13 +2,18 @@
 
 namespace App\Services\FiscalDocument\Actions;
 
+use App\Domain\DTO\Fiscal\ScenarioContext;
 use App\Enum\Audit\AuditSource;
 use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\OperationNature;
+use App\Jobs\ConsultNfeJob;
 use App\Models\FiscalDocument;
 use App\Models\NfeSequence;
 use App\Services\Audit\AuditRecorder;
+use App\Services\Fiscal\IntegranotasRateLimiter;
 use App\Services\Fiscal\NfeConfigService;
 use App\Traits\HandlesActionResponse;
+use CloudDfe\SdkPHP\Nfe;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -34,7 +39,7 @@ class SendNfeAction
         ?string $serie = null,
         ?string $operationNature = null,
         ?string $scenarioCode = null,
-        ?\App\Domain\DTO\Fiscal\ScenarioContext $scenarioContext = null
+        ?ScenarioContext $scenarioContext = null
     ): bool {
         try {
             $audit = app(AuditRecorder::class);
@@ -72,7 +77,7 @@ class SendNfeAction
             $serie = $serie ?? $configService->resolveSerie($fiscalDocument->company_id);
 
             $rawNature = $fiscalDocument->operation_nature;
-            $natureValue = $rawNature instanceof \App\Enum\FiscalDocument\OperationNature
+            $natureValue = $rawNature instanceof OperationNature
                 ? $rawNature->value
                 : $rawNature;
             $operationNature = $operationNature ?? $natureValue;
@@ -122,7 +127,7 @@ class SendNfeAction
             // ------------------------------------------------------------------
             $companyId = (int) $fiscalDocument->company_id;
             $ambiente = $configService->resolveAmbiente($companyId);
-            $sdk = new \CloudDfe\SdkPHP\Nfe($configService->buildSdkParams($companyId));
+            $sdk = new Nfe($configService->buildSdkParams($companyId));
 
             Log::info('SendNfeAction: enviando para API IntegraNotas', [
                 'fiscal_document_id' => $fiscalDocument->id,
@@ -134,7 +139,7 @@ class SendNfeAction
                 'scenario_code' => $scenarioCode,
             ]);
 
-            $resp = app(\App\Services\Fiscal\IntegranotasRateLimiter::class)->run(
+            $resp = app(IntegranotasRateLimiter::class)->run(
                 token: $configService->resolveToken($companyId),
                 bucket: 'default',
                 key: null,
@@ -160,6 +165,8 @@ class SendNfeAction
 
                 // Lote em processamento — salva chave e aguarda webhook/polling
                 $fiscalDocument->update([
+                    'issued_at' => $payload['data_emissao'],
+                    'movement_at' => $payload['data_entrada_saida'],
                     'document_key' => $resp->chave,
                     'nfe_status' => NfeStatus::IN_PROCESSING->value,
                     'nfe_ambiente' => $ambiente,
@@ -189,7 +196,7 @@ class SendNfeAction
                 ]);
 
                 // Dispara job de consulta como fallback (60s de delay)
-                dispatch(new \App\Jobs\ConsultNfeJob($fiscalDocument->id, $this->userId))
+                dispatch(new ConsultNfeJob($fiscalDocument->id, $this->userId))
                     ->delay(now()->addSeconds(60));
 
                 Log::info('SendNfeAction: NF-e enviada com sucesso, aguardando processamento', [

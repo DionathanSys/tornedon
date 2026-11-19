@@ -9,6 +9,8 @@ use App\Enum\FiscalDocument\IssuePurpose;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
+use App\Enum\Product\OriginSalePrice;
+use App\Enum\Product\Unit;
 use App\Models\Address;
 use App\Models\Company;
 use App\Models\CompanyPartner;
@@ -71,8 +73,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-PAY-001',
             'name' => 'Produto Payload',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -170,8 +172,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-IBS-PARTIAL',
             'name' => 'Produto IBS Parcial',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -257,8 +259,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-REF-001',
             'name' => 'Produto Refresh',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -301,7 +303,7 @@ class BuildNfePayloadActionTest extends TestCase
         $this->assertSame('00', $payload['itens'][0]['imposto']['icms']['situacao_tributaria']);
     }
 
-    public function test_it_uses_a_valid_timestamp_for_emission_and_movement_dates(): void
+    public function test_it_uses_current_timestamp_instead_of_draft_dates_for_emission_and_movement(): void
     {
         Carbon::setTestNow('2026-06-08 09:29:04');
 
@@ -326,8 +328,8 @@ class BuildNfePayloadActionTest extends TestCase
             'company_id' => $company->id,
             'status' => Status::PENDING->value,
             'document_type' => DocumentModel::NFE->value,
-            'issued_at' => '2026-06-08',
-            'movement_at' => '2026-06-08',
+            'issued_at' => '2026-06-03',
+            'movement_at' => '2026-06-03',
             'document_number' => '102',
             'document_series' => '1',
             'operation_nature' => OperationNature::DEVOLUCAO_COMPRA->value,
@@ -345,8 +347,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-DAT-001',
             'name' => 'Produto Datas',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -426,8 +428,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-PREV-001',
             'name' => 'Produto Preview',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -526,8 +528,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-REFNFE-001',
             'name' => 'Produto Referenciado',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -638,8 +640,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-REFLINK-001',
             'name' => 'Produto Referenciado Link',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -741,8 +743,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-DESC-001',
             'name' => 'Produto com Desconto',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -927,8 +929,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-FRT-001',
             'name' => 'Produto Frete',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -1015,8 +1017,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-ECM-001',
             'name' => 'Produto Online',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -1116,8 +1118,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-MKP-001',
             'name' => 'Produto Marketplace',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);
@@ -1204,8 +1206,8 @@ class BuildNfePayloadActionTest extends TestCase
             'created_by' => $user->id,
             'product_code' => 'PRD-SN-001',
             'name' => 'Produto Simples',
-            'unit' => \App\Enum\Product\Unit::UN->value,
-            'origin_sale_price' => \App\Enum\Product\OriginSalePrice::FREE->value,
+            'unit' => Unit::UN->value,
+            'origin_sale_price' => OriginSalePrice::FREE->value,
             'sale_price_value' => 100,
             'is_active' => true,
         ]);

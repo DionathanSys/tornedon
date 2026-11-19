@@ -25,6 +25,7 @@ use App\Models\ProductTax;
 use App\Models\User;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Fiscal\NfeConfigService;
+use App\Services\FiscalDocument\Actions\SendNfeAction;
 use App\Services\FiscalDocument\NfeDocumentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -37,9 +38,11 @@ class QueuedNfeEmissionFlowTest extends TestCase
 
     protected function tearDown(): void
     {
-        Mockery::close();
-
-        parent::tearDown();
+        try {
+            Mockery::close();
+        } finally {
+            parent::tearDown();
+        }
     }
 
     public function test_emitir_queues_document_after_preflight(): void
@@ -142,6 +145,72 @@ class QueuedNfeEmissionFlowTest extends TestCase
 
         $this->assertNotNull($sequence);
         $this->assertSame(1, $sequence->last_number);
+    }
+
+    public function test_retry_after_error_uses_actual_send_date_even_after_waiting_in_queue(): void
+    {
+        Bus::fake();
+        $this->travelTo(now()->setDate(2026, 11, 6)->setTime(10, 0));
+        [$user, $document] = $this->createReadyDocument();
+        $document->update(['issued_at' => now(), 'movement_at' => now()]);
+
+        $config = Mockery::mock(NfeConfigService::class);
+        $config->shouldReceive('resolveSerie')->andReturn('1');
+        $config->shouldReceive('resolveAmbiente')->andReturn(2);
+        $config->shouldReceive('resolveToken')->andReturn('fake-token');
+        $config->shouldReceive('buildSdkParams')->andReturn([
+            'token' => 'fake-token', 'ambiente' => 2, 'options' => [],
+        ]);
+        $this->app->instance(NfeConfigService::class, $config);
+
+        $sdk = Mockery::mock('overload:CloudDfe\SdkPHP\Nfe');
+        $sentPayloads = [];
+        $sdk->shouldReceive('cria')->andReturnUsing(function (array $payload) use (&$sentPayloads): object {
+            $sentPayloads[] = $payload;
+
+            return count($sentPayloads) === 1
+                ? (object) ['sucesso' => false, 'codigo' => 5002, 'mensagem' => 'Dados inválidos']
+                : (object) [
+                    'sucesso' => true, 'codigo' => 5023,
+                    'chave' => '35261112345678000199550010000000011000000011',
+                ];
+        });
+
+        $action = new SendNfeAction($user->id);
+        $this->assertFalse($action->execute($document));
+        $this->assertStringContainsString('Dados inválidos', $action->getMessage());
+
+        $this->travelTo(now()->setDate(2026, 11, 11)->setTime(23, 59));
+        $this->assertTrue(app(NfeDocumentService::class)->emitir($document->fresh(), $user->id));
+
+        $this->travelTo(now()->addMinutes(2));
+        (new ProcessQueuedNfeEmissionJob($document->fresh()->emission_group_key))->handle();
+
+        $document->refresh();
+        $this->assertCount(2, $sentPayloads);
+        $this->assertSame('2026-11-06T10:00:00-03:00', $sentPayloads[0]['data_emissao']);
+        $this->assertSame('2026-11-12T00:01:00-03:00', $sentPayloads[1]['data_emissao']);
+        $this->assertSame($sentPayloads[1]['data_emissao'], $sentPayloads[1]['data_entrada_saida']);
+        $this->assertSame(NfeStatus::IN_PROCESSING, $document->nfe_status);
+        $this->assertSame('2026-11-12', $document->issued_at->toDateString());
+        $this->assertSame('2026-11-12', $document->movement_at->toDateString());
+        $this->assertSame('2026-11-12T00:01:00-03:00', $document->nfe_payload['data_emissao']);
+    }
+
+    public function test_resending_processing_authorized_or_canceled_documents_preserves_dates(): void
+    {
+        [$user, $document] = $this->createReadyDocument();
+        $issuedAt = $document->issued_at->toDateString();
+        $movementAt = $document->movement_at->toDateString();
+
+        foreach ([NfeStatus::IN_PROCESSING, NfeStatus::AUTHORIZED, NfeStatus::CANCELED] as $status) {
+            $document->update(['nfe_status' => $status->value]);
+
+            $this->assertFalse((new SendNfeAction($user->id))->execute($document));
+            $document->refresh();
+            $this->assertSame($issuedAt, $document->issued_at->toDateString());
+            $this->assertSame($movementAt, $document->movement_at->toDateString());
+        }
     }
 
     private function createReadyDocument(?Company $company = null, ?Partner $customer = null, ?User $user = null): array

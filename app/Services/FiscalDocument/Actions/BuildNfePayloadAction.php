@@ -3,6 +3,10 @@
 namespace App\Services\FiscalDocument\Actions;
 
 use App\Domain\DTO\Fiscal\FiscalDecisionDTO;
+use App\Domain\DTO\Fiscal\ScenarioContext;
+use App\Enum\FiscalDocument\BuyerPresenceIndicator;
+use App\Enum\FiscalDocument\IssuePurpose;
+use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\Tax\TaxRegime;
 use App\Models\CompanyPartner;
@@ -33,7 +37,7 @@ class BuildNfePayloadAction
 {
     use HandlesActionResponse;
 
-    public function execute(FiscalDocument $fiscalDocument, ?\App\Domain\DTO\Fiscal\ScenarioContext $scenarioContext = null): ?array
+    public function execute(FiscalDocument $fiscalDocument, ?ScenarioContext $scenarioContext = null): ?array
     {
         try {
             Log::debug('BuildNfePayloadAction: iniciando montagem de payload', [
@@ -62,7 +66,9 @@ class BuildNfePayloadAction
                 ? $fiscalDocument->operation_type->value
                 : (string) ($fiscalDocument->operation_type ?? OperationType::SAIDA->value);
 
-            $issuedAt = $this->resolveNfeTimestamp($fiscalDocument->issued_at ?? now())->format('Y-m-d\TH:i:sP');
+            // A data do rascunho não representa a emissão: cada tentativa usa
+            // o instante atual, inclusive após rejeição ou espera na fila.
+            $issuedAt = now()->format('Y-m-d\TH:i:sP');
             $movementAt = $this->resolveMovementTimestamp(
                 $fiscalDocument->movement_at ?? $fiscalDocument->issued_at ?? now(),
                 Carbon::parse($issuedAt),
@@ -262,7 +268,7 @@ class BuildNfePayloadAction
             }
 
             $payload = [
-                'natureza_operacao' => $fiscalDocument->operation_nature instanceof \App\Enum\FiscalDocument\OperationNature
+                'natureza_operacao' => $fiscalDocument->operation_nature instanceof OperationNature
                                                 ? $fiscalDocument->operation_nature->value
                                                 : (string) $fiscalDocument->operation_nature,
                 'serie' => $fiscalDocument->document_series ?? '1',
@@ -270,11 +276,11 @@ class BuildNfePayloadAction
                 'data_emissao' => $issuedAt,
                 'data_entrada_saida' => $movementAt,
                 'tipo_operacao' => $operationType,
-                'finalidade_emissao' => $fiscalDocument->issue_purpose instanceof \App\Enum\FiscalDocument\IssuePurpose
+                'finalidade_emissao' => $fiscalDocument->issue_purpose instanceof IssuePurpose
                                                 ? $fiscalDocument->issue_purpose->value
                                                 : ($fiscalDocument->issue_purpose ?? '1'),
                 'consumidor_final' => $fiscalDocument->is_final_consumer ? '1' : '0',
-                'presenca_comprador' => $fiscalDocument->buyer_presence_indicator instanceof \App\Enum\FiscalDocument\BuyerPresenceIndicator
+                'presenca_comprador' => $fiscalDocument->buyer_presence_indicator instanceof BuyerPresenceIndicator
                                                 ? $fiscalDocument->buyer_presence_indicator->value
                                                 : ($fiscalDocument->buyer_presence_indicator ? '1' : '9'),
                 'destinatario' => $destinatario,
@@ -527,7 +533,7 @@ class BuildNfePayloadAction
 
     private function resolveIntermediaryData(FiscalDocument $fiscalDocument): ?array
     {
-        $buyerPresence = $fiscalDocument->buyer_presence_indicator instanceof \App\Enum\FiscalDocument\BuyerPresenceIndicator
+        $buyerPresence = $fiscalDocument->buyer_presence_indicator instanceof BuyerPresenceIndicator
             ? $fiscalDocument->buyer_presence_indicator->value
             : (string) ($fiscalDocument->buyer_presence_indicator ?? '');
 
