@@ -13,6 +13,8 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
+use Filament\Schemas\Schema;
+use Illuminate\Validation\ValidationException;
 
 class SetupDreAction
 {
@@ -41,9 +43,25 @@ class SetupDreAction
                         Select::make('group')->label('Grupo na DRE')->options(SetupDreService::GROUPS)->required()->native(false),
                     ]),
             ])
-            ->action(function (array $data, $livewire): void {
+            ->action(function (array $data, Schema $schema, $livewire): void {
                 abort_unless(DreModelResource::canCreate(), 403);
-                $model = app(SetupDreService::class)->create(Filament::getTenant()->id, $data);
+                try {
+                    $model = app(SetupDreService::class)->create(Filament::getTenant()->id, $data);
+                } catch (ValidationException $exception) {
+                    Notification::make()
+                        ->warning()
+                        ->title('Não foi possível criar a DRE')
+                        ->body(collect($exception->errors())->flatten()->implode(' '))
+                        ->send();
+
+                    throw ValidationException::withMessages(
+                        collect($exception->errors())
+                            ->mapWithKeys(fn (array $messages, string $field): array => [
+                                $schema->getStatePath().'.'.$field => $messages,
+                            ])
+                            ->all(),
+                    );
+                }
                 Notification::make()->success()->title('DRE criada com contas e resultados configurados')->send();
                 if ($livewire instanceof DreReportPage) {
                     $livewire->data['dre_model_id'] = $model->id;

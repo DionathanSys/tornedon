@@ -32,6 +32,7 @@ use App\Services\Financial\Dre\GenerateDreReportService;
 use App\Services\Financial\Dre\SetupDreService;
 use Carbon\Carbon;
 use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -602,6 +603,50 @@ class DreReportServiceTest extends TestCase
         $this->assertSame([$account->id], $model->lines()->where('code', 'RECEITAS')->first()->chartAccounts()->pluck('chart_accounts.id')->all());
         $this->createChartAccount($company->id, '2', 'Conta nova sem vínculo', ChartAccountType::EXPENSE);
         $component->call('$refresh')->assertSee('Conta nova sem vínculo');
+    }
+
+    public function test_guided_action_shows_validation_when_chart_of_accounts_is_empty(): void
+    {
+        $company = $this->createCompany('Sem plano de contas');
+        $user = User::findOrFail($company->created_by);
+        $user->companies()->attach($company, ['role' => 'admin', 'is_active' => true]);
+        $this->actingAs($user);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($company);
+
+        Livewire::test(DreReportPage::class)
+            ->mountAction('setupDre')
+            ->callMountedAction()
+            ->assertHasActionErrors(['accounts'])
+            ->assertNotified(Notification::make()
+                ->warning()
+                ->title('Não foi possível criar a DRE')
+                ->body('Classifique todas as contas e inclua ao menos uma na DRE. Cadastre o plano de contas caso esteja vazio.'));
+
+        $this->assertSame(0, DreModel::count());
+    }
+
+    public function test_guided_action_shows_validation_when_accounts_change_while_modal_is_open(): void
+    {
+        $company = $this->createCompany('Plano alterado');
+        $user = User::findOrFail($company->created_by);
+        $user->companies()->attach($company, ['role' => 'admin', 'is_active' => true]);
+        $this->createChartAccount($company->id, '1', 'Receitas', ChartAccountType::REVENUE);
+        $this->actingAs($user);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($company);
+
+        $component = Livewire::test(DreReportPage::class)->mountAction('setupDre');
+        $this->createChartAccount($company->id, '2', 'Despesas', ChartAccountType::EXPENSE);
+
+        $component->callMountedAction()
+            ->assertHasActionErrors(['accounts'])
+            ->assertNotified(Notification::make()
+                ->warning()
+                ->title('Não foi possível criar a DRE')
+                ->body('Classifique todas as contas e inclua ao menos uma na DRE. Cadastre o plano de contas caso esteja vazio.'));
+
+        $this->assertSame(0, DreModel::count());
     }
 
     private function guidedReceipt(float $received, float $discount): array
