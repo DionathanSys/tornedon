@@ -5,6 +5,7 @@ namespace App\Services\QuoteItem\Actions;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteItem;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\QuoteItem\Validators\QuoteItemValidator;
 use App\Services\ServiceDiscount\ServiceDiscountService;
 use App\Support\Audit\AuditLog;
@@ -16,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class UpdateQuoteItemAction
 {
-    use HandlesActionResponse, AuthorizesQuoteItemActions;
+    use AuthorizesQuoteItemActions, HandlesActionResponse;
 
     private const AUDIT_FIELDS = [
         'quote_id',
@@ -48,13 +49,12 @@ class UpdateQuoteItemAction
 
     /**
      * Atualiza um item de orcamento existente.
-     *
-     * @param  array  $data
      */
     public function execute(array $data): ?QuoteItem
     {
         if (! self::canModifyQuoteItems($this->item->quote_id)) {
             $this->setError('Não é permitido atualizar itens deste orçamento. Apenas orçamentos em rascunho podem ter itens alterados.');
+
             return null;
         }
 
@@ -62,7 +62,7 @@ class UpdateQuoteItemAction
             $beforeSnapshot = AuditLog::snapshot($this->item, self::AUDIT_FIELDS);
 
             Log::debug('UpdateQuoteItemAction: atualizando item de orcamento', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'item_id' => $this->item->id,
                 'quote_id' => $this->item->quote_id,
                 'user_id' => $this->updatedBy,
@@ -74,9 +74,10 @@ class UpdateQuoteItemAction
             $finalData = $this->buildFinalPayload($validated);
 
             if (! empty($finalData['product_id']) && isset($finalData['unit_price'])) {
-                $priceError = $this->validateMinSalePrice((int) $finalData['product_id'], (float) $finalData['unit_price']);
+                $priceError = $this->validateMinSalePrice((int) $finalData['product_id'], (float) $finalData['unit_price'], $finalData['unit_of_measure'] ?? null);
                 if ($priceError) {
                     $this->setError($priceError);
+
                     return null;
                 }
             }
@@ -91,6 +92,7 @@ class UpdateQuoteItemAction
 
                 if ($priceError) {
                     $this->setError($priceError);
+
                     return null;
                 }
             }
@@ -101,7 +103,7 @@ class UpdateQuoteItemAction
             $afterSnapshot = AuditLog::snapshot($this->item, self::AUDIT_FIELDS);
 
             Log::info('UpdateQuoteItemAction: item de orcamento atualizado com sucesso', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'item_id' => $this->item->id,
                 'quote_id' => $this->item->quote_id,
                 'user_id' => $this->updatedBy,
@@ -112,12 +114,13 @@ class UpdateQuoteItemAction
             ]);
 
             $this->setSuccess();
+
             return $this->item;
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
-            Log::error('UpdateQuoteItemAction: ' . $this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+            Log::error('UpdateQuoteItemAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'errors' => $e->errors(),
                 'item_id' => $this->item->id,
@@ -129,8 +132,8 @@ class UpdateQuoteItemAction
         } catch (QueryException $e) {
             $this->setError('Erro ao atualizar item de orçamento no banco de dados');
 
-            Log::error('UpdateQuoteItemAction: ' . $this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+            Log::error('UpdateQuoteItemAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
                 'item_id' => $this->item->id,
@@ -142,8 +145,8 @@ class UpdateQuoteItemAction
         } catch (\Exception $e) {
             $this->setError('Erro inesperado ao atualizar item de orçamento');
 
-            Log::error('UpdateQuoteItemAction: ' . $this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+            Log::error('UpdateQuoteItemAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -229,7 +232,7 @@ class UpdateQuoteItemAction
      * Verifica se o preco unitario respeita o preco minimo de venda do produto.
      * Retorna null se OK, ou mensagem de erro caso contrario.
      */
-    private function validateMinSalePrice(int $productId, float $unitPrice): ?string
+    private function validateMinSalePrice(int $productId, float $unitPrice, ?string $unit): ?string
     {
         $product = Product::find($productId);
 
@@ -238,6 +241,10 @@ class UpdateQuoteItemAction
         }
 
         $minPrice = (float) $product->min_sale_price;
+        $conversion = app(ProductUnitConversionService::class);
+        if ($unit && $conversion->isAllowedUnit($product, $unit)) {
+            $minPrice = $conversion->convertPrice($product, $minPrice, $product->unit->value, $unit);
+        }
 
         if ($unitPrice < $minPrice) {
             return sprintf(

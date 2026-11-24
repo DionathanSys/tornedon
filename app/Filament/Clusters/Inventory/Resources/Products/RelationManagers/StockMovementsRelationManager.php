@@ -37,8 +37,8 @@ class StockMovementsRelationManager extends InventoryRelationManager
                 TextColumn::make('operational_unit')->label('Unidade'),
                 TextColumn::make('base_quantity')->label('Qtd. estoque')->numeric(decimalPlaces: 3),
                 TextColumn::make('base_unit')->label('Unid. estoque'),
-                TextColumn::make('unit_price')->label('Custo unitário')->money('BRL', decimalPlaces: 4),
-                TextColumn::make('total_amount')->label('Total')->money('BRL'),
+                TextColumn::make('unit_price')->label('Preço da operação / un.')->money('BRL', decimalPlaces: 4),
+                TextColumn::make('total_amount')->label('Valor da operação')->money('BRL'),
                 TextColumn::make('source_type')->label('Origem')->formatStateUsing(fn ($state) => match ($state) {
                     'manual' => 'Manual', 'requisition_item', 'requisition' => 'Requisição',
                     'fiscal_document' => 'Nota fiscal', 'production_order' => 'Produção', 'service_order' => 'Ordem de serviço',

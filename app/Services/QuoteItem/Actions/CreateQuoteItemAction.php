@@ -5,6 +5,7 @@ namespace App\Services\QuoteItem\Actions;
 use App\Models\Product;
 use App\Models\Quote;
 use App\Models\QuoteItem;
+use App\Services\Product\ProductUnitConversionService;
 use App\Services\QuoteItem\Validators\QuoteItemValidator;
 use App\Services\ServiceDiscount\ServiceDiscountService;
 use App\Support\Audit\AuditLog;
@@ -16,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class CreateQuoteItemAction
 {
-    use HandlesActionResponse, AuthorizesQuoteItemActions;
+    use AuthorizesQuoteItemActions, HandlesActionResponse;
 
     private const AUDIT_FIELDS = [
         'quote_id',
@@ -47,13 +48,12 @@ class CreateQuoteItemAction
 
     /**
      * Cria um novo item de orcamento.
-     *
-     * @param  array  $data
      */
     public function execute(array $data): ?QuoteItem
     {
         if (! isset($data['quote_id']) || ! self::canModifyQuoteItems($data['quote_id'])) {
             $this->setError('Não é permitido adicionar itens a este orçamento. Apenas orçamentos em rascunho podem ter itens alterados.');
+
             return null;
         }
 
@@ -64,7 +64,7 @@ class CreateQuoteItemAction
                 : 'manual_or_explicit';
 
             Log::debug('CreateQuoteItemAction: criando item de orcamento', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'quote_id' => $data['quote_id'],
                 'user_id' => $this->createdBy,
                 'requested_payload' => $requestedPayload,
@@ -76,9 +76,10 @@ class CreateQuoteItemAction
             $validated = $this->normalizeServiceDiscount($validated);
 
             if (! empty($validated['product_id']) && isset($validated['unit_price'])) {
-                $priceError = $this->validateMinSalePrice((int) $validated['product_id'], (float) $validated['unit_price']);
+                $priceError = $this->validateMinSalePrice((int) $validated['product_id'], (float) $validated['unit_price'], $validated['unit_of_measure'] ?? null);
                 if ($priceError) {
                     $this->setError($priceError);
+
                     return null;
                 }
             }
@@ -93,6 +94,7 @@ class CreateQuoteItemAction
 
                 if ($priceError) {
                     $this->setError($priceError);
+
                     return null;
                 }
             }
@@ -100,7 +102,7 @@ class CreateQuoteItemAction
             $item = QuoteItem::create($validated);
 
             Log::info('CreateQuoteItemAction: item de orcamento criado com sucesso', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'item_id' => $item->id,
                 'quote_id' => $item->quote_id,
                 'user_id' => $this->createdBy,
@@ -112,12 +114,13 @@ class CreateQuoteItemAction
             ]);
 
             $this->setSuccess();
+
             return $item;
         } catch (ValidationException $e) {
             $this->setError('Falha de validação dos dados', $e->errors());
 
-            Log::error('CreateQuoteItemAction: ' . $this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+            Log::error('CreateQuoteItemAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'errors' => $e->errors(),
                 'requested_payload' => AuditLog::payload($data, self::AUDIT_FIELDS),
@@ -128,8 +131,8 @@ class CreateQuoteItemAction
         } catch (QueryException $e) {
             $this->setError('Erro ao criar item de orçamento no banco de dados');
 
-            Log::error('CreateQuoteItemAction: ' . $this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+            Log::error('CreateQuoteItemAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
                 'requested_payload' => AuditLog::payload($data, self::AUDIT_FIELDS),
@@ -140,8 +143,8 @@ class CreateQuoteItemAction
         } catch (\Exception $e) {
             $this->setError('Erro inesperado ao criar item de orçamento');
 
-            Log::error('CreateQuoteItemAction: ' . $this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+            Log::error('CreateQuoteItemAction: '.$this->getMessage(), [
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -218,7 +221,7 @@ class CreateQuoteItemAction
      * Verifica se o preco unitario respeita o preco minimo de venda do produto.
      * Retorna null se OK, ou mensagem de erro caso contrario.
      */
-    private function validateMinSalePrice(int $productId, float $unitPrice): ?string
+    private function validateMinSalePrice(int $productId, float $unitPrice, ?string $unit): ?string
     {
         $product = Product::find($productId);
 
@@ -227,6 +230,10 @@ class CreateQuoteItemAction
         }
 
         $minPrice = (float) $product->min_sale_price;
+        $conversion = app(ProductUnitConversionService::class);
+        if ($unit && $conversion->isAllowedUnit($product, $unit)) {
+            $minPrice = $conversion->convertPrice($product, $minPrice, $product->unit->value, $unit);
+        }
 
         if ($unitPrice < $minPrice) {
             return sprintf(

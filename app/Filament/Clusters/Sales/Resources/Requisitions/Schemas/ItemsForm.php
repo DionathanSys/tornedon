@@ -106,6 +106,10 @@ class ItemsForm
                                     ->preload()
                                     ->required()
                                     ->live()
+                                    ->afterStateUpdated(function ($state, $old, Get $get, Set $set): void {
+                                        $stock = app(ProductStockService::class)->find((int) $get('product_stock_id'), Filament::getTenant()->id);
+                                        ItemValueGroup::convertProductUnit($get, $set, $stock?->product, $old, $state);
+                                    })
                                     ->helperText(fn (Get $get): ?string => self::unitHelperText(
                                         (int) $get('product_stock_id'),
                                         $get('unit_of_measure'),
@@ -155,7 +159,7 @@ class ItemsForm
 
         $productStock = $productStockService->find($id);
         $product = $productStock->product;
-        $price = $productSalePriceService->resolve($product, $productStock);
+        $price = $productSalePriceService->resolve($product, $productStock, $product->resolvedSaleUnitValue());
 
         $dto = new RequisitionItemDTO(
             productStockId: $id,
@@ -164,7 +168,7 @@ class ItemsForm
             name: $product->name,
             unit: $product->resolvedSaleUnit(),
             price: (float) ($price ?? 0),  // null = FREE price mode; form starts at 0 for user input
-            minSalePrice: $productStock->min_sale_price ?? 0,
+            minSalePrice: $productSalePriceService->getMinSalePriceById($product->id, $product->resolvedSaleUnitValue()),
         );
 
         self::applyDto($set, $dto);
@@ -188,6 +192,7 @@ class ItemsForm
         $set('quantity', 1);
         $set('unit_of_measure', $dto->unit instanceof Unit ? $dto->unit->value : $dto->unit);
         $set('unit_price', $dto->price ? number_format($dto->price, 2, ',', '.') : null);
+        $set('item.min_sale_price', $dto->minSalePrice);
         $set('total_amount', $dto->price ? number_format($dto->price, 2, ',', '.') : null);
         $set('commission_percentage', 0);
         $set('commission_amount', 0);

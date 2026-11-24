@@ -16,6 +16,7 @@ use App\Models\StockMovement;
 use App\Models\User;
 use App\Services\Requisition\Actions\CloseRequisitionAction;
 use App\Services\Requisition\Actions\ReopenRequisitionAction;
+use App\Services\Requisition\RequisitionStockService;
 use App\Services\Requisition\RequisitionStockWorkflow;
 use App\Services\RequisitionItem\Actions\CreateRequisitionItemAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -136,6 +137,24 @@ class RequisitionStockWorkflowTest extends TestCase
         $this->assertEquals(0, $stock->fresh()->quantity_reserved);
         $this->assertEquals(3, $stock->fresh()->quantity_total);
         $this->assertSame(0, StockMovement::count());
+    }
+
+    public function test_partial_release_preserves_operational_quantity_and_price(): void
+    {
+        [$user, $requisition, $item] = $this->makeContext();
+        $item->update([
+            'unit_of_measure' => 'PC', 'quantity' => 4,
+            'quantity_in_base_unit' => 2, 'conversion_factor_snapshot' => 0.5, 'unit_price' => 6,
+        ]);
+        $movement = app(RequisitionStockService::class)->createReservationRelease(
+            $requisition, $item, $user->id, 'Liberação parcial', 0.5,
+        );
+        $this->assertNotNull($movement);
+        $this->assertSame('PC', $movement->operational_unit);
+        $this->assertEquals(1, $movement->operational_quantity);
+        $this->assertEquals(0.5, $movement->base_quantity);
+        $this->assertEquals(0.5, $movement->conversion_factor_snapshot);
+        $this->assertEquals(6, $movement->total_amount);
     }
 
     private function makeContext(): array

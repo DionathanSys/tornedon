@@ -18,19 +18,19 @@ class ProductSalePriceService
      *
      * Retorna null quando origin_sale_price = FREE (o preço é definido livremente pelo usuário).
      *
-     * @param  Product           $product  Produto com origin_sale_price e profit_margin carregados
-     * @param  ProductStock|null $stock    Registro de estoque (necessário para CALCULATED e CALCULATED_II)
-     * @return float|null
+     * @param  Product  $product  Produto com origin_sale_price e profit_margin carregados
+     * @param  ProductStock|null  $stock  Registro de estoque (necessário para CALCULATED e CALCULATED_II)
      */
-    public function resolve(int|Product $product, ?ProductStock $stock = null): ?float
+    public function resolve(int|Product $product, ?ProductStock $stock = null, ?string $unit = null): ?float
     {
         if (is_int($product)) {
             $product = Product::with('stock')->find($product);
             if (! $product) {
                 Log::warning('ProductSalePriceService: Produto não encontrado', [
-                    'metodo'     => __METHOD__ . '@' . __LINE__,
+                    'metodo' => __METHOD__.'@'.__LINE__,
                     'product_id' => $product,
                 ]);
+
                 return null;
             }
         }
@@ -39,17 +39,18 @@ class ProductSalePriceService
 
         if ($origin === null) {
             Log::debug('ProductSalePriceService: origin_sale_price não definido, retornando null', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $product->id,
             ]);
+
             return 0;
         }
 
         $price = match ($origin) {
-            OriginSalePrice::FIXED         => $this->resolveFixed($product),
-            OriginSalePrice::CALCULATED    => $this->resolveCalculated($product, $stock ?? $product->stock),
+            OriginSalePrice::FIXED => $this->resolveFixed($product),
+            OriginSalePrice::CALCULATED => $this->resolveCalculated($product, $stock ?? $product->stock),
             OriginSalePrice::CALCULATED_II => $this->resolveCalculatedII($product, $stock ?? $product->stock),
-            OriginSalePrice::FREE          => null,
+            OriginSalePrice::FREE => null,
         };
 
         // Garante que o preço calculado nunca seja inferior ao mínimo de venda configurado
@@ -57,24 +58,23 @@ class ProductSalePriceService
             $minPrice = (float) $product->min_sale_price;
             if ($price < $minPrice) {
                 Log::debug('ProductSalePriceService: Preço calculado abaixo do mínimo, usando min_sale_price', [
-                    'metodo'         => __METHOD__ . '@' . __LINE__,
-                    'product_id'     => $product->id,
-                    'calculated'     => $price,
+                    'metodo' => __METHOD__.'@'.__LINE__,
+                    'product_id' => $product->id,
+                    'calculated' => $price,
                     'min_sale_price' => $minPrice,
                 ]);
                 $price = $minPrice;
             }
         }
 
-        return $price;
+        return $price !== null && $unit !== null
+            ? app(ProductUnitConversionService::class)->convertPrice($product, $price, $product->unit->value, $unit)
+            : $price;
     }
 
     /**
      * Resolve o preço de venda para um produto pelo ID.
      * Carrega automaticamente o estoque da mesma empresa do produto.
-     *
-     * @param  int $productId
-     * @return float|null
      */
     public function resolveById(int $productId): ?float
     {
@@ -82,9 +82,10 @@ class ProductSalePriceService
 
         if (! $product) {
             Log::warning('ProductSalePriceService: Produto não encontrado', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $productId,
             ]);
+
             return null;
         }
 
@@ -94,11 +95,8 @@ class ProductSalePriceService
     /**
      * Retorna o preço mínimo de venda configurado para um produto pelo ID.
      * Retorna 0 quando não há preço mínimo definido.
-     *
-     * @param  int $productId
-     * @return float
      */
-    public function getMinSalePriceById(int $productId): float
+    public function getMinSalePriceById(int $productId, ?string $unit = null): float
     {
         $product = Product::find($productId);
 
@@ -106,7 +104,9 @@ class ProductSalePriceService
             return 0;
         }
 
-        return (float) $product->min_sale_price;
+        return app(ProductUnitConversionService::class)->convertPrice(
+            $product, (float) $product->min_sale_price, $product->unit->value, $unit ?? $product->unit->value,
+        );
     }
 
     /**
@@ -126,18 +126,19 @@ class ProductSalePriceService
     {
         if ($stock === null) {
             Log::warning('ProductSalePriceService: CALCULATED sem estoque disponível para o produto', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $product->id,
             ]);
+
             return 0;
         }
 
-        $cost   = (float) ($stock->average_cost ?? 0);
+        $cost = (float) ($stock->average_cost ?? 0);
         $margin = (float) ($product->profit_margin ?? 0);
 
         if ($cost === 0.0) {
             Log::debug('ProductSalePriceService: CALCULATED sem custo médio disponível', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $product->id,
             ]);
         }
@@ -155,22 +156,23 @@ class ProductSalePriceService
     {
         if ($stock === null) {
             Log::warning('ProductSalePriceService: CALCULATED_II sem estoque disponível para o produto', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $product->id,
             ]);
+
             return 0;
         }
 
-        $lastCost    = (float) ($stock->last_cost ?? 0);
+        $lastCost = (float) ($stock->last_cost ?? 0);
         $averageCost = (float) ($stock->average_cost ?? 0);
 
         // Fallback para custo médio se o último custo não estiver disponível
-        $cost   = $lastCost > 0 ? $lastCost : $averageCost;
+        $cost = $lastCost > 0 ? $lastCost : $averageCost;
         $margin = (float) ($product->profit_margin ?? 0);
 
         if ($cost === 0.0) {
             Log::debug('ProductSalePriceService: CALCULATED_II sem custo disponível (last_cost e average_cost zerados)', [
-                'metodo'     => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'product_id' => $product->id,
             ]);
         }

@@ -83,5 +83,14 @@ class StockMovementServiceTest extends TestCase
         $this->assertEquals(2.0, (float) $stock->fresh()->quantity_total);
         $this->assertEquals(80.0, (float) $stock->fresh()->average_cost);
         $this->assertEquals(80.0, (float) $stock->fresh()->last_cost);
+
+        $sale = $service->create([
+            'product_stock_id' => $stock->id, 'product_id' => $product->id, 'company_id' => $company->id,
+            'type' => Type::EXIT->value, 'operational_unit' => Unit::PC->value,
+            'quantity' => 1, 'unit_price' => 15, 'reason' => 'Venda por peça', 'source_type' => 'manual', 'source_id' => 0,
+        ], $user->id);
+        $this->assertNotNull($sale, $service->getMessage() ?? 'Falha na saída');
+        $this->assertEquals(120, $stock->fresh()->last_sale_price); // Price per JG, not per PC.
+        $this->assertEquals(80, $stock->fresh()->average_cost);
     }
 }

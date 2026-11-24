@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Services\Product\ProductUnitConversionService;
 use App\Services\QuoteItem\QuoteItemResolverService;
 use App\Services\ServiceDiscount\ServiceDiscountService;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -80,11 +81,14 @@ class SchemaForm
 
                 Select::make('unit_of_measure')
                     ->label('Unidade de Medida')
-                    ->options(fn(Get $get): array => self::availableUnits((int) ($get('item.real_product_id') ?? 0), (string) ($get('item.real_service_id') ? Unit::UN->value : '')))
+                    ->options(fn (Get $get): array => self::availableUnits((int) ($get('item.real_product_id') ?? 0), (string) ($get('item.real_service_id') ? Unit::UN->value : '')))
                     ->native(false)
                     ->required()
                     ->live()
-                    ->helperText(fn(Get $get): ?string => self::conversionInfo(
+                    ->afterStateUpdated(fn ($state, $old, Get $get, Set $set) => ItemValueGroup::convertProductUnit(
+                        $get, $set, Product::where('company_id', Filament::getTenant()->id)->find($get('item.real_product_id')), $old, $state,
+                    ))
+                    ->helperText(fn (Get $get): ?string => self::conversionInfo(
                         (int) ($get('item.real_product_id') ?? 0),
                         $get('unit_of_measure'),
                         self::parseStateNumber($get('quantity')),
@@ -185,7 +189,7 @@ class SchemaForm
             ->with('alternativeUnitConversions')
             ->find($productId);
 
-        if (!$product) {
+        if (! $product) {
             return [];
         }
 
@@ -203,7 +207,7 @@ class SchemaForm
 
     private static function conversionInfo(int $productId, mixed $unit, float $quantity): ?string
     {
-        if ($productId < 1 || !$unit || $quantity <= 0) {
+        if ($productId < 1 || ! $unit || $quantity <= 0) {
             return null;
         }
 
@@ -211,7 +215,7 @@ class SchemaForm
             ->with('alternativeUnitConversions')
             ->find($productId);
 
-        if (!$product) {
+        if (! $product) {
             return null;
         }
 

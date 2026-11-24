@@ -17,7 +17,12 @@ use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\Requisition;
 use App\Models\ServiceOrder;
+use App\Models\StockMovement;
 use App\Models\User;
+use App\Services\Product\ProductSalePriceService;
+use App\Services\Requisition\RequisitionItemReservationService;
+use App\Services\StockMovement\StockMovementService;
+use App\Services\StockMovement\Support\KardexPdfDataFormatter;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
@@ -97,6 +102,114 @@ class OperationRequisitionTest extends TestCase
             ->set('formData.payment_condition', Condition::CASH->value)->call('save')->assertHasNoErrors();
         $this->assertNull($this->requisition->fresh()->payment_condition_details);
         $page->set('formData.delivery_date', today()->subDay()->format('Y-m-d'))->call('save')->assertHasErrors('formData.delivery_date');
+    }
+
+    public function test_hundred_to_unit_sale_converts_price_and_preserves_reservation_and_kardex_units(): void
+    {
+        $stock = $this->hundredStock();
+        $page = $this->page()->call('openAddProduct')->set('productData.product_stock_id', $stock->id)
+            ->assertSet('productData.unit_price', 530)
+            ->set('productData.unit_of_measure', 'UN')->assertSet('productData.unit_price', 5.3)
+            ->set('productData.discount_percentage', 10)->assertSet('productData.discount_amount', 0.53)
+            ->set('productData.unit_of_measure', 'CT')->assertSet('productData.unit_price', 530)
+            ->set('productData.unit_of_measure', 'UN')->set('productData.unit_price', 6)
+            ->set('productData.discount_percentage', 0)->call('saveProduct')->assertHasNoErrors();
+
+        $item = $this->requisition->items()->sole();
+        $reservation = StockMovement::where('source_type', 'requisition_item')->where('source_id', $item->id)->sole();
+        $this->assertSame('UN', $reservation->operational_unit);
+        $this->assertEquals(1, $reservation->operational_quantity);
+        $this->assertSame('CT', $reservation->base_unit);
+        $this->assertEquals(0.01, $reservation->base_quantity);
+        $this->assertEquals(0.01, $reservation->conversion_factor_snapshot);
+        $this->assertEquals(6, $reservation->unit_price);
+        $this->assertEquals(6, $reservation->total_amount);
+        $this->assertEquals(2.65, $item->unit_cost);
+        $this->assertEquals(265, $stock->fresh()->average_cost);
+        $this->assertEquals(0.1, $stock->fresh()->quantity_total);
+        $this->assertEquals(0.01, $stock->fresh()->quantity_reserved);
+
+        app(RequisitionItemReservationService::class)->sync($item, $this->user->id);
+        $this->assertSame(2, StockMovement::count()); // Entry + one reservation, even after a repeated event.
+        $pdf = app(KardexPdfDataFormatter::class)->format($stock->product, $this->company->id);
+        $this->assertSame('R$ 6,00', $pdf['rows'][1]['operational_unit_price']);
+        $this->assertSame('R$ 265,0000', $pdf['rows'][1]['average_cost']);
+        $this->assertSame('R$ 26,50', $pdf['summary']['closing_stock_value']);
+
+        $page->call('deleteProduct', $item->id)->assertHasNoErrors();
+        $release = StockMovement::latest('id')->firstOrFail();
+        $this->assertSame('UN', $release->operational_unit);
+        $this->assertEquals(1, $release->operational_quantity);
+        $this->assertEquals(0.01, $release->base_quantity);
+        $this->assertEquals(6, $release->total_amount);
+        $this->assertEquals(0, $stock->fresh()->quantity_reserved);
+        $this->assertEquals(265, $stock->fresh()->average_cost);
+    }
+
+    public function test_default_alternative_sale_unit_and_minimum_are_converted(): void
+    {
+        $stock = $this->hundredStock();
+        $stock->product->update(['sale_unit' => Unit::UN, 'min_sale_price' => 500]);
+        $this->assertEquals(5.3, app(ProductSalePriceService::class)->resolve($stock->product->fresh(), $stock, 'UN'));
+        $page = $this->page()->call('openAddProduct')->set('productData.product_stock_id', $stock->id)
+            ->assertSet('productData.unit_of_measure', 'UN')->assertSet('productData.unit_price', 5.3)
+            ->set('productData.unit_price', 4.99)->call('saveProduct')->assertHasErrors('productData.unit_price')
+            ->set('productData.unit_price', 6)->call('saveProduct')->assertHasNoErrors();
+        $item = $this->requisition->items()->sole();
+
+        // Replacing 1 UN by the equivalent 0.01 CT releases the original snapshot.
+        $page->call('openEditProduct', $item->id)->set('productData.unit_of_measure', 'CT')
+            ->assertSet('productData.unit_price', 600)->set('productData.quantity', 0.01)
+            ->call('saveProduct')->assertHasNoErrors();
+        $movements = StockMovement::where('source_type', 'requisition_item')->orderBy('id')->get();
+        $this->assertCount(3, $movements);
+        $this->assertSame('UN', $movements[1]->operational_unit);
+        $this->assertEquals(1, $movements[1]->operational_quantity);
+        $this->assertEquals(6, $movements[1]->unit_price);
+        $this->assertSame('CT', $movements[2]->operational_unit);
+        $this->assertEquals(0.01, $movements[2]->operational_quantity);
+        $this->assertEquals(600, $movements[2]->unit_price);
+        $this->assertEquals(0.01, $stock->fresh()->quantity_reserved);
+        $this->assertEquals(265, $item->fresh()->unit_cost);
+    }
+
+    private function hundredStock(): ProductStock
+    {
+        $stock = $this->stock();
+        $stock->product->update(['unit' => Unit::CT, 'origin_sale_price' => OriginSalePrice::CALCULATED, 'profit_margin' => 100, 'min_sale_price' => 0]);
+        $stock->product->alternativeUnitConversions()->create(['unit' => Unit::UN, 'conversion_factor' => 0.01]);
+        $stock->update(['quantity_total' => 0]);
+        $service = app(StockMovementService::class);
+        $movement = $service->create([
+            'product_stock_id' => $stock->id, 'product_id' => $stock->product_id, 'company_id' => $this->company->id,
+            'type' => 'entry', 'operational_unit' => 'CT', 'quantity' => 0.1, 'unit_price' => 265,
+            'source_type' => 'manual', 'source_id' => 0, 'reason' => 'Compra por cento',
+        ], $this->user->id);
+        $this->assertNotNull($movement, $service->getMessage() ?? 'Falha na entrada');
+
+        return $stock->fresh('product');
+    }
+
+    public function test_editing_an_existing_sale_preserves_its_conversion_snapshot_after_catalog_changes(): void
+    {
+        $stock = $this->hundredStock();
+        $page = $this->page()->call('openAddProduct')->set('productData.product_stock_id', $stock->id)
+            ->set('productData.unit_of_measure', 'UN')->set('productData.unit_price', 6)
+            ->call('saveProduct')->assertHasNoErrors();
+        $item = $this->requisition->items()->sole();
+        $stock->product->alternativeUnitConversions()->update(['conversion_factor' => 0.2]);
+
+        $page->call('openEditProduct', $item->id)->set('productData.quantity', 2)
+            ->call('saveProduct')->assertHasNoErrors();
+        $this->assertEquals(0.01, $item->fresh()->conversion_factor_snapshot);
+        $this->assertEquals(0.02, $item->fresh()->quantity_in_base_unit);
+        $this->assertEquals(0.02, $stock->fresh()->quantity_reserved);
+        $this->assertEquals(2.65, $item->fresh()->unit_cost);
+        $movement = StockMovement::latest('id')->firstOrFail();
+        $this->assertSame('UN', $movement->operational_unit);
+        $this->assertEquals(1, $movement->operational_quantity);
+        $this->assertEquals(0.01, $movement->base_quantity);
+        $this->assertEquals(6, $movement->total_amount);
     }
 
     public function test_units_stock_prices_and_foreign_relations_are_validated(): void

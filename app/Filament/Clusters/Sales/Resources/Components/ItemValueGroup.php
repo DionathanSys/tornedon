@@ -2,6 +2,8 @@
 
 namespace App\Filament\Clusters\Sales\Resources\Components;
 
+use App\Models\Product;
+use App\Services\Product\ProductUnitConversionService;
 use App\Traits\ParsesMoneyValues;
 use Closure;
 use Filament\Actions\Action;
@@ -15,6 +17,26 @@ use Leandrocfe\FilamentPtbrFormFields\Money;
 class ItemValueGroup
 {
     use ParsesMoneyValues;
+
+    public static function convertProductUnit(Get $get, Set $set, ?Product $product, mixed $old, mixed $unit): void
+    {
+        if (! $product || ! $old || ! $unit) {
+            return;
+        }
+
+        $conversion = app(ProductUnitConversionService::class);
+        if (! $conversion->isAllowedUnit($product, (string) $old) || ! $conversion->isAllowedUnit($product, (string) $unit)) {
+            return;
+        }
+
+        $price = $conversion->convertPrice($product, self::parseMoneyValue($get('unit_price')), (string) $old, (string) $unit);
+        $set('unit_price', number_format($price, 2, ',', '.'));
+        $set('item.min_sale_price', $conversion->convertPrice($product, (float) $product->min_sale_price, $product->unit->value, (string) $unit));
+        $discount = self::calculateSubtotal(self::parseMoneyValue($get('quantity')), $price)
+            * self::parseMoneyValue($get('discount_percentage')) / 100;
+        $set('discount_amount', number_format($discount, 2, ',', '.'));
+        self::recalculate($get, $set);
+    }
 
     /**
      * Cria o grupo de campos de valores (quantidade, preco, desconto, total).

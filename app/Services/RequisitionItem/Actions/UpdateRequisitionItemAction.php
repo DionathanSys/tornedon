@@ -53,7 +53,7 @@ class UpdateRequisitionItemAction
         // Valida preço mínimo de venda
         $productIdForPrice = isset($data['product_id']) ? (int) $data['product_id'] : $oldProductId;
         if ($productIdForPrice && isset($data['unit_price'])) {
-            $priceError = $this->validateMinSalePrice($productIdForPrice, (float) $data['unit_price']);
+            $priceError = $this->validateMinSalePrice($productIdForPrice, (float) $data['unit_price'], $data['unit_of_measure'] ?? $oldUnitOfMeasure);
             if ($priceError) {
                 $this->setError($priceError);
 
@@ -136,7 +136,7 @@ class UpdateRequisitionItemAction
      * Verifica se o preço unitário respeita o preço mínimo de venda do produto.
      * Retorna null se OK, ou mensagem de erro caso contrário.
      */
-    private function validateMinSalePrice(int $productId, float $unitPrice): ?string
+    private function validateMinSalePrice(int $productId, float $unitPrice, ?string $unit): ?string
     {
         $product = Product::find($productId);
 
@@ -145,6 +145,10 @@ class UpdateRequisitionItemAction
         }
 
         $minPrice = (float) $product->min_sale_price;
+        $conversion = app(ProductUnitConversionService::class);
+        if ($unit && $conversion->isAllowedUnit($product, $unit)) {
+            $minPrice = $conversion->convertPrice($product, $minPrice, $product->unit->value, $unit);
+        }
 
         if ($unitPrice < $minPrice) {
             return sprintf(
@@ -171,7 +175,7 @@ class UpdateRequisitionItemAction
         $newUnit = $data['unit_of_measure'] ?? $this->requisitionItem->unit_of_measure;
         $oldUnit = $this->requisitionItem->unit_of_measure;
 
-        if ($newQuantity === null && $newProductId === $oldProductId) {
+        if ($newQuantity === null && $newProductId === $oldProductId && $newUnit === $oldUnit) {
             return null; // Nem produto nem quantidade mudaram
         }
 
@@ -191,16 +195,14 @@ class UpdateRequisitionItemAction
         }
 
         $conversionService = app(ProductUnitConversionService::class);
-        $newBaseQuantity = $conversionService
-            ->convertToBase($product, (string) ($newUnit ?: $product->unit?->value), (float) ($newQuantity ?? $oldQuantity))
-            ->baseQuantity;
+        $newBaseQuantity = $newProductId === $oldProductId && $newUnit === $oldUnit && $this->requisitionItem->conversion_factor_snapshot !== null
+            ? round((float) ($newQuantity ?? $oldQuantity) * (float) $this->requisitionItem->conversion_factor_snapshot, 8)
+            : $conversionService->convertToBase($product, (string) ($newUnit ?: $product->unit?->value), (float) ($newQuantity ?? $oldQuantity))->baseQuantity;
 
         if ($newProductId !== $oldProductId) {
             $quantityNeeded = $newBaseQuantity;
         } else {
-            $oldBaseQuantity = $conversionService
-                ->convertToBase($product, (string) ($oldUnit ?: $product->unit?->value), $oldQuantity)
-                ->baseQuantity;
+            $oldBaseQuantity = $this->requisitionItem->resolvedBaseQuantity();
 
             $quantityNeeded = $newBaseQuantity - $oldBaseQuantity;
         }
@@ -231,6 +233,16 @@ class UpdateRequisitionItemAction
 
     private function applyBaseQuantitySnapshot(array $validated): array
     {
+        if ((int) ($validated['product_id'] ?? $this->requisitionItem->product_id) === (int) $this->requisitionItem->product_id
+            && ($validated['unit_of_measure'] ?? $this->requisitionItem->unit_of_measure) === $this->requisitionItem->unit_of_measure
+            && $this->requisitionItem->conversion_factor_snapshot !== null) {
+            $validated['conversion_factor_snapshot'] = (float) $this->requisitionItem->conversion_factor_snapshot;
+            $validated['quantity_in_base_unit'] = round(
+                (float) ($validated['quantity'] ?? $this->requisitionItem->quantity) * $validated['conversion_factor_snapshot'], 8,
+            );
+
+            return $validated;
+        }
         $productId = (int) ($validated['product_id'] ?? $this->requisitionItem->product_id);
 
         if ($productId < 1) {
@@ -262,7 +274,12 @@ class UpdateRequisitionItemAction
             return $validated;
         }
 
-        if (! array_key_exists('product_id', $validated) && (float) ($this->requisitionItem->unit_cost ?? 0) > 0) {
+        $sameProduct = (int) ($validated['product_id'] ?? $this->requisitionItem->product_id) === (int) $this->requisitionItem->product_id;
+        if ($sameProduct && (float) ($this->requisitionItem->unit_cost ?? 0) > 0) {
+            $oldFactor = (float) ($this->requisitionItem->conversion_factor_snapshot ?? 1);
+            $newFactor = (float) ($validated['conversion_factor_snapshot'] ?? $oldFactor);
+            $validated['unit_cost'] = round((float) $this->requisitionItem->unit_cost * $newFactor / $oldFactor, 4);
+
             return $validated;
         }
 
@@ -286,7 +303,7 @@ class UpdateRequisitionItemAction
         $cost = (float) ($stock?->average_cost ?: $stock?->last_cost ?: 0);
 
         if ($cost > 0) {
-            $validated['unit_cost'] = $cost;
+            $validated['unit_cost'] = round($cost * (float) ($validated['conversion_factor_snapshot'] ?? 1), 4);
         }
 
         return $validated;

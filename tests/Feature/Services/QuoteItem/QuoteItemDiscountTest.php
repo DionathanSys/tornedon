@@ -10,6 +10,7 @@ use App\Enum\Quote\Status;
 use App\Models\Company;
 use App\Models\CompanyPartner;
 use App\Models\Partner;
+use App\Models\Product;
 use App\Models\Quote;
 use App\Models\Service;
 use App\Models\User;
@@ -25,7 +26,7 @@ class QuoteItemDiscountTest extends TestCase
     {
         [$user, $company, $partner, $quote, $service] = $this->makeQuoteContext(true, 20, 100, 95);
 
-        $serviceLayer = new QuoteItemService();
+        $serviceLayer = new QuoteItemService;
         $item = $serviceLayer->create([
             'quote_id' => $quote->id,
             'service_id' => $service->id,
@@ -47,7 +48,7 @@ class QuoteItemDiscountTest extends TestCase
     {
         [$user, $company, $partner, $quote, $service] = $this->makeQuoteContext(true, 20, 100, 95);
 
-        $serviceLayer = new QuoteItemService();
+        $serviceLayer = new QuoteItemService;
         $item = $serviceLayer->create([
             'quote_id' => $quote->id,
             'service_id' => $service->id,
@@ -64,6 +65,29 @@ class QuoteItemDiscountTest extends TestCase
         $this->assertNull($item);
         $this->assertTrue($serviceLayer->hasError());
         $this->assertStringContainsString('preço mínimo de venda', strtolower($serviceLayer->getMessageUser()));
+    }
+
+    public function test_product_minimum_uses_the_selected_unit_on_create_and_update(): void
+    {
+        [$user, $company, , $quote] = $this->makeQuoteContext(false, 0, 100, null);
+        $product = Product::factory()->create([
+            'company_id' => $company->id, 'created_by' => $user->id,
+            'unit' => 'CT', 'min_sale_price' => 500,
+        ]);
+        $product->alternativeUnitConversions()->create(['unit' => 'UN', 'conversion_factor' => 0.01]);
+        $service = new QuoteItemService;
+        $data = [
+            'quote_id' => $quote->id, 'product_id' => $product->id, 'description' => 'Venda por unidade',
+            'quantity' => 1, 'unit_of_measure' => 'UN', 'unit_price' => 6,
+            'destination' => Destination::REQUISITION->value, 'status' => Status::DRAFT->value,
+        ];
+        $item = $service->create($data, $user->id);
+        $this->assertNotNull($item, $service->getMessageUser());
+        $updated = $service->update($item, [...$data, 'unit_price' => 5.5], $user->id);
+        $this->assertNotNull($updated, $service->getMessageUser());
+        $this->assertEquals(5.5, $updated->unit_price);
+        $this->assertNull($service->update($item, [...$data, 'unit_price' => 4.99], $user->id));
+        $this->assertNull($service->create([...$data, 'unit_price' => 4.99], $user->id));
     }
 
     private function makeQuoteContext(bool $acceptCustomerDiscount, float $customerDiscountPercentage, float $price, ?float $minSalePrice): array

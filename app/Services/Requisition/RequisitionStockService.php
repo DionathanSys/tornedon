@@ -189,6 +189,8 @@ class RequisitionStockService
         }
 
         $resolvedBaseQuantity = $baseQuantity ?? $item->resolvedBaseQuantity();
+        $factor = (float) $item->quantity > 0 && $item->resolvedBaseQuantity() > 0
+            ? $item->resolvedBaseQuantity() / (float) $item->quantity : 1;
 
         $movement = $this->stockMovementService->create(array_merge(
             $this->movementBaseData($requisition, $item, $productStock, $sourceType, $sourceId),
@@ -197,6 +199,8 @@ class RequisitionStockService
                 'base_unit' => $product->unit?->value,
                 'base_quantity' => $resolvedBaseQuantity,
                 'quantity' => $resolvedBaseQuantity,
+                'operational_quantity' => $resolvedBaseQuantity / $factor,
+                'conversion_factor_snapshot' => $factor,
                 'reason' => $reason,
             ]
         ), $userId);

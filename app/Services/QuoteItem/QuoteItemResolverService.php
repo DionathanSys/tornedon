@@ -17,19 +17,18 @@ class QuoteItemResolverService
         protected ProductSalePriceService $productSalePriceService,
         protected ServiceService $serviceService,
         protected ProductStockService $productStockService,
-    ) {
-    }
+    ) {}
 
     public function resolveForStock(int $productStockId): ?QuoteItemSourceDTO
     {
         $stock = $this->productStockService->find($productStockId);
 
-        if (!$stock || !$stock->product) {
+        if (! $stock || ! $stock->product) {
             return null;
         }
 
         $product = $stock->product;
-        $price = $this->productSalePriceService->resolve($product, $stock);
+        $price = $this->productSalePriceService->resolve($product, $stock, $product->resolvedSaleUnitValue());
 
         return new QuoteItemSourceDTO(
             productStockId: $stock->id,
@@ -37,9 +36,9 @@ class QuoteItemResolverService
             serviceId: null,
             code: $product->product_code,
             name: $product->name,
-            unit: $product->unit?->value,
+            unit: $product->resolvedSaleUnitValue(),
             price: (float) $price,
-            minSalePrice: $this->productSalePriceService->getMinSalePriceById($product->id),
+            minSalePrice: $this->productSalePriceService->getMinSalePriceById($product->id, $product->resolvedSaleUnitValue()),
             destination: Destination::REQUISITION
         );
     }
@@ -48,11 +47,11 @@ class QuoteItemResolverService
     {
         $product = $this->productService->find($productId);
 
-        if (!$product) {
+        if (! $product) {
             return null;
         }
 
-        $price = $this->productSalePriceService->resolve($product);
+        $price = $this->productSalePriceService->resolve($product, unit: $product->resolvedSaleUnitValue());
 
         return new QuoteItemSourceDTO(
             productStockId: null,
@@ -60,9 +59,9 @@ class QuoteItemResolverService
             serviceId: null,
             code: $product->product_code,
             name: $product->name,
-            unit: $product->unit?->value,
+            unit: $product->resolvedSaleUnitValue(),
             price: (float) $price,
-            minSalePrice: $this->productSalePriceService->getMinSalePriceById($product->id),
+            minSalePrice: $this->productSalePriceService->getMinSalePriceById($product->id, $product->resolvedSaleUnitValue()),
             destination: Destination::ORDER_PRODUCTION
         );
     }
@@ -71,7 +70,7 @@ class QuoteItemResolverService
     {
         $service = $this->serviceService->find($serviceId);
 
-        if (!$service) {
+        if (! $service) {
             return null;
         }
 

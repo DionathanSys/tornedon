@@ -52,7 +52,7 @@ class CreateRequisitionItemAction
 
         // Valida preço mínimo de venda
         if (! empty($data['product_id']) && isset($data['unit_price'])) {
-            $priceError = $this->validateMinSalePrice((int) $data['product_id'], (float) $data['unit_price']);
+            $priceError = $this->validateMinSalePrice((int) $data['product_id'], (float) $data['unit_price'], $data['unit_of_measure'] ?? null);
             if ($priceError) {
                 $this->setError($priceError);
 
@@ -129,7 +129,7 @@ class CreateRequisitionItemAction
      * Verifica se o preço unitário respeita o preço mínimo de venda do produto.
      * Retorna null se OK, ou mensagem de erro caso contrário.
      */
-    private function validateMinSalePrice(int $productId, float $unitPrice): ?string
+    private function validateMinSalePrice(int $productId, float $unitPrice, ?string $unit): ?string
     {
         $product = Product::find($productId);
 
@@ -138,6 +138,10 @@ class CreateRequisitionItemAction
         }
 
         $minPrice = (float) $product->min_sale_price;
+        $conversion = app(ProductUnitConversionService::class);
+        if ($unit && $conversion->isAllowedUnit($product, $unit)) {
+            $minPrice = $conversion->convertPrice($product, $minPrice, $product->unit->value, $unit);
+        }
 
         if ($unitPrice < $minPrice) {
             return sprintf(
@@ -233,7 +237,7 @@ class CreateRequisitionItemAction
         $cost = (float) ($stock?->average_cost ?: $stock?->last_cost ?: 0);
 
         if ($cost > 0) {
-            $validated['unit_cost'] = $cost;
+            $validated['unit_cost'] = round($cost * (float) ($validated['conversion_factor_snapshot'] ?? 1), 4);
         }
 
         return $validated;

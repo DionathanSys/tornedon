@@ -86,16 +86,36 @@ trait HasOperationProducts
         ])->values()->all();
     }
 
+    public function updatingProductData(mixed $value, ?string $key = null): void
+    {
+        if ($key !== 'unit_of_measure') {
+            return;
+        }
+        $this->editableProductDocument();
+        $stock = $this->productStocks()->find($this->productData['product_stock_id'] ?? null);
+        $conversion = app(ProductUnitConversionService::class);
+        if (! $stock || ! $value || ! $conversion->isAllowedUnit($stock->product, (string) $value)) {
+            return;
+        }
+        $old = (string) ($this->productData['unit_of_measure'] ?? $stock->product->unit->value);
+        if (! $conversion->isAllowedUnit($stock->product, $old)) {
+            $old = $stock->product->unit->value;
+        }
+        $this->productData['unit_price'] = $conversion->convertPrice(
+            $stock->product, OperationMoney::amount($this->productData['unit_price'] ?? 0), $old, (string) $value,
+        );
+    }
+
     public function updatedProductData(mixed $value, ?string $key = null): void
     {
         $this->editableProductDocument();
         if ($key === 'product_stock_id') {
             $stock = $this->productStocks()->find($value);
             $this->productData['unit_of_measure'] = $stock?->product?->resolvedSaleUnitValue();
-            $this->productData['unit_price'] = $stock ? (app(ProductSalePriceService::class)->resolve($stock->product, $stock) ?? 0) : '';
+            $this->productData['unit_price'] = $stock ? (app(ProductSalePriceService::class)->resolve($stock->product, $stock, $stock->product->resolvedSaleUnitValue()) ?? 0) : '';
             $this->productData['discount_percentage'] = 0;
             $this->productData['discount_amount'] = 0;
-        } elseif (in_array($key, ['quantity', 'unit_price', 'discount_percentage', 'discount_amount'], true)) {
+        } elseif (in_array($key, ['unit_of_measure', 'quantity', 'unit_price', 'discount_percentage', 'discount_amount'], true)) {
             $subtotal = OperationMoney::amount($this->productData['quantity'] ?? 0) * OperationMoney::amount($this->productData['unit_price'] ?? 0);
             if ($key === 'discount_amount') {
                 $this->productData['discount_percentage'] = $subtotal > 0 ? round(OperationMoney::amount($value) / $subtotal * 100, 2) : 0;
@@ -121,7 +141,10 @@ trait HasOperationProducts
             return null;
         }
         $hint = 'Disponível: '.number_format((float) $stock->quantity_available, 3, ',', '.').' '.$stock->product->unit->value;
-        $minimum = (float) $stock->product->min_sale_price;
+        $unit = $this->productData['unit_of_measure'] ?? $stock->product->unit->value;
+        $conversion = app(ProductUnitConversionService::class);
+        $minimum = $conversion->isAllowedUnit($stock->product, $unit)
+            ? app(ProductSalePriceService::class)->getMinSalePriceById($stock->product_id, $unit) : 0;
         if ($minimum > 0) {
             $hint .= ' · Preço mínimo unitário: R$ '.number_format($minimum, 2, ',', '.');
         }

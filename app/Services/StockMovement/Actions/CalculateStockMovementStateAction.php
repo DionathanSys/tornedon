@@ -69,7 +69,9 @@ class CalculateStockMovementStateAction
 
             // Preço ausente/zero não redefine custos nem o último preço de venda.
             if (! $reverse && $type->isOutbound() && $unitPrice !== null && $unitPrice > 0) {
-                $state['last_sale_price'] = $unitPrice;
+                $state['last_sale_price'] = $quantity > 0
+                    ? round($movement->resolvedOperationalQuantity() * $unitPrice / $quantity, 4)
+                    : $unitPrice;
             }
         }
 

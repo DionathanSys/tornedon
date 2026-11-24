@@ -10,11 +10,20 @@ use InvalidArgumentException;
 
 class ProductUnitConversionService
 {
+    /** Prices vary in the opposite direction to quantities for the same value. */
+    public function convertPrice(Product $product, float $price, string $fromUnit, string $toUnit): float
+    {
+        $fromFactor = $this->resolveFactor($product, $this->normalizeUnit($fromUnit));
+        $toFactor = $this->resolveFactor($product, $this->normalizeUnit($toUnit));
+
+        return round($price * $toFactor / $fromFactor, 4);
+    }
+
     public function convertToBase(Product $product, string $unit, float $quantity): UnitConversionResultDTO
     {
         $normalizedUnit = $this->normalizeUnit($unit);
-        $baseUnit       = $this->baseUnit($product);
-        $factor         = $this->resolveFactor($product, $normalizedUnit);
+        $baseUnit = $this->baseUnit($product);
+        $factor = $this->resolveFactor($product, $normalizedUnit);
 
         return new UnitConversionResultDTO(
             productId: (int) $product->id,
@@ -30,8 +39,8 @@ class ProductUnitConversionService
     public function convertFromBase(Product $product, string $unit, float $quantity): UnitConversionResultDTO
     {
         $normalizedUnit = $this->normalizeUnit($unit);
-        $baseUnit       = $this->baseUnit($product);
-        $factor         = $this->resolveFactor($product, $normalizedUnit);
+        $baseUnit = $this->baseUnit($product);
+        $factor = $this->resolveFactor($product, $normalizedUnit);
 
         if ($factor <= 0.0) {
             throw new InvalidArgumentException('Fator de conversão inválido para a unidade informada.');
@@ -59,7 +68,7 @@ class ProductUnitConversionService
         $product->loadMissing('alternativeUnitConversions');
 
         return $product->alternativeUnitConversions
-            ->contains(fn(ProductAlternativeUnit $conversion): bool => $conversion->unit?->value === $normalizedUnit);
+            ->contains(fn (ProductAlternativeUnit $conversion): bool => $conversion->unit?->value === $normalizedUnit);
     }
 
     public function getAvailableUnits(Product $product): array
@@ -71,7 +80,7 @@ class ProductUnitConversionService
         foreach ($product->alternativeUnitConversions as $conversion) {
             $unit = $conversion->unit?->value;
 
-            if ($unit && !in_array($unit, $units, true)) {
+            if ($unit && ! in_array($unit, $units, true)) {
                 $units[] = $unit;
             }
         }
@@ -88,9 +97,9 @@ class ProductUnitConversionService
         $product->loadMissing('alternativeUnitConversions');
 
         $conversion = $product->alternativeUnitConversions
-            ->first(fn(ProductAlternativeUnit $item): bool => $item->unit?->value === $unit);
+            ->first(fn (ProductAlternativeUnit $item): bool => $item->unit?->value === $unit);
 
-        if (!$conversion) {
+        if (! $conversion) {
             throw new InvalidArgumentException(sprintf('A unidade %s não está cadastrada para o produto #%d.', $unit, $product->id));
         }
 

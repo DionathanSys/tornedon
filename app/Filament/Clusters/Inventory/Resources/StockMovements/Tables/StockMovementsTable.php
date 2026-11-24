@@ -80,12 +80,12 @@ class StockMovementsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('unit_price')
-                    ->label('Custo Un.')
+                    ->label('Preço da operação / un.')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
                 TextColumn::make('total_amount')
-                    ->label('Custo Total')
+                    ->label('Valor da operação')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
