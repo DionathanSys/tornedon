@@ -24,6 +24,7 @@ final class EditInstallmentAction
             ->schema(InstallmentEditForm::components('payable'))
             ->fillForm(fn (AccountPayableInstallment $record): array => [
                 'payment_method' => $record->payment_method?->value,
+                'bank_slip_code' => $record->bank_slip_code,
                 'original_amount' => $record->original_amount,
                 'due_date' => $record->due_date?->format('Y-m-d'),
                 'competence_date' => $record->competence_date?->format('Y-m-d'),

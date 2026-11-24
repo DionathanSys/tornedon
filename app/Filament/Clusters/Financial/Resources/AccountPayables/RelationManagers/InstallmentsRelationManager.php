@@ -44,6 +44,11 @@ class InstallmentsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('sequence_number')
             ->columns([
+                TextColumn::make('bank_slip_code')
+                    ->label('Código do boleto')
+                    ->placeholder('-')
+                    ->copyable()
+                    ->toggleable(),
                 TextColumn::make('payment_method')
                     ->label('Forma de pagamento')
                     ->formatStateUsing(fn ($state) => $state?->description() ?? '-')

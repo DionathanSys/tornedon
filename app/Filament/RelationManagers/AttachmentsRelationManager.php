@@ -3,8 +3,10 @@
 namespace App\Filament\RelationManagers;
 
 use App\Enums\AttachmentType;
+use App\Models\AccountPayable;
 use App\Models\Attachment;
 use App\Services\Attachments\AttachmentService;
+use App\Support\Attachments\PayableAttachmentInstallment;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -54,6 +56,7 @@ class AttachmentsRelationManager extends RelationManager
                     ->options($typeOptions)
                     ->required()
                     ->native(false),
+                $this->installmentField(),
 
                 FileUpload::make('file')
                     ->label('Arquivo(s)')
@@ -73,7 +76,7 @@ class AttachmentsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->current())
+            ->modifyQueryUsing(fn (Builder $query) => $query->current()->with('payableInstallment'))
             ->columns([
                 TextColumn::make('original_name')
                     ->label('Arquivo')
@@ -87,6 +90,11 @@ class AttachmentsRelationManager extends RelationManager
                     ->placeholder('-')
                     ->wrap()
                     ->limit(100),
+                TextColumn::make('payableInstallment.sequence_number')
+                    ->label('Parcela')
+                    ->formatStateUsing(fn ($state, Attachment $record): string => PayableAttachmentInstallment::label($record->payableInstallment))
+                    ->placeholder('Conta (sem parcela específica)')
+                    ->visible(fn (): bool => $this->getOwnerRecord() instanceof AccountPayable),
                 TextColumn::make('version')
                     ->label('Versão')
                     ->alignCenter(),
@@ -118,6 +126,7 @@ class AttachmentsRelationManager extends RelationManager
                                 if ($file instanceof TemporaryUploadedFile) {
                                     $lastAttachment = $service->upload($owner, $file, $type, [
                                         'description' => $data['description'] ?? null,
+                                        'account_payable_installment_id' => $data['account_payable_installment_id'] ?? null,
                                     ]);
                                 }
                             }
@@ -140,11 +149,12 @@ class AttachmentsRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make('editDescription')
-                    ->label('Editar descrição')
-                    ->modalHeading('Editar descrição do anexo')
+                    ->label('Editar detalhes')
+                    ->modalHeading('Editar detalhes do anexo')
                     ->icon('heroicon-o-pencil-square')
                     ->iconButton()
                     ->schema([
+                        $this->installmentField(),
                         Textarea::make('description')
                             ->label('Descrição')
                             ->maxLength(2000)
@@ -172,5 +182,18 @@ class AttachmentsRelationManager extends RelationManager
                     }),
             ])
             ->defaultSort('created_at', 'desc');
+    }
+
+    private function installmentField(): Select
+    {
+        return Select::make('account_payable_installment_id')
+            ->label('Parcela vinculada')
+            ->placeholder('Conta (sem parcela específica)')
+            ->helperText('Vincule o boleto à parcela correspondente. Aplicado a todos os arquivos deste envio.')
+            ->options(fn (): array => PayableAttachmentInstallment::options($this->getOwnerRecord()))
+            ->rules(fn (): array => PayableAttachmentInstallment::rules($this->getOwnerRecord()))
+            ->visible(fn (): bool => $this->getOwnerRecord() instanceof AccountPayable)
+            ->searchable()
+            ->native(false);
     }
 }

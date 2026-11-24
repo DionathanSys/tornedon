@@ -129,6 +129,11 @@ class AccountPayableInstallmentsTable
                     ->limit(40)
                     ->placeholder('-')
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('bank_slip_code')
+                    ->label('Código do boleto')
+                    ->placeholder('-')
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('due_date', 'asc')
             ->filters([

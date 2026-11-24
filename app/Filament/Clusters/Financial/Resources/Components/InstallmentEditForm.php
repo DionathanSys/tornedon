@@ -9,6 +9,7 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
@@ -30,6 +31,14 @@ final class InstallmentEditForm
                         ->native(false)
                         ->searchable()
                         ->helperText('A alteração se aplica somente a esta parcela.')
+                        ->columnSpanFull(),
+                    TextInput::make('bank_slip_code')
+                        ->label('Linha digitável / código de barras')
+                        ->visible($scope === 'payable')
+                        ->stripCharacters([' ', '.', '-'])
+                        ->regex('/\A(?:[0-9]{44}|[0-9]{47}|[0-9]{48})\z/')
+                        ->validationMessages(['regex' => 'Informe 44, 47 ou 48 dígitos.'])
+                        ->helperText('Opcional. Cole o código do boleto desta parcela, com ou sem pontuação.')
                         ->columnSpanFull(),
                     Money::make('original_amount')
                         ->label($asAccount ? 'Valor da conta' : 'Valor da parcela')

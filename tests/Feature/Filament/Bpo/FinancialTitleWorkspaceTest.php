@@ -89,6 +89,21 @@ class FinancialTitleWorkspaceTest extends TestCase
         return $record;
     }
 
+    private function classifyForReceipt($record): void
+    {
+        if ($record instanceof AccountPayable) {
+            return;
+        }
+
+        $category = FinancialCategory::create([
+            'company_id' => $this->company->id, 'name' => 'Recebimentos de clientes',
+            'allow_receivable' => true, 'allow_cash_movement' => true, 'is_active' => true, 'created_by' => $this->user->id,
+        ]);
+        foreach ($record->installments as $installment) {
+            $installment->update(['financial_category_id' => $category->id]);
+        }
+    }
+
     private function widget($record, array $options = [])
     {
         return Livewire::test(RecordAttachments::class, ['module' => $record instanceof AccountPayable ? 'account_payables' : 'account_receivables', 'recordId' => $record->id, ...$options]);
@@ -227,6 +242,7 @@ class FinancialTitleWorkspaceTest extends TestCase
     public function test_installment_listing_registers_payment_only_for_the_selected_installment(bool $payable): void
     {
         $title = $this->title($payable);
+        $this->classifyForReceipt($title);
         [$first, $second] = $title->installments()->orderBy('sequence_number')->get()->all();
         $account = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Caixa', 'type' => 'cash', 'is_active' => true, 'created_by' => $this->user->id]);
         $this->authenticate();
@@ -311,6 +327,9 @@ class FinancialTitleWorkspaceTest extends TestCase
     public function test_payments_and_receipts_keep_the_existing_financial_workflow_and_refresh_the_summary(): void
     {
         $records = [$this->title(), $this->title(false)];
+        foreach ($records as $record) {
+            $this->classifyForReceipt($record);
+        }
         $account = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Caixa do lançamento', 'type' => 'cash', 'is_active' => true, 'created_by' => $this->user->id]);
         $this->authenticate();
         foreach ($records as $record) {
@@ -350,6 +369,43 @@ class FinancialTitleWorkspaceTest extends TestCase
         $widget->call('deleteAttachment', $attachment->id)->assertDontSee('comprovante.pdf');
         $this->assertSoftDeleted('attachments', ['id' => $attachment->id]);
         Storage::disk('local')->assertExists($attachment->path);
+    }
+
+    public function test_attachment_can_be_linked_to_a_payable_installment_and_reassigned_or_unlinked(): void
+    {
+        $record = $this->title();
+        $other = $this->title();
+        $installments = $record->installments()->orderBy('sequence_number')->get();
+        $foreign = $other->installments()->first();
+        $this->authenticate();
+
+        $widget = $this->widget($record)->call('openUpload')
+            ->set('installmentId', (string) $installments[0]->id)
+            ->set('files', [UploadedFile::fake()->create('boleto-parcela-1.pdf', 2, 'application/pdf')])
+            ->call('uploadAttachments')->assertHasNoErrors()
+            ->assertSee('Parcela '.$installments[0]->sequence_number);
+        $attachment = $record->currentAttachments()->sole();
+        $this->assertSame($installments[0]->id, $attachment->account_payable_installment_id);
+
+        $widget->call('editDescription', $attachment->id)
+            ->assertSet('editingInstallmentId', (string) $installments[0]->id)
+            ->set('editingInstallmentId', (string) $foreign->id)
+            ->call('saveDescription')->assertHasErrors('editingInstallmentId');
+        $this->assertSame($installments[0]->id, $attachment->fresh()->account_payable_installment_id);
+
+        $widget->set('editingInstallmentId', (string) $installments[1]->id)
+            ->call('saveDescription')->assertHasNoErrors()
+            ->assertSee('Parcela '.$installments[1]->sequence_number);
+        $this->assertSame($installments[1]->id, $attachment->fresh()->account_payable_installment_id);
+
+        $widget->call('editDescription', $attachment->id)->set('editingInstallmentId', null)
+            ->call('saveDescription')->assertHasNoErrors()->assertSee('Conta (sem parcela específica)');
+        $this->assertNull($attachment->fresh()->account_payable_installment_id);
+
+        $widget->call('openUpload')->set('installmentId', (string) $foreign->id)
+            ->set('files', [UploadedFile::fake()->create('boleto-invalido.pdf', 2, 'application/pdf')])
+            ->call('uploadAttachments')->assertHasErrors('installmentId');
+        $this->assertSame(1, $record->attachments()->count());
     }
 
     public function test_financial_attachment_routes_authorize_the_parent_without_a_filament_tenant_in_the_url(): void
@@ -433,6 +489,7 @@ class FinancialTitleWorkspaceTest extends TestCase
     public function test_payment_menu_shows_named_actions_and_editing_preserves_money_and_refreshes_relationships(bool $payable): void
     {
         $record = $this->title($payable);
+        $this->classifyForReceipt($record);
         $account = FinancialAccount::create(['company_id' => $this->company->id, 'name' => 'Caixa dos recebimentos', 'type' => 'cash', 'is_active' => true, 'created_by' => $this->user->id]);
         $this->authenticate();
         $service = app($payable ? AccountPayableService::class : AccountReceivableService::class);

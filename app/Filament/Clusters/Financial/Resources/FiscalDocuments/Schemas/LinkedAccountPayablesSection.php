@@ -2,12 +2,18 @@
 
 namespace App\Filament\Clusters\Financial\Resources\FiscalDocuments\Schemas;
 
+use App\Filament\Bpo\Resources\AccountPayableResource as BpoAccountPayableResource;
+use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\DeleteInstallmentAction;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\EditInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountPayables\RelationManagers\Actions\RegisterInstallmentPaymentAction;
 use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
 use App\Models\FiscalDocument;
 use App\Services\Access\CompanyAuthorization;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Facades\Filament;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\RepeatableEntry\TableColumn;
@@ -42,6 +48,14 @@ final class LinkedAccountPayablesSection
                     ->columns(['sm' => 2, 'lg' => 4])
                     ->schema([
                         TextEntry::make('id')->label('Conta a pagar'),
+                        Actions::make([
+                            Action::make('open_account_payable')
+                                ->label('Abrir conta a pagar')
+                                ->icon('heroicon-o-arrow-top-right-on-square')
+                                ->url(fn (AccountPayable $record): string => (Filament::getCurrentPanel()?->getId() === 'bpo'
+                                    ? BpoAccountPayableResource::class
+                                    : AccountPayableResource::class)::getUrl('view', ['record' => $record])),
+                        ])->key('linked_account_actions'),
                         TextEntry::make('description')->label('Descrição')->placeholder('-'),
                         TextEntry::make('status')
                             ->label('Situação financeira')
@@ -68,6 +82,7 @@ final class LinkedAccountPayablesSection
                             ->table([
                                 TableColumn::make('Parcela'),
                                 TableColumn::make('Vencimento'),
+                                TableColumn::make('Código do boleto'),
                                 TableColumn::make('Valor atualizado'),
                                 TableColumn::make('Valor pago'),
                                 TableColumn::make('Saldo'),
@@ -79,6 +94,7 @@ final class LinkedAccountPayablesSection
                             ->schema([
                                 TextEntry::make('sequence_number'),
                                 TextEntry::make('due_date')->date('d/m/Y'),
+                                TextEntry::make('bank_slip_code')->placeholder('-')->copyable(),
                                 TextEntry::make('due_amount')->money('BRL'),
                                 TextEntry::make('paid_amount')->money('BRL'),
                                 TextEntry::make('balance_amount')->money('BRL'),
@@ -90,20 +106,37 @@ final class LinkedAccountPayablesSection
                                 TextEntry::make('consideration')
                                     ->state(fn ($record): string => $record->ignored_at ? 'Ignorada' : 'Considerada'),
                                 Actions::make([
-                                    RegisterInstallmentPaymentAction::make()
-                                        ->authorize(fn (AccountPayableInstallment $record): bool => (int) $record->company_id === (int) Filament::getTenant()?->id
-                                            && Gate::allows('view', $record->accountPayable)
-                                            && (! app(CompanyAuthorization::class)->requiresRoleAuthorization(
-                                                Filament::auth()->user(), Filament::getTenant(), Filament::getCurrentPanel()?->getId(),
-                                            ) || app(CompanyAuthorization::class)->allowsRecord(
-                                                Filament::auth()->user(),
-                                                Filament::getTenant(),
-                                                'account_payables.settle',
-                                                $record->accountPayable,
-                                            ))),
+                                    ActionGroup::make([
+                                        IgnoreFinancialAction::make()
+                                            ->authorize(fn (AccountPayableInstallment $record): bool => self::allows($record, 'change_status_without_movement')),
+                                        IgnoreFinancialAction::make(restore: true)
+                                            ->authorize(fn (AccountPayableInstallment $record): bool => self::allows($record, 'change_status_without_movement')),
+                                        RegisterInstallmentPaymentAction::make()
+                                            ->authorize(fn (AccountPayableInstallment $record): bool => self::allows($record, 'settle')),
+                                        EditInstallmentAction::make()
+                                            ->authorize(fn (AccountPayableInstallment $record): bool => self::allows($record, 'update')),
+                                        DeleteInstallmentAction::make()
+                                            ->authorize(fn (AccountPayableInstallment $record): bool => self::allows($record, 'update')),
+                                    ])->icon('heroicon-o-bars-3')->tooltip('Ações da parcela'),
                                 ])->key('installment_payment_actions'),
                             ]),
                     ]),
             ]);
+    }
+
+    private static function allows(AccountPayableInstallment $record, string $operation): bool
+    {
+        $tenant = Filament::getTenant();
+        $user = Filament::auth()->user();
+        if (! $tenant || ! $user || (int) $record->company_id !== (int) $tenant->id
+            || (int) $record->accountPayable->company_id !== (int) $tenant->id
+            || ! Gate::allows('view', $record->accountPayable)) {
+            return false;
+        }
+
+        $access = app(CompanyAuthorization::class);
+
+        return ! $access->requiresRoleAuthorization($user, $tenant, Filament::getCurrentPanel()?->getId())
+            || $access->allowsRecord($user, $tenant, 'account_payables.'.$operation, $record->accountPayable);
     }
 }

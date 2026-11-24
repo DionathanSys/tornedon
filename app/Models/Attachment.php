@@ -20,6 +20,7 @@ class Attachment extends Model
         'attachable_type',
         'attachable_id',
         'company_id',
+        'account_payable_installment_id',
         'type',
         'idempotency_key',
         'version',
@@ -62,6 +63,11 @@ class Attachment extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function payableInstallment(): BelongsTo
+    {
+        return $this->belongsTo(AccountPayableInstallment::class, 'account_payable_installment_id');
     }
 
     public function uploader(): BelongsTo

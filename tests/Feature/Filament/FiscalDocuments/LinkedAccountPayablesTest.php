@@ -5,6 +5,7 @@ namespace Tests\Feature\Filament\FiscalDocuments;
 use App\Enum\FiscalDocument\DocumentModel;
 use App\Enum\FiscalDocument\OperationType;
 use App\Enum\FiscalDocument\Status;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Clusters\Financial\Resources\FiscalDocuments\Pages\EditFiscalDocument;
 use App\Models\AccountPayable;
 use App\Models\Company;
@@ -72,6 +73,7 @@ class LinkedAccountPayablesTest extends TestCase
             ->assertSee('123,45')
             ->assertSee('23,45')
             ->assertSee('100,00')
+            ->assertSee(AccountPayableResource::getUrl('view', ['record' => $account]), false)
             ->assertDontSee('Conta de outra empresa');
     }
 
@@ -129,6 +131,73 @@ class LinkedAccountPayablesTest extends TestCase
             'account_payable_installment_id' => $installment->id,
             'financial_account_id' => $financialAccount->id,
         ]);
+    }
+
+    public function test_installment_can_be_edited_with_its_own_bank_slip_code_from_the_note(): void
+    {
+        [$company, $document, $supplier, $user] = $this->createScenario();
+        $account = $this->createAccount($company, $document, $supplier, $user, 'Compra com boleto');
+        $installment = $account->installments()->create([
+            'company_id' => $company->id,
+            'sequence_number' => '01',
+            'status' => 'pending',
+            'due_date' => '2026-12-20',
+            'original_amount' => 123.45,
+            'due_amount' => 123.45,
+            'paid_amount' => 0,
+            'balance_amount' => 123.45,
+        ]);
+        $code = str_repeat('1', 47);
+        $action = TestAction::make('edit_installment')->schemaComponent('linked_account_payables.0.installments.0.installment_payment_actions');
+
+        $page = Livewire::test(EditFiscalDocument::class, ['record' => (string) $document->getRouteKey()]);
+        $page->callAction($action, data: [
+            'bank_slip_code' => substr($code, 0, 5).'.'.substr($code, 5, 5).' '.substr($code, 10),
+            'payment_method' => 'boleto',
+            'original_amount' => '150,00',
+            'due_date' => '2026-12-25',
+            'description' => 'Parcela revisada pela nota',
+        ])
+            ->assertHasNoActionErrors()
+            ->assertNotified()
+            ->assertSee($code)
+            ->assertSee('25/12/2026')
+            ->assertSee('150,00');
+
+        $this->assertSame($code, $installment->fresh()->bank_slip_code);
+        $this->assertSame(150.0, (float) $account->fresh()->due_amount);
+
+        $page->callAction($action, data: ['bank_slip_code' => '123'])
+            ->assertHasActionErrors(['bank_slip_code' => 'regex']);
+        $this->assertSame($code, $installment->fresh()->bank_slip_code);
+
+        $page->call('unmountAction')->callAction($action, data: ['bank_slip_code' => null])
+            ->assertHasNoActionErrors();
+        $this->assertNull($installment->fresh()->bank_slip_code);
+    }
+
+    public function test_installment_can_be_deleted_from_the_note_and_summary_is_refreshed(): void
+    {
+        [$company, $document, $supplier, $user] = $this->createScenario();
+        $account = $this->createAccount($company, $document, $supplier, $user, 'Compra para excluir parcela');
+        $installment = $account->installments()->create([
+            'company_id' => $company->id,
+            'sequence_number' => '01',
+            'status' => 'pending',
+            'due_date' => '2026-12-20',
+            'original_amount' => 123.45,
+            'due_amount' => 123.45,
+            'paid_amount' => 0,
+            'balance_amount' => 123.45,
+        ]);
+
+        Livewire::test(EditFiscalDocument::class, ['record' => (string) $document->getRouteKey()])
+            ->callAction(TestAction::make('delete_installment')->schemaComponent('linked_account_payables.0.installments.0.installment_payment_actions'))
+            ->assertHasNoActionErrors()
+            ->assertNotified()
+            ->assertSee('Nenhuma parcela cadastrada.');
+
+        $this->assertModelMissing($installment);
     }
 
     private function createScenario(): array

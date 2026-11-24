@@ -3,8 +3,11 @@
 namespace Tests\Feature\Services\Attachments;
 
 use App\Enums\AttachmentType;
+use App\Filament\Clusters\Financial\RelationManagers\AccountAttachmentsRelationManager;
+use App\Filament\Clusters\Financial\Resources\AccountPayables\Pages\ViewAccountPayable;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
 use App\Filament\RelationManagers\AttachmentsRelationManager;
+use App\Models\AccountPayable;
 use App\Models\Attachment;
 use App\Models\Company;
 use App\Models\ServiceOrder;
@@ -15,6 +18,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -49,6 +53,45 @@ class AttachmentServiceTest extends TestCase
         $this->owner = ServiceOrder::factory()->create(['company_id' => $company->id]);
 
         Storage::fake('local');
+    }
+
+    public function test_payable_attachment_displays_its_installment_and_existing_attachments_can_be_relinked(): void
+    {
+        $account = AccountPayable::create([
+            'company_id' => $this->owner->company_id, 'created_by' => $this->user->id,
+            'manual_counterparty_name' => 'Fornecedor dos boletos', 'sequence_number' => '01',
+            'status' => 'pending', 'due_date' => today(), 'due_amount' => 200, 'paid_amount' => 0,
+        ]);
+        $first = $account->installments()->create([
+            'company_id' => $account->company_id, 'sequence_number' => '01', 'status' => 'pending',
+            'due_date' => today(), 'original_amount' => 100, 'due_amount' => 100, 'paid_amount' => 0, 'balance_amount' => 100,
+        ]);
+        $second = $account->installments()->create([
+            'company_id' => $account->company_id, 'sequence_number' => '02', 'status' => 'pending',
+            'due_date' => today()->addMonth(), 'original_amount' => 100, 'due_amount' => 100, 'paid_amount' => 0, 'balance_amount' => 100,
+        ]);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($account->company);
+        $attachment = $this->service->upload($account, UploadedFile::fake()->create('boleto.pdf', 2), 'generic', [
+            'account_payable_installment_id' => $first->id,
+        ]);
+
+        Livewire::test(AccountAttachmentsRelationManager::class, ['ownerRecord' => $account, 'pageClass' => ViewAccountPayable::class])
+            ->assertSee('Parcela 01')
+            ->callAction(TestAction::make('editDescription')->table($attachment), data: [
+                'description' => 'Boleto revisado', 'account_payable_installment_id' => $second->id,
+            ])->assertHasNoActionErrors()->assertSee('Parcela 02');
+        $this->assertSame($second->id, $attachment->fresh()->account_payable_installment_id);
+
+        try {
+            $this->service->upload($this->owner, UploadedFile::fake()->create('invalido.pdf', 2), 'generic', [
+                'account_payable_installment_id' => $first->id,
+            ]);
+            $this->fail('Não deve vincular a parcela a outro documento.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('account_payable_installment_id', $exception->errors());
+        }
+        $this->assertSame(1, $account->attachments()->count());
     }
 
     public function test_can_upload_new_attachment()

@@ -21,6 +21,8 @@ class AccountPayableInstallmentValidator
      */
     public static function validateCreate(array $data): array
     {
+        $data = self::normalizeBankSlipCode($data);
+
         return Validator::make($data, self::installmentRules($data), self::messages())->validate();
     }
 
@@ -29,7 +31,19 @@ class AccountPayableInstallmentValidator
      */
     public static function validateUpdate(array $data): array
     {
+        $data = self::normalizeBankSlipCode($data);
+
         return Validator::make($data, self::installmentUpdateRules($data), self::messages())->validate();
+    }
+
+    private static function normalizeBankSlipCode(array $data): array
+    {
+        if (isset($data['bank_slip_code']) && is_string($data['bank_slip_code'])) {
+            $code = preg_replace('/[\s.\-]+/', '', $data['bank_slip_code']);
+            $data['bank_slip_code'] = $code === '' ? null : $code;
+        }
+
+        return $data;
     }
 
     /**
@@ -47,6 +61,7 @@ class AccountPayableInstallmentValidator
             'company_id' => ['required', 'integer', 'exists:companies,id'],
             'sequence_number' => ['required', 'string', 'max:3'],
             'payment_method' => ['sometimes', 'nullable', Rule::enum(Method::class)],
+            'bank_slip_code' => ['sometimes', 'nullable', 'string', 'regex:/\A(?:[0-9]{44}|[0-9]{47}|[0-9]{48})\z/'],
             'due_date' => ['required', 'date'],
             'competence_date' => ['nullable', 'date'],
             'due_amount' => ['required', 'numeric', 'min:0'],
@@ -206,6 +221,7 @@ class AccountPayableInstallmentValidator
     private static function messages(): array
     {
         return [
+            'bank_slip_code.regex' => 'Informe um código de barras com 44 dígitos ou uma linha digitável com 47 ou 48 dígitos.',
             'account_payable_id.required' => 'A conta a pagar e obrigatoria.',
             'account_payable_id.exists' => 'Conta a pagar nao encontrada.',
             'account_payable_installment_id.required' => 'A parcela e obrigatoria.',

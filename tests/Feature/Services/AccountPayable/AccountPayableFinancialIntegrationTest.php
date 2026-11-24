@@ -93,6 +93,29 @@ class AccountPayableFinancialIntegrationTest extends TestCase
         ]);
     }
 
+    public function test_bank_slip_code_validation_accepts_supported_formats_and_normalizes_punctuation(): void
+    {
+        foreach ([44, 47, 48] as $length) {
+            $code = str_repeat('0', $length);
+            $validated = AccountPayableInstallmentValidator::validateUpdate([
+                'bank_slip_code' => substr($code, 0, 5).'.'.substr($code, 5, 5).' '.substr($code, 10).'-',
+            ]);
+            $this->assertSame($code, $validated['bank_slip_code']);
+        }
+
+        $this->assertNull(AccountPayableInstallmentValidator::validateUpdate(['bank_slip_code' => ''])['bank_slip_code']);
+        $this->assertArrayNotHasKey('bank_slip_code', AccountPayableInstallmentValidator::validateUpdate(['notes' => 'Sem alteração do boleto']));
+
+        foreach (['0', '123', str_repeat('1', 45), str_repeat('1', 46), str_repeat('1', 49), str_repeat('a', 44)] as $code) {
+            try {
+                AccountPayableInstallmentValidator::validateUpdate(['bank_slip_code' => $code]);
+                $this->fail('Código inválido foi aceito.');
+            } catch (ValidationException $exception) {
+                $this->assertArrayHasKey('bank_slip_code', $exception->errors());
+            }
+        }
+    }
+
     public function test_register_payment_creates_cash_movement_and_delete_removes_it_when_not_reconciled(): void
     {
         $payable = AccountPayable::create([

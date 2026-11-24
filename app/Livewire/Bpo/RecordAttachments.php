@@ -5,10 +5,12 @@ namespace App\Livewire\Bpo;
 use App\Enums\AttachmentType;
 use App\Filament\Bpo\Resources\AccountPayableResource;
 use App\Filament\Bpo\Resources\AccountReceivableResource;
+use App\Models\AccountPayable;
 use App\Models\Attachment;
 use App\Services\Access\CompanyAuthorization;
 use App\Services\Attachments\AttachmentService;
 use App\Services\Bpo\BpoAccessService;
+use App\Support\Attachments\PayableAttachmentInstallment;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Contracts\View\View;
@@ -53,6 +55,10 @@ class RecordAttachments extends Component
     public string $attachmentType = 'generic';
 
     public string $description = '';
+
+    public ?string $installmentId = null;
+
+    public ?string $editingInstallmentId = null;
 
     public string $attachmentSearch = '';
 
@@ -101,6 +107,7 @@ class RecordAttachments extends Component
     {
         $this->files = [];
         $this->description = '';
+        $this->installmentId = null;
         $this->showUpload = false;
         $this->resetValidation();
     }
@@ -112,6 +119,7 @@ class RecordAttachments extends Component
         $this->validate([
             'attachmentType' => ['required', Rule::in(array_intersect($this->allowedTypes, $owner->allowedAttachmentTypes()))],
             'description' => ['nullable', 'string', 'max:2000'],
+            'installmentId' => PayableAttachmentInstallment::rules($owner),
         ]);
         $config = config('attachments.types.'.$this->attachmentType, []);
         $maxSize = $this->uploadLimit();
@@ -128,7 +136,10 @@ class RecordAttachments extends Component
         $remaining = $this->files;
         try {
             foreach ($this->files as $index => $file) {
-                app(AttachmentService::class)->upload($owner, $file, $this->attachmentType, ['description' => $this->description]);
+                app(AttachmentService::class)->upload($owner, $file, $this->attachmentType, [
+                    'description' => $this->description,
+                    'account_payable_installment_id' => $this->installmentId ?: null,
+                ]);
                 unset($remaining[$index]);
             }
         } catch (\Throwable $exception) {
@@ -157,27 +168,35 @@ class RecordAttachments extends Component
         $attachment = $this->findAttachment($id);
         $this->editingId = $attachment->id;
         $this->editingDescription = $attachment->description ?? '';
-        $this->resetValidation('editingDescription');
+        $this->editingInstallmentId = $attachment->account_payable_installment_id ? (string) $attachment->account_payable_installment_id : null;
+        $this->resetValidation();
     }
 
     public function cancelDescription(): void
     {
         $this->editingId = null;
         $this->editingDescription = '';
-        $this->resetValidation('editingDescription');
+        $this->editingInstallmentId = null;
+        $this->resetValidation();
     }
 
     public function saveDescription(): void
     {
         abort_unless($this->uploadsEnabled && $this->editingId && $this->canWrite(), 403);
-        $this->validate(['editingDescription' => ['nullable', 'string', 'max:2000']]);
+        $this->validate([
+            'editingDescription' => ['nullable', 'string', 'max:2000'],
+            'editingInstallmentId' => PayableAttachmentInstallment::rules($this->resolveOwner()),
+        ]);
         $attachment = $this->findAttachment($this->editingId);
-        $attachment->update(['description' => $this->editingDescription]);
+        $attachment->update([
+            'description' => $this->editingDescription,
+            'account_payable_installment_id' => $this->editingInstallmentId ?: null,
+        ]);
         if (($this->preview['id'] ?? null) === $attachment->id) {
             $this->preview['description'] = $attachment->description;
         }
         $this->cancelDescription();
-        Notification::make()->title('Descrição do anexo atualizada')->success()->send();
+        Notification::make()->title('Detalhes do anexo atualizados')->success()->send();
     }
 
     public function deleteAttachment(int $id): void
@@ -245,13 +264,14 @@ class RecordAttachments extends Component
         $search = mb_substr(trim($this->attachmentSearch), 0, 150);
         $attachments = $owner->currentAttachments()->where('company_id', $this->companyId)
             ->when($search !== '', fn ($query) => $query->where(fn ($query) => $query->where('original_name', 'like', '%'.$search.'%')->orWhere('description', 'like', '%'.$search.'%')))
-            ->with('uploader:id,name')->latest()->orderByDesc('id')->get();
+            ->with(['uploader:id,name', 'payableInstallment'])->latest()->orderByDesc('id')->get();
         $types = collect(AttachmentType::cases())->filter(fn ($type) => in_array($type->value, $this->allowedTypes, true));
         $acceptedMimes = config('attachments.types.'.$this->attachmentType.'.allowed_mimes', []);
         $pendingFiles = collect($this->files)->filter(fn ($file) => $file instanceof UploadedFile)
             ->map(fn ($file) => ['name' => $file->getClientOriginalName(), 'size' => Number::fileSize($file->getSize())]);
 
         return view('livewire.bpo.record-attachments', ['attachments' => $attachments, 'types' => $types, 'canWrite' => $canWrite,
+            'isPayable' => $owner instanceof AccountPayable, 'installmentOptions' => PayableAttachmentInstallment::options($owner),
             'acceptedMimes' => implode(',', $acceptedMimes), 'limitLabel' => Number::fileSize($this->uploadLimit() * 1024), 'pendingFiles' => $pendingFiles]);
     }
 }

@@ -24,6 +24,7 @@ class AccountPayableInstallment extends Model
         'company_id',
         'sequence_number',
         'payment_method',
+        'bank_slip_code',
         'status',
         'due_date',
         'competence_date',

@@ -9,6 +9,7 @@ use App\Enum\FiscalDocument\NfeStatus;
 use App\Enum\FiscalDocument\OperationNature;
 use App\Enum\FiscalDocument\Status;
 use App\Filament\Bpo\Pages\FiscalDocuments;
+use App\Filament\Bpo\Resources\AccountPayableResource;
 use App\Filament\Bpo\Resources\FiscalDocuments\Pages\EditIncomingDocument;
 use App\Filament\Bpo\Resources\FiscalDocuments\Pages\EditOutgoingDocument;
 use App\Filament\Bpo\Resources\FiscalDocuments\RelationManagers\OutgoingItemsRelationManager;
@@ -19,6 +20,7 @@ use App\Filament\Bpo\Resources\OutgoingFiscalDocumentResource;
 use App\Filament\Bpo\Resources\PurchaseClosingResource;
 use App\Filament\Bpo\Resources\PurchaseClosings\Pages\EditPurchaseClosing;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\Pages\Actions\ExportOutputFiscalDocumentsAction;
+use App\Models\AccountPayable;
 use App\Models\Company;
 use App\Models\FiscalDocument;
 use App\Models\FiscalDocumentPayload;
@@ -97,6 +99,49 @@ class FiscalDocumentsWorkspaceTest extends TestCase
             'nfe_status' => NfeStatus::PENDING,
             ...$data,
         ]);
+    }
+
+    public function test_linked_payable_actions_respect_bpo_permissions_and_can_ignore_and_restore_installments(): void
+    {
+        $document = $this->document(['operation_type' => '0']);
+        $account = AccountPayable::create([
+            'company_id' => $this->company->id, 'fiscal_document_id' => $document->id,
+            'created_by' => $this->owner->id, 'manual_counterparty_name' => 'Fornecedor da nota',
+            'sequence_number' => '01', 'status' => 'pending', 'due_date' => today(), 'due_amount' => 100, 'paid_amount' => 0,
+        ]);
+        $installment = $account->installments()->create([
+            'company_id' => $this->company->id, 'sequence_number' => '01', 'status' => 'pending',
+            'due_date' => today(), 'original_amount' => 100, 'due_amount' => 100, 'paid_amount' => 0, 'balance_amount' => 100,
+        ]);
+        $this->permissions(['fiscal_documents.update' => 'company', 'account_payables.view' => 'company']);
+        $this->authenticate();
+        $action = fn (string $name) => TestAction::make($name)->schemaComponent('linked_account_payables.0.installments.0.installment_payment_actions');
+
+        Livewire::test(EditIncomingDocument::class, ['record' => $document->id])
+            ->assertSee(AccountPayableResource::getUrl('view', ['record' => $account]), false)
+            ->assertDontSee('Editar parcela')
+            ->assertDontSee('Excluir parcela')
+            ->assertDontSee('Registrar pagamento')
+            ->assertDontSee('Ignorar no módulo de contas');
+
+        $this->permissions(['fiscal_documents.update' => 'company', 'account_payables.view' => 'company', 'account_payables.update' => 'own']);
+        Livewire::test(EditIncomingDocument::class, ['record' => $document->id])
+            ->assertDontSee('Editar parcela');
+
+        $this->permissions(['fiscal_documents.update' => 'company', 'account_payables.view' => 'company', 'account_payables.update' => 'company', 'account_payables.change_status_without_movement' => 'company']);
+        $page = Livewire::test(EditIncomingDocument::class, ['record' => $document->id])
+            ->assertActionVisible($action('edit_installment'))
+            ->assertActionVisible($action('delete_installment'))
+            ->callAction($action('ignore_financial'), data: ['reason' => 'Aguardando conferência do fornecedor'])
+            ->assertHasNoActionErrors()
+            ->assertSee('Ignorada');
+        $this->assertNotNull($installment->fresh()->ignored_at);
+
+        $page->call('$refresh')->callAction($action('restore_consideration'), data: ['reason' => 'Conferência concluída com o fornecedor'])
+            ->assertHasNoActionErrors()
+            ->assertSee('Considerada');
+        $this->assertNull($installment->fresh()->ignored_at);
+        $this->assertDatabaseCount('account_payable_installment_payments', 0);
     }
 
     public function test_fiscal_create_and_edit_pages_render_inside_bpo_and_keep_operation_scoping(): void
