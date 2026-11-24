@@ -19,15 +19,15 @@ class RetryRefreshAction
             ->icon('heroicon-o-arrow-path-rounded-square')
             ->color('info')
             ->requiresConfirmation()
-            ->visible(fn (SefazDistributionDocument $record): bool => (! $record->full_xml_available
-                    || ! is_string($record->full_xml_path)
-                    || ! Storage::disk('local')->exists($record->full_xml_path))
-                && $record->nsu !== null
+            ->visible(fn (SefazDistributionDocument $record): bool => $record->nsu !== null
                 && in_array($record->manifestation_status, [
                     ManifestationStatus::ACCEPTED,
                     ManifestationStatus::FAILED,
                     ManifestationStatus::REJECTED,
-                ], true))
+                ], true)
+                && (! $record->full_xml_available
+                    || ! is_string($record->full_xml_path)
+                    || ! Storage::disk('local')->exists($record->full_xml_path)))
             ->action(function (SefazDistributionDocument $record): void {
                 app(SefazDistributionDocumentService::class)->markManualRefreshRequested($record);
                 RefreshSefazDistributionDocumentJob::dispatch($record->id, 1);

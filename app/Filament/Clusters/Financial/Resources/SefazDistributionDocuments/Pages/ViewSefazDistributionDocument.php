@@ -24,12 +24,21 @@ use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Size;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 
 class ViewSefazDistributionDocument extends ViewRecord
 {
     protected static string $resource = SefazDistributionDocumentResource::class;
+
+    protected function resolveRecord(int|string $key): Model
+    {
+        return parent::resolveRecord($key)->loadMissing([
+            'ignoredBy',
+            'auditEntries' => fn ($query) => $query->latest('occurred_at'),
+        ]);
+    }
 
     protected function getHeaderActions(): array
     {

@@ -53,8 +53,6 @@ class SefazDistributionDocumentResource extends Resource
                 'accountPayable',
                 'accountPayable.installments',
                 'fiscalDocument.accountPayables.installments',
-                'ignoredBy',
-                'auditEntries' => fn ($query) => $query->latest('occurred_at'),
             ])
             ->where('company_id', Filament::getTenant()->id);
     }

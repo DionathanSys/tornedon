@@ -28,6 +28,7 @@ use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -83,6 +84,32 @@ class SefazDistributionPayableWorkflowTest extends TestCase
         $this->assertSame($payable->id, $this->dfe->fresh()->account_payable_id);
         $this->assertSame('account_payable', $note->fresh()->financial_control_mode);
         $this->assertDatabaseCount('account_payables', 1);
+    }
+
+    public function test_listing_does_not_query_audit_history_but_detail_loads_it(): void
+    {
+        DB::enableQueryLog();
+
+        try {
+            $list = Livewire::test(ListSefazDistributionDocuments::class)
+                ->assertSuccessful()
+                ->assertCanSeeTableRecords([$this->dfe]);
+
+            $queries = collect(DB::getQueryLog())->pluck('query');
+            $this->assertFalse($queries->contains(fn (string $sql): bool => str_contains($sql, 'audit_entries')));
+
+            $record = $list->instance()->getTableRecords()->first();
+            $this->assertFalse($record->relationLoaded('auditEntries'));
+            $this->assertFalse($record->relationLoaded('ignoredBy'));
+
+            $detail = Livewire::test(ViewSefazDistributionDocument::class, ['record' => $this->dfe->id])
+                ->assertSuccessful();
+            $this->assertTrue($detail->instance()->getRecord()->relationLoaded('auditEntries'));
+            $this->assertTrue($detail->instance()->getRecord()->relationLoaded('ignoredBy'));
+        } finally {
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
     }
 
     public function test_generation_finds_a_separately_registered_note_by_company_and_access_key(): void
