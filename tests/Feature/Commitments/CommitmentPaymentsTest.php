@@ -9,6 +9,7 @@ use App\Enum\Payment\Condition;
 use App\Jobs\MatchCommitmentPaymentLinesJob;
 use App\Jobs\ProcessCommitmentImportFileJob;
 use App\Models\AccountReceivableInstallmentPayment;
+use App\Models\CashMovement;
 use App\Models\Company;
 use App\Models\FinancialAccount;
 use App\Models\User;
@@ -147,19 +148,32 @@ class CommitmentPaymentsTest extends TestCase
         }
     }
 
-    public function test_removed_receipt_requires_review_and_never_recreates_payment(): void
+    public function test_reversed_receipt_preserves_history_requires_review_and_never_recreates_payment(): void
     {
         $billing = $this->billedCommitment();
         $line = $this->paymentLine($billing);
         $receipt = $this->receiveLine($line);
-        $this->assertTrue(app(AccountReceivableService::class)->deleteInstallmentPayment($receipt->paymentLinks()->sole()->payment));
+        $payment = $receipt->paymentLinks()->sole()->payment;
+        $originalEvidence = $receipt->paymentLinks()->sole()->payment_snapshot;
+        $this->assertTrue(app(AccountReceivableService::class)->deleteInstallmentPayment($payment));
+        $this->assertSame($payment->id, $receipt->paymentLinks()->sole()->payment_id);
+        $this->assertSame(400.0, $payment->fresh()->returned_amount);
+        $this->assertSame($originalEvidence, $receipt->paymentLinks()->sole()->payment_snapshot);
+        $this->assertSame(400.0, $payment->installment->fresh()->balance_amount);
+        $this->assertSame(0.0, $this->cashAccount->fresh()->current_balance);
+        $original = CashMovement::where('origin_type', $payment::class)->where('origin_id', $payment->id)->sole();
+        $reversal = $original->reversals()->sole();
+        $this->assertSame($original->id, $reversal->reversal_of_id);
+        $this->assertSame($original->amount, $reversal->amount);
+        $this->assertSame('outflow', $reversal->direction->value);
         $this->assertSame(PaymentLineStatus::DIVERGENT, $this->refreshLine($line)->status);
         $this->assertSame(ReceiptStatus::NEEDS_REVIEW, $receipt->fresh()->status);
         try {
             $this->receiveLine($line);
             $this->fail('Reversed receipt recreated.');
         } catch (ValidationException) {
-            $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+            $this->assertDatabaseCount('account_receivable_installment_payments', 1);
+            $this->assertDatabaseCount('cash_movements', 2);
             $this->assertDatabaseCount('commitment_receipts', 1);
         }
     }

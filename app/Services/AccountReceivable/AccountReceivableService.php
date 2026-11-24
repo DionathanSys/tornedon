@@ -26,6 +26,7 @@ use App\Services\Invoice\InvoiceReceiptReversalService;
 use App\Support\Financial\AccountEditGuard;
 use App\Support\Financial\InstallmentDescription;
 use App\Support\Financial\InstallmentPaymentGuard;
+use App\Support\Financial\InstallmentPaymentTotals;
 use App\Support\Financial\InstallmentSchedule;
 use App\Traits\HandlesServiceResponse;
 use App\Traits\RunsFinancialTransactions;
@@ -280,7 +281,7 @@ class AccountReceivableService
 
     public function registerInstallmentPayment(
         AccountReceivableInstallment $installment,
-        float $amount,
+        float|string $amount,
         string $paymentDate,
         array $extra = []
     ): ?AccountReceivableInstallmentPayment {
@@ -301,9 +302,9 @@ class AccountReceivableService
                     'payment_date' => $paymentDate,
                     'origin' => $extra['origin'] ?? (isset($extra['pix_charge_id']) ? 'pix' : (isset($extra['bank_slip_id']) ? 'bank_slip' : 'manual')),
                     'amount' => $amount,
-                    'interest_amount' => (float) ($extra['interest_amount'] ?? 0),
-                    'fine_amount' => (float) ($extra['fine_amount'] ?? 0),
-                    'discount_amount' => (float) ($extra['discount_amount'] ?? 0),
+                    'interest_amount' => $extra['interest_amount'] ?? '0.00',
+                    'fine_amount' => $extra['fine_amount'] ?? '0.00',
+                    'discount_amount' => $extra['discount_amount'] ?? '0.00',
                     'bank_account_id' => $extra['bank_account_id'] ?? null,
                     'financial_account_id' => $extra['financial_account_id'] ?? null,
                     'bank_slip_id' => $extra['bank_slip_id'] ?? null,
@@ -924,15 +925,14 @@ class AccountReceivableService
         InstallmentPaymentGuard::validateExistingPayments($installment, $installment->accountReceivable);
         $installment->loadMissing('payments', 'accountReceivable');
 
-        $received = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->amount - (float) $payment->returned_amount), 2);
-        $interest = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->interest_amount), 2);
-        $fine = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->fine_amount), 2);
-        $discount = round((float) $installment->payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->discount_amount), 2);
-        $dueAmount = round((float) $installment->original_amount + $interest + $fine - $discount, 2);
-        $balance = max(round($dueAmount - $received, 2), 0);
-        $status = $balance <= 0
-            ? Status::RECEIVED->value
-            : ($received > 0 ? Status::PARTIALLY_RECEIVED->value : Status::PENDING->value);
+        $totals = InstallmentPaymentTotals::calculate($installment, true);
+        $received = $totals['received'];
+        $interest = $totals['interest'];
+        $fine = $totals['fine'];
+        $discount = $totals['discount'];
+        $dueAmount = $totals['due_amount'];
+        $balance = $totals['balance'];
+        $status = $totals['status'];
 
         $installment->update([
             'interest_amount' => $interest,

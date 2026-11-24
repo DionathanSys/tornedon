@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
+use App\Models\Concerns\HasGroupedFinancialEffect;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AccountReceivableInstallmentPayment extends Model
 {
+    use HasGroupedFinancialEffect;
+
     protected $fillable = [
         'account_receivable_installment_id',
         'company_id',

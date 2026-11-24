@@ -4,6 +4,8 @@
         x-data="{{ file_get_contents(resource_path('js/bank-reconciliation-workbench.js')) }}({
             state: $wire.entangle(@js($getStatePath())),
             bank: @js($getBankSummary()),
+            expenseOptions: @js($getRetainedExpenseOptions()),
+            idempotencyKey: @js((string) \Illuminate\Support\Str::uuid()),
             searchRecords: (type, search, page) => $wire.callSchemaComponentMethod(@js($getKey()), 'searchRecords', { type, search, page }),
             loadSuggestions: () => $wire.callSchemaComponentMethod(@js($getKey()), 'loadSuggestions', {}),
             rejectSuggestions: (evaluationToken) => $wire.callSchemaComponentMethod(@js($getKey()), 'rejectSuggestions', { evaluationToken }),
@@ -62,7 +64,7 @@
                             </button>
                         </template>
                     </div>
-                    <div class="brw-advanced" x-show="bundles.length" x-cloak>
+                    <div class="brw-advanced" x-show="bundles.length && !isRetained" x-cloak>
                         <div class="brw-eyebrow">Composições, baixas parciais e ajustes</div>
                         <p class="brw-muted" x-show="items.length">Limpe a seleção para usar uma destas propostas.</p>
                         <template x-for="bundle in bundles" :key="bundle.key">
@@ -86,9 +88,13 @@
                         <x-filament::icon icon="heroicon-o-link" />
                         <span><strong>Já lançado no sistema</strong><small>Apenas vincular, sem nova baixa</small></span>
                     </button>
-                    <button type="button" class="brw-mode" :class="{ 'is-active': !isMovement }" :aria-pressed="!isMovement" @click="changeType(bank.inflow ? 'receivable' : 'payable')">
+                    <button type="button" class="brw-mode" :class="{ 'is-active': !isMovement && !isRetained }" :aria-pressed="!isMovement && !isRetained" @click="changeType(bank.inflow ? 'receivable' : 'payable')">
                         <x-filament::icon icon="heroicon-o-document-currency-dollar" />
                         <span><strong x-text="bank.inflow ? 'Conta a receber em aberto' : 'Conta a pagar em aberto'"></strong><small x-text="bank.inflow ? 'Registrar o recebimento agora' : 'Registrar o pagamento agora'"></small></span>
+                    </button>
+                    <button type="button" x-show="bank.inflow" class="brw-mode" :class="{ 'is-active': isRetained }" :aria-pressed="isRetained" @click="changeType('retained_receipt')">
+                        <x-filament::icon icon="heroicon-o-calculator" />
+                        <span><strong>Recebimento com despesas retidas</strong><small>Baixar o bruto e gerar despesas pelo líquido</small></span>
                     </button>
                 </div>
 
@@ -119,7 +125,7 @@
                 <div class="brw-selection" x-show="items.length" x-cloak>
                     <div class="brw-selection-heading"><strong>Selecionados <span class="brw-count" x-text="items.length"></span></strong><button type="button" class="brw-text-button" @click="state = { ...state, items: [] }">Limpar seleção</button></div>
                     <div class="brw-selected-list">
-                        <template x-for="item in items" :key="state.type + '-selected-' + item.id">
+                        <template x-for="item in items" :key="state.type + '-selected-' + entryKey(item)">
                             <div class="brw-selected-entry">
                               <div class="brw-selected-item">
                                 <div class="brw-selected-title"><strong x-text="item.party || item.description"></strong><small x-text="item.description + ' · #' + item.id"></small><small class="brw-date-warning" x-show="item.date_exception">Data diferente da registrada no banco</small></div>
@@ -127,23 +133,23 @@
                                     <strong x-show="isMovement" x-text="money(item.amount_cents)"></strong>
                                     <template x-if="!isMovement">
                                         <div>
-                                            <span class="brw-amount-label" x-text="bank.inflow ? 'Valor recebido' : 'Valor pago'"></span>
-                                            <label class="brw-amount"><span>R$</span><input type="text" inputmode="decimal" :aria-label="'Valor da baixa do registro ' + item.id" :value="decimal(item.amount)" @change="updateAmount(item.id, $event.target.value)" @keydown.enter.prevent="$event.target.blur()" /></label>
+                                            <span class="brw-amount-label" x-text="isRetained ? 'Recebimento bruto' : (bank.inflow ? 'Valor recebido' : 'Valor pago')"></span>
+                                            <label class="brw-amount"><span>R$</span><input type="text" inputmode="decimal" :aria-label="'Valor da baixa do registro ' + item.id" :value="isRetained ? decimalCents(item.gross_cents) : decimal(item.amount)" @change="updateAmount(entryKey(item), $event.target.value)" @keydown.enter.prevent="$event.target.blur()" /></label>
                                             <small class="brw-muted" x-text="'Saldo: ' + money(item.amount_cents)"></small>
-                                            <button type="button" class="brw-text-button" x-show="difference !== 0" @click="fillRemaining(item.id)">Usar valor restante</button>
-                                            <small class="brw-partial" x-show="item.amount > 0 && remainingBalance(item) > 0" x-text="'Ficará em aberto: ' + money(remainingBalance(item))"></small>
-                                            <small class="brw-match" x-show="item.amount > 0 && remainingBalance(item) === 0">Parcela quitada</small>
+                                            <button type="button" class="brw-text-button" x-show="difference !== 0" @click="fillRemaining(entryKey(item))">Usar valor restante</button>
+                                            <small class="brw-partial" x-show="itemCents(item) > 0 && remainingBalance(item) > 0" x-text="'Ficará em aberto: ' + money(remainingBalance(item))"></small>
+                                            <small class="brw-match" x-show="itemCents(item) > 0 && remainingBalance(item) === 0">Parcela quitada</small>
                                             <small class="brw-date-warning" x-show="remainingBalance(item) < 0">Valor acima do saldo ajustado</small>
                                         </div>
                                     </template>
                                 </div>
-                                <button type="button" class="brw-remove" :aria-label="'Remover registro ' + item.id" @click="remove(item.id)"><x-filament::icon icon="heroicon-o-x-mark" /></button>
+                                <button type="button" class="brw-remove" :aria-label="'Remover registro ' + item.id" @click="remove(entryKey(item))"><x-filament::icon icon="heroicon-o-x-mark" /></button>
                               </div>
                               <details class="brw-adjustments" x-show="!isMovement" :open="item.open_adjustments" @toggle="item.open_adjustments = $event.target.open">
                                   <summary><span>Juros, multa, desconto e observações</span><small x-show="hasAdjustments(item)" x-text="'Saldo ajustado: ' + money(adjustedBalance(item))"></small></summary>
                                   <div class="brw-adjustment-fields">
                                       <template x-for="adjustment in [{ key: 'interest_amount', label: 'Juros (+)' }, { key: 'fine_amount', label: 'Multa (+)' }, { key: 'discount_amount', label: 'Desconto (−)' }]" :key="adjustment.key">
-                                          <label><span x-text="adjustment.label"></span><div class="brw-amount"><span>R$</span><input type="text" inputmode="decimal" :aria-label="adjustment.label + ' do registro ' + item.id" :value="item[adjustment.key] === null ? '' : decimal(item[adjustment.key] || 0)" @change="updateCharge(item.id, adjustment.key, $event.target.value)" @keydown.enter.prevent="$event.target.blur()" /></div></label>
+                                          <label><span x-text="adjustment.label"></span><div class="brw-amount"><span>R$</span><input type="text" inputmode="decimal" :aria-label="adjustment.label + ' do registro ' + item.id" :value="isRetained ? decimalCents(item[adjustment.key + '_cents']) : (item[adjustment.key] === null ? '' : decimal(item[adjustment.key] || 0))" @change="updateCharge(entryKey(item), adjustment.key, $event.target.value)" @keydown.enter.prevent="$event.target.blur()" /></div></label>
                                       </template>
                                   </div>
                                   <div class="brw-adjustment-summary">
@@ -153,11 +159,37 @@
                                    <p class="brw-adjustment-hint">Juros e multa aumentam o saldo; desconto reduz o saldo. Os ajustes são aplicados uma única vez à parcela, mesmo com vários lançamentos bancários.</p>
                                    <p class="brw-date-warning" x-show="typeof item.adjustment_expected_cents === 'number'" x-text="'Diferença a explicar nos ajustes: ' + money(item.adjustment_expected_cents || 0)"></p>
                                   <label class="brw-notes"><span>Observações da baixa</span><textarea x-model="item.notes" rows="2" :aria-label="'Observações da baixa do registro ' + item.id" placeholder="Opcional"></textarea></label>
-                              </details>
+                               </details>
+                               <template x-if="isRetained">
+                                   <section class="brw-retained-expenses" aria-label="Despesas retidas">
+                                       <div class="brw-selection-heading"><strong>Despesas retidas</strong><button type="button" class="brw-text-button" @click="addExpense(item)">Adicionar despesa</button></div>
+                                       <p class="brw-muted">Informe a natureza da retenção. Cada despesa gera uma conta a pagar liquidada, sem usar o campo desconto.</p>
+                                       <label x-show="bank.lines.length > 1"><span>Depósito deste recebimento</span>
+                                           <select :value="item.statement_line_id" @change="assignLine(entryKey(item), $event.target.value)"><template x-for="line in bank.lines" :key="line.id"><option :value="line.id" x-text="line.date + ' · ' + money(line.amount_cents) + ' · #' + line.id"></option></template></select>
+                                       </label>
+                                       <button type="button" class="brw-text-button" x-show="bank.lines.length > 1" @click="splitReceipt(item)">Dividir recebimento em outro depósito</button>
+                                       <template x-for="(expense, index) in (item.expenses ?? [])" :key="index">
+                                           <div class="brw-retained-entry">
+                                               <div class="brw-adjustment-fields">
+                                                   <label><span>Valor da despesa</span><input type="text" inputmode="decimal" :value="decimalCents(expense.amount_cents)" @change="updateExpense(item, index, 'amount_cents', $event.target.value)" /></label>
+                                                   <label><span>Categoria financeira *</span><select :value="expense.financial_category_id" @change="updateExpense(item, index, 'financial_category_id', $event.target.value)"><option value="">Selecione a categoria</option><template x-for="(label, id) in expenseOptions.categories" :key="id"><option :value="id" x-text="label"></option></template></select></label>
+                                                   <label><span>Favorecido cadastrado</span><select :value="expense.supplier_id" @change="updateExpense(item, index, 'supplier_id', $event.target.value)"><option value="">Informar nome avulso</option><template x-for="(label, id) in expenseOptions.partners" :key="id"><option :value="id" x-text="label"></option></template></select></label>
+                                                   <label x-show="!expense.supplier_id"><span>Nome do favorecido *</span><input type="text" :value="expense.manual_counterparty_name" @input="updateExpense(item, index, 'manual_counterparty_name', $event.target.value)" maxlength="255" /></label>
+                                                   <label><span>Competência (padrão: data do depósito)</span><input type="date" :value="expense.competence_date" @change="updateExpense(item, index, 'competence_date', $event.target.value)" /></label>
+                                                   <label><span>Centro de custo</span><select :value="expense.cost_center_id" @change="updateExpense(item, index, 'cost_center_id', $event.target.value)"><option value="">Herdar do recebível</option><template x-for="(label, id) in expenseOptions.cost_centers" :key="id"><option :value="id" x-text="label"></option></template></select></label>
+                                                   <label><span>Centro de resultado</span><select :value="expense.result_center_id" @change="updateExpense(item, index, 'result_center_id', $event.target.value)"><option value="">Herdar do recebível</option><template x-for="(label, id) in expenseOptions.result_centers" :key="id"><option :value="id" x-text="label"></option></template></select></label>
+                                                   <label><span>Descrição / observação</span><input type="text" :value="expense.description" @input="updateExpense(item, index, 'description', $event.target.value)" maxlength="255" /></label>
+                                               </div>
+                                               <button type="button" class="brw-text-button" @click="removeExpense(item, index)">Remover despesa</button>
+                                           </div>
+                                       </template>
+                                       <p class="brw-effect" x-text="'Bruto: ' + money(itemCents(item)) + ' − despesas: ' + money(expenseTotal(item)) + ' = líquido: ' + money(itemCents(item) - expenseTotal(item))"></p>
+                                   </section>
+                               </template>
                             </div>
                         </template>
                     </div>
-                    <p class="brw-effect" x-text="isMovement ? 'Os movimentos existentes serão apenas vinculados. Nenhum pagamento ou recebimento será duplicado.' : 'As baixas serão registradas nas datas do extrato. Valores parciais mantêm o saldo restante em aberto.'"></p>
+                    <p class="brw-effect" x-text="isRetained ? 'Serão criados recebimentos brutos e contas a pagar liquidadas pelas despesas. O extrato será vinculado pelo líquido, sem criar outra movimentação.' : (isMovement ? 'Os movimentos existentes serão apenas vinculados. Nenhum pagamento ou recebimento será duplicado.' : 'As baixas serão registradas nas datas do extrato. Valores parciais mantêm o saldo restante em aberto.')"></p>
                 </div>
                 <div class="brw-reason" x-show="needsReason" x-cloak>
                     <label for="{{ $getId() }}-reason">Por que a data do sistema é diferente da data do banco?</label>
@@ -170,6 +202,8 @@
         <footer class="brw-footer">
             <div class="brw-totals" aria-live="polite">
                 <div><span>No banco</span><strong x-text="money(bank.total_cents)"></strong></div>
+                <div x-show="isRetained"><span>Bruto</span><strong x-text="money(grossTotal)"></strong></div>
+                <div x-show="isRetained"><span>Despesas retidas</span><strong x-text="money(retainedTotal)"></strong></div>
                 <div><span>No sistema</span><strong x-text="money(selectedTotal)"></strong></div>
                 <div class="brw-difference" :class="{ 'is-balanced': items.length && difference === 0 }"><span>Diferença</span><strong x-text="money(difference)"></strong></div>
             </div>

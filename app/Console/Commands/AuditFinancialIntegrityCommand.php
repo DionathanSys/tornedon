@@ -35,7 +35,7 @@ class AuditFinancialIntegrityCommand extends Command
         };
 
         foreach ([AccountPayableInstallmentPayment::class, AccountReceivableInstallmentPayment::class] as $model) {
-            $model::query()->when($companyId, fn ($query) => $query->where('company_id', (int) $companyId))
+            $model::query()->effective()->when($companyId, fn ($query) => $query->where('company_id', (int) $companyId))
                 ->chunkById(200, function ($payments) use ($model, $report): void {
                     $movements = CashMovement::query()->where('origin_type', $model)->whereIn('origin_id', $payments->modelKeys())->get()->keyBy('origin_id');
                     foreach ($payments as $payment) {
@@ -52,6 +52,7 @@ class AuditFinancialIntegrityCommand extends Command
                 });
 
             CashMovement::query()->where('origin_type', $model)
+                ->effective()
                 ->when($companyId, fn ($query) => $query->where('company_id', (int) $companyId))
                 ->whereNotNull('origin_id')->whereNotIn('origin_id', $model::query()->select('id'))
                 ->whereNull('reversed_at')
@@ -63,7 +64,7 @@ class AuditFinancialIntegrityCommand extends Command
         }
 
         foreach ([AccountPayableInstallment::class => 'accountPayable', AccountReceivableInstallment::class => 'accountReceivable'] as $model => $relation) {
-            $model::query()->with(['payments', $relation])
+            $model::query()->with(['payments' => fn ($query) => $query->effective(), $relation])
                 ->when($companyId, fn ($query) => $query->where('company_id', (int) $companyId))
                 ->chunkById(200, function ($installments) use ($relation, $report): void {
                     foreach ($installments as $installment) {
@@ -71,7 +72,9 @@ class AuditFinancialIntegrityCommand extends Command
                         $due = $this->cents($installment->original_amount);
                         foreach ($installment->payments as $payment) {
                             $paid += $this->cents($payment->amount) - $this->cents($payment->returned_amount);
-                            $due += $this->cents($payment->interest_amount) + $this->cents($payment->fine_amount) - $this->cents($payment->discount_amount);
+                            if ($this->cents($payment->returned_amount) < $this->cents($payment->amount)) {
+                                $due += $this->cents($payment->interest_amount) + $this->cents($payment->fine_amount) - $this->cents($payment->discount_amount);
+                            }
                         }
                         $storedPaid = $relation === 'accountPayable' ? $installment->paid_amount : $installment->received_amount;
                         if ($paid > $due || $this->cents($installment->due_amount) !== $due

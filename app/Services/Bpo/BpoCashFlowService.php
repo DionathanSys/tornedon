@@ -54,7 +54,7 @@ class BpoCashFlowService
             ->contains(fn ($key) => ! in_array('company', $permissions[$key] ?? [], true));
         $accounts = $this->authorization->scopeQuery(FinancialAccount::query(), $user, $company, 'financial_accounts.view')->get();
         // Include reversal entries: they cancel the original movement on their own transaction date.
-        $movementQuery = $this->authorization->scopeQuery(CashMovement::query(), $user, $company, 'cash_movements.view')
+        $movementQuery = $this->authorization->scopeQuery(CashMovement::query()->effective(), $user, $company, 'cash_movements.view')
             ->whereIn('financial_account_id', $accounts->modelKeys())->whereDate('transaction_date', '<=', $end);
         $movements = (clone $movementQuery)
             ->selectRaw("financial_account_id, transaction_date, SUM(CASE WHEN direction = 'inflow' THEN amount ELSE 0 END) as inflow, SUM(CASE WHEN direction = 'outflow' THEN amount ELSE 0 END) as outflow")

@@ -6,6 +6,7 @@ use App\Enum\AccountPayable\Status;
 use App\Models\AccountPayableInstallment;
 use App\Models\AccountPayableInstallmentPayment;
 use App\Services\AccountPayable\Validators\AccountPayableInstallmentValidator;
+use App\Support\Financial\InstallmentPaymentTotals;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -21,7 +22,7 @@ class RegisterAccountPayableInstallmentPaymentAction
     {
         try {
             Log::info('Iniciando registro de pagamento de parcela', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'installment_id' => $this->installment->id,
                 'account_payable_id' => $this->installment->account_payable_id,
                 'company_id' => $this->installment->company_id,
@@ -40,14 +41,14 @@ class RegisterAccountPayableInstallmentPaymentAction
 
             $validated = AccountPayableInstallmentValidator::validatePayment($data);
             Log::info('Payload de pagamento validado', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'installment_id' => $this->installment->id,
                 'validated' => $validated,
             ]);
 
             $payment = AccountPayableInstallmentPayment::create($validated);
             Log::info('Pagamento criado', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'payment_id' => $payment->id,
                 'installment_id' => $this->installment->id,
                 'payment_snapshot' => [
@@ -64,7 +65,7 @@ class RegisterAccountPayableInstallmentPaymentAction
 
             $totals = $this->calculateInstallmentTotals();
             Log::info('Totais recalculados da parcela a pagar', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'installment_id' => $this->installment->id,
                 'totals' => $totals,
             ]);
@@ -82,7 +83,7 @@ class RegisterAccountPayableInstallmentPaymentAction
 
             $this->installment->refresh();
             Log::info('Parcela a pagar atualizada apos registro do pagamento', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'installment_id' => $this->installment->id,
                 'installment_snapshot' => [
                     'interest_amount' => $this->installment->interest_amount,
@@ -104,7 +105,7 @@ class RegisterAccountPayableInstallmentPaymentAction
             $this->setSuccess();
 
             Log::info('Pagamento de parcela registrado com sucesso', [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'payment_id' => $payment->id,
                 'installment_id' => $this->installment->id,
                 'account_payable_id' => $this->installment->account_payable_id,
@@ -115,7 +116,7 @@ class RegisterAccountPayableInstallmentPaymentAction
             $this->setError('Falha de validação dos dados de pagamento', $e->errors());
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'errors' => $e->errors(),
                 'installment_id' => $this->installment->id,
@@ -127,7 +128,7 @@ class RegisterAccountPayableInstallmentPaymentAction
             $this->setError('Erro ao salvar pagamento de parcela no banco de dados');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'installment_id' => $this->installment->id,
@@ -139,7 +140,7 @@ class RegisterAccountPayableInstallmentPaymentAction
             $this->setError('Erro inesperado ao registrar pagamento da parcela');
 
             Log::error($this->getMessage(), [
-                'metodo' => __METHOD__ . '@' . __LINE__,
+                'metodo' => __METHOD__.'@'.__LINE__,
                 'error_code' => $this->getErrorCode(),
                 'error_message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -153,26 +154,6 @@ class RegisterAccountPayableInstallmentPaymentAction
 
     private function calculateInstallmentTotals(): array
     {
-        $payments = $this->installment->payments()
-            ->get(['amount', 'interest_amount', 'fine_amount', 'discount_amount']);
-
-        $paid = round((float) $payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->amount), 2);
-        $interest = round((float) $payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->interest_amount), 2);
-        $fine = round((float) $payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->fine_amount), 2);
-        $discount = round((float) $payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->discount_amount), 2);
-        $dueAmount = round((float) $this->installment->original_amount + $interest + $fine - $discount, 2);
-        $balance = max(round($dueAmount - $paid, 2), 0);
-
-        return [
-            'paid' => $paid,
-            'interest' => $interest,
-            'fine' => $fine,
-            'discount' => $discount,
-            'due_amount' => $dueAmount,
-            'balance' => $balance,
-            'status' => $balance <= 0
-                ? Status::PAID->value
-                : ($paid > 0 ? Status::PARTIALLY_PAID->value : Status::PENDING->value),
-        ];
+        return InstallmentPaymentTotals::calculate($this->installment, false);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\BankStatementImports\Relatio
 use App\Forms\Components\BankReconciliationWorkbench;
 use App\Models\BankStatementLine;
 use App\Services\Financial\BankStatement\ReconcileBankStatementGroupService;
+use App\Services\Financial\BankStatement\ReconcileReceiptWithRetainedExpensesService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Facades\Filament;
@@ -38,12 +39,27 @@ final class ReconcileMultipleAction
             ->action(function (Action $action, array $data) use ($bulk): void {
                 $selection = $data['selection'];
                 try {
-                    app(ReconcileBankStatementGroupService::class)->reconcile(
-                        Filament::getTenant()->id,
-                        $bulk ? $action->getSelectedRecords()->pluck('id')->all() : [$action->getRecord()->id],
-                        $selection['type'] ?? '', $selection['items'] ?? [], auth()->id(), $selection['exception_reason'] ?? null,
-                        $selection['evaluation_token'] ?? null,
-                    );
+                    if (($selection['type'] ?? '') === 'retained_receipt') {
+                        $items = array_map(function (array $item): array {
+                            // The workbench's amount_cents describes the available balance.
+                            // Only gross_cents is the explicit receipt amount in this mode.
+                            $item['amount_cents'] = $item['gross_cents'] ?? null;
+
+                            return $item;
+                        }, $selection['items'] ?? []);
+                        app(ReconcileReceiptWithRetainedExpensesService::class)->reconcile(
+                            Filament::getTenant()->id,
+                            $bulk ? $action->getSelectedRecords()->pluck('id')->all() : [$action->getRecord()->id],
+                            $items, $selection['idempotency_key'] ?? '', auth()->id(), $selection['evaluation_token'] ?? null,
+                        );
+                    } else {
+                        app(ReconcileBankStatementGroupService::class)->reconcile(
+                            Filament::getTenant()->id,
+                            $bulk ? $action->getSelectedRecords()->pluck('id')->all() : [$action->getRecord()->id],
+                            $selection['type'] ?? '', $selection['items'] ?? [], auth()->id(), $selection['exception_reason'] ?? null,
+                            $selection['evaluation_token'] ?? null,
+                        );
+                    }
                 } catch (ValidationException $e) {
                     Notification::make()->title('Confira a seleção antes de conciliar')
                         ->body(collect($e->errors())->flatten()->implode(' '))->danger()->send();

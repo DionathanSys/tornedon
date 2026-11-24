@@ -66,6 +66,11 @@ class BankStatementLine extends Model
         return $this->belongsTo(CashMovement::class);
     }
 
+    public function reconciliationGroup(): BelongsTo
+    {
+        return $this->belongsTo(BankReconciliationGroup::class, 'bank_reconciliation_group_id');
+    }
+
     public function cashMovements(): BelongsToMany
     {
         return $this->belongsToMany(CashMovement::class, 'bank_statement_allocations')->withPivot('amount');

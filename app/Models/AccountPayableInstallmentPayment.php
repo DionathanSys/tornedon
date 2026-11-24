@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasGroupedFinancialEffect;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AccountPayableInstallmentPayment extends Model
 {
+    use HasGroupedFinancialEffect;
+
     protected $fillable = [
         'account_payable_installment_id',
         'company_id',
@@ -14,6 +17,7 @@ class AccountPayableInstallmentPayment extends Model
         'origin',
         'bank_confirmed_at',
         'amount',
+        'returned_amount',
         'interest_amount',
         'fine_amount',
         'discount_amount',
@@ -27,6 +31,7 @@ class AccountPayableInstallmentPayment extends Model
         'payment_date' => 'date',
         'bank_confirmed_at' => 'datetime',
         'amount' => 'float',
+        'returned_amount' => 'float',
         'interest_amount' => 'float',
         'fine_amount' => 'float',
         'discount_amount' => 'float',

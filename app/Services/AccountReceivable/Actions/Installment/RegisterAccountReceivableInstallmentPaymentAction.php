@@ -6,6 +6,7 @@ use App\Enum\AccountReceivable\Status;
 use App\Models\AccountReceivableInstallment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Services\AccountReceivable\Validators\AccountReceivableInstallmentValidator;
+use App\Support\Financial\InstallmentPaymentTotals;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -146,26 +147,6 @@ class RegisterAccountReceivableInstallmentPaymentAction
 
     private function calculateInstallmentTotals(): array
     {
-        $payments = $this->installment->payments()
-            ->get(['amount', 'returned_amount', 'interest_amount', 'fine_amount', 'discount_amount']);
-
-        $received = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->amount - (float) $payment->returned_amount), 2);
-        $interest = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->interest_amount), 2);
-        $fine = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->fine_amount), 2);
-        $discount = round((float) $payments->sum(fn (AccountReceivableInstallmentPayment $payment) => (float) $payment->discount_amount), 2);
-        $dueAmount = round((float) $this->installment->original_amount + $interest + $fine - $discount, 2);
-        $balance = max(round($dueAmount - $received, 2), 0);
-
-        return [
-            'received' => $received,
-            'interest' => $interest,
-            'fine' => $fine,
-            'discount' => $discount,
-            'due_amount' => $dueAmount,
-            'balance' => $balance,
-            'status' => $balance <= 0
-                ? Status::RECEIVED->value
-                : ($received > 0 ? Status::PARTIALLY_RECEIVED->value : Status::PENDING->value),
-        ];
+        return InstallmentPaymentTotals::calculate($this->installment, true);
     }
 }

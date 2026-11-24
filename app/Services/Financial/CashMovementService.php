@@ -14,6 +14,7 @@ use App\Services\AccountPayable\AccountPayableService;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
 use App\Support\Financial\InstallmentDescription;
+use App\Support\Financial\Money;
 use App\Traits\HandlesServiceResponse;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -51,14 +52,14 @@ class CashMovementService
         );
     }
 
-    public function reverseForPayablePayment(AccountPayableInstallmentPayment $payment, ?int $userId = null): ?CashMovement
+    public function reverseForPayablePayment(AccountPayableInstallmentPayment $payment, ?int $userId = null, ?string $date = null): ?CashMovement
     {
-        return $this->reverseForOrigin(AccountPayableInstallmentPayment::class, $payment->id, $userId);
+        return $this->reverseForOrigin(AccountPayableInstallmentPayment::class, $payment->id, $userId, $date);
     }
 
-    public function reverseForReceivablePayment(AccountReceivableInstallmentPayment $payment, ?int $userId = null): ?CashMovement
+    public function reverseForReceivablePayment(AccountReceivableInstallmentPayment $payment, ?int $userId = null, ?string $date = null): ?CashMovement
     {
-        return $this->reverseForOrigin(AccountReceivableInstallmentPayment::class, $payment->id, $userId);
+        return $this->reverseForOrigin(AccountReceivableInstallmentPayment::class, $payment->id, $userId, $date);
     }
 
     public function deleteOrReverseForPayablePayment(AccountPayableInstallmentPayment $payment, ?int $userId = null): ?CashMovement
@@ -741,7 +742,7 @@ class CashMovementService
                     'direction' => $direction->value,
                     'transaction_date' => $payment->payment_date?->toDateString(),
                     'competence_date' => $installment->competence_date?->toDateString() ?? $payment->payment_date?->toDateString(),
-                    'amount' => $payment->amount,
+                    'amount' => Money::decimal(Money::stored($payment)),
                     'description' => $this->buildPaymentDescription($payment, $descriptionPrefix),
                     'notes' => $payment->notes,
                     'counterparty_partner_id' => $counterpartyPartner?->id,
@@ -803,12 +804,12 @@ class CashMovementService
         }
     }
 
-    private function reverseForOrigin(string $originType, int $originId, ?int $userId = null): ?CashMovement
+    private function reverseForOrigin(string $originType, int $originId, ?int $userId = null, ?string $date = null): ?CashMovement
     {
         $this->resetResponse();
 
         try {
-            return DB::transaction(function () use ($originType, $originId, $userId) {
+            return DB::transaction(function () use ($originType, $originId, $userId, $date) {
                 $movement = CashMovement::query()
                     ->where('origin_type', $originType)
                     ->where('origin_id', $originId)
@@ -837,9 +838,9 @@ class CashMovementService
                     'direction' => $movement->direction === CashMovementDirection::INFLOW
                         ? CashMovementDirection::OUTFLOW->value
                         : CashMovementDirection::INFLOW->value,
-                    'transaction_date' => now()->toDateString(),
-                    'competence_date' => now()->toDateString(),
-                    'amount' => $movement->amount,
+                    'transaction_date' => $date ?? now()->toDateString(),
+                    'competence_date' => $date ?? now()->toDateString(),
+                    'amount' => Money::decimal(Money::stored($movement)),
                     'description' => 'Estorno: '.$movement->description,
                     'counterparty_partner_id' => $movement->counterparty_partner_id,
                     'counterparty_financial_account_id' => $movement->counterparty_financial_account_id,

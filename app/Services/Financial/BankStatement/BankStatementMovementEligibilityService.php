@@ -40,6 +40,10 @@ class BankStatementMovementEligibilityService
     {
         $errors = [];
 
+        if (! CashMovement::query()->effective()->whereKey($movement->id)->exists()) {
+            $errors['cash_movement_id'][] = 'Movimento anulado por correção da operação.';
+        }
+
         if ((int) $movement->company_id !== (int) $line->company_id) {
             $errors['cash_movement_id'][] = 'Movimento financeiro não pertence à empresa da linha do extrato.';
         }

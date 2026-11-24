@@ -2,6 +2,7 @@
 
 namespace App\Casts;
 
+use App\Support\Financial\Money;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
 
@@ -24,6 +25,6 @@ class MoneyCast implements CastsAttributes
      */
     public function set(Model $model, string $key, mixed $value, array $attributes): mixed
     {
-        return round(floatval($value) * 100);
+        return Money::cents($value);
     }
 }

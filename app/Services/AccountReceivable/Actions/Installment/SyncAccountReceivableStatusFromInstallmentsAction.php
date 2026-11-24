@@ -5,6 +5,7 @@ namespace App\Services\AccountReceivable\Actions\Installment;
 use App\Enum\AccountReceivable\Status;
 use App\Models\AccountReceivable;
 use App\Models\AccountReceivableInstallment;
+use App\Support\Financial\Money;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -26,8 +27,8 @@ class SyncAccountReceivableStatusFromInstallmentsAction
             }
             $this->accountReceivable->load('installments');
 
-            $totalDue = round((float) $this->accountReceivable->installments->sum('due_amount'), 2);
-            $totalReceived = round((float) $this->accountReceivable->installments->sum('received_amount'), 2);
+            $totalDue = Money::sum($this->accountReceivable->installments, 'due_amount');
+            $totalReceived = Money::sum($this->accountReceivable->installments, 'received_amount');
             $hasOverdue = $this->accountReceivable->installments
                 ->contains(fn (AccountReceivableInstallment $installment) => $installment->status !== Status::CANCELLED && $installment->balance_amount > 0 && $installment->due_date?->lt(today()));
 
@@ -41,11 +42,11 @@ class SyncAccountReceivableStatusFromInstallmentsAction
             $this->accountReceivable->update([
                 'status' => $status,
                 'paid' => $status === Status::RECEIVED->value,
-                'paid_amount' => $totalReceived,
+                'paid_amount' => Money::decimal($totalReceived),
                 'paid_date' => $status === Status::RECEIVED->value
                     ? $this->accountReceivable->installments->max('received_date')
                     : null,
-                'due_amount' => $totalDue,
+                'due_amount' => Money::decimal($totalDue),
                 'due_date' => $this->accountReceivable->installments->min('due_date') ?? $this->accountReceivable->due_date,
             ]);
 

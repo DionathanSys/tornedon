@@ -192,8 +192,8 @@ class CustomPaymentTermsTest extends TestCase
         $category = FinancialCategory::create(['company_id' => $company->id, 'name' => 'Vendas', 'is_active' => true, 'allow_receivable' => true]);
         $invoice = Invoice::create([
             'company_id' => $company->id, 'customer_id' => $customer->id, 'invoice_number' => 'TERMS-001',
-            'invoice_date' => '2026-01-10', 'status' => $confirmed ? Status::CONFIRMED : Status::PENDING,
-            'confirmed' => $confirmed, 'pending' => ! $confirmed, 'canceled' => false, 'created_by' => $user->id,
+            'invoice_date' => '2026-01-10', 'status' => Status::PENDING,
+            'confirmed' => false, 'pending' => true, 'canceled' => false, 'created_by' => $user->id,
         ]);
         $service = Service::create(['company_id' => $company->id, 'name' => 'Serviço', 'service_code' => 'TERMS', 'price' => 1000.01, 'created_by' => $user->id]);
         $order = ServiceOrder::create([
@@ -204,6 +204,12 @@ class CustomPaymentTermsTest extends TestCase
         ]);
         ServiceOrderItem::create(['service_order_id' => $order->id, 'service_id' => $service->id, 'quantity' => 1, 'unit_price' => 1000.01, 'created_by' => $user->id]);
 
-        return [$user, $company, $invoice, $category];
+        // Manual financial generation represents an already composed legacy invoice.
+        // Attaching an order after confirmation is intentionally forbidden.
+        if ($confirmed) {
+            $invoice->update(['status' => Status::CONFIRMED, 'confirmed_by' => $user->id, 'confirmed_at' => now()]);
+        }
+
+        return [$user, $company, $invoice->fresh(), $category];
     }
 }

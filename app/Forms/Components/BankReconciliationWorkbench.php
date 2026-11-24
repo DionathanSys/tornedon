@@ -3,9 +3,14 @@
 namespace App\Forms\Components;
 
 use App\Models\BankStatementLine;
+use App\Models\CostCenter;
+use App\Models\FinancialCategory;
+use App\Models\Partner;
+use App\Models\ResultCenter;
 use App\Services\Financial\BankStatement\BankReconciliationQualityService;
 use App\Services\Financial\BankStatement\GetBankReconciliationSuggestions;
 use App\Services\Financial\BankStatement\SearchBankReconciliationCandidates;
+use App\Support\Financial\Money;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Field;
 use Filament\Support\Components\Attributes\ExposedLivewireMethod;
@@ -32,7 +37,7 @@ class BankReconciliationWorkbench extends Field
         return [
             'account' => $first?->financialAccount?->name,
             'inflow' => $first?->isInflow(),
-            'total_cents' => (int) $this->statementLines->sum(fn ($line) => round((float) $line->amount * 100)),
+            'total_cents' => Money::sum($this->statementLines, 'amount'),
             'valid' => $this->statementLines->isNotEmpty() && $this->statementLines->every(fn ($line) => (int) $line->company_id === (int) Filament::getTenant()->id
                 && $line->financial_account_id === $first->financial_account_id
                 && $line->direction() === $first->direction()
@@ -41,8 +46,20 @@ class BankReconciliationWorkbench extends Field
             'lines' => $this->statementLines->map(fn (BankStatementLine $line) => [
                 'id' => $line->id, 'description' => $line->description,
                 'date' => $line->transaction_date?->format('d/m/Y'),
-                'amount_cents' => (int) round((float) $line->amount * 100),
+                'amount_cents' => Money::stored($line),
             ])->values()->all(),
+        ];
+    }
+
+    public function getRetainedExpenseOptions(): array
+    {
+        $companyId = Filament::getTenant()->id;
+
+        return [
+            'categories' => FinancialCategory::optionsForCompany($companyId, 'payable'),
+            'partners' => Partner::whereHas('companies', fn ($query) => $query->where('companies.id', $companyId)->where('company_partner.is_active', true))->orderBy('name')->pluck('name', 'id')->all(),
+            'cost_centers' => CostCenter::where('company_id', $companyId)->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all(),
+            'result_centers' => ResultCenter::where('company_id', $companyId)->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all(),
         ];
     }
 

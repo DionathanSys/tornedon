@@ -18,6 +18,7 @@ class BankStatementCandidateEligibilityService
         $this->assertDirection($line);
 
         return CashMovement::query()
+            ->effective()
             ->where('company_id', $line->company_id)
             ->where('financial_account_id', $line->financial_account_id)
             ->where('direction', $line->direction()->value)

@@ -6,7 +6,6 @@ use App\DTO\Financial\DreLineResultDTO;
 use App\DTO\Financial\DreReportDTO;
 use App\Enum\AccountPayable\Status as PayableStatus;
 use App\Enum\AccountReceivable\Status as ReceivableStatus;
-use App\Enum\Financial\CashMovementDirection;
 use App\Enum\Financial\DreDisplaySign;
 use App\Enum\Financial\DreLineType;
 use App\Enum\Financial\DreMode;
@@ -16,6 +15,8 @@ use App\Models\AccountPayableInstallmentPayment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\DreLine;
 use App\Models\DreModel;
+use App\Support\Financial\GroupedFinancialEffect;
+use App\Support\Financial\Money;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +57,7 @@ class GenerateDreReportService
             ->with(['chartAccounts', 'children'])
             ->get();
         $amountsByLine = $this->amountsByLine($lines, $companyIds, $start->toDateString(), $end->toDateString(), $mode, $view, $costCenterId, $resultCenterId);
-        $revenueBase = max(abs((float) $amountsByLine->filter(fn (float $amount): bool => $amount > 0)->sum()), 0.0);
+        $revenueBase = abs((int) $amountsByLine->filter(fn (int $amount): bool => $amount > 0)->sum());
         $tree = $this->buildLineTree($lines, $amountsByLine, $revenueBase);
 
         return new DreReportDTO(
@@ -66,7 +67,7 @@ class GenerateDreReportService
             endDate: $end,
             mode: $mode->value,
             view: $view->value,
-            revenueBase: $revenueBase,
+            revenueBase: (float) Money::decimal($revenueBase),
             lines: $tree,
         );
     }
@@ -74,7 +75,7 @@ class GenerateDreReportService
     /**
      * @param  Collection<int, DreLine>  $lines
      * @param  array<int, int>  $companyIds
-     * @return Collection<int, float>
+     * @return Collection<int, int> Amounts in cents.
      */
     private function amountsByLine(Collection $lines, array $companyIds, string $startDate, string $endDate, DreMode $mode, DreView $view, ?int $costCenterId, ?int $resultCenterId): Collection
     {
@@ -102,12 +103,12 @@ class GenerateDreReportService
                 return [$line->id => -$this->receiptDiscountAmount($mappedIds, $companyIds, $startDate, $endDate, $mode, $view, $costCenterId, $resultCenterId)];
             }
             if ($line->line_type !== DreLineType::ACCOUNT_GROUP) {
-                return [$line->id => 0.0];
+                return [$line->id => 0];
             }
 
             $accountIds = $this->lineChartAccountIds($line);
             if ($accountIds === []) {
-                return [$line->id => 0.0];
+                return [$line->id => 0];
             }
 
             $amount = $mode === DreMode::CASH
@@ -121,20 +122,21 @@ class GenerateDreReportService
 
             $operation = $line->operation instanceof DreOperation ? $line->operation : DreOperation::ADD;
 
-            return [$line->id => round($amount * $operation->multiplier(), 2)];
+            return [$line->id => $amount * $operation->multiplier()];
         });
     }
 
-    private function receiptDiscountAmount(array $accountIds, array $companyIds, string $startDate, string $endDate, DreMode $mode, DreView $view, ?int $costCenterId, ?int $resultCenterId): float
+    private function receiptDiscountAmount(array $accountIds, array $companyIds, string $startDate, string $endDate, DreMode $mode, DreView $view, ?int $costCenterId, ?int $resultCenterId): int
     {
         if ($view === DreView::PROJECTED_ONLY || $accountIds === []) {
-            return 0.0;
+            return 0;
         }
 
         $query = DB::table('account_receivable_installment_payments as p')
             ->join('account_receivable_installments as i', 'i.id', '=', 'p.account_receivable_installment_id')
             ->whereIn('i.company_id', $companyIds)
             ->whereColumn('p.company_id', 'i.company_id');
+        GroupedFinancialEffect::effective($query, 'p.id', 'receivable_payment_id');
 
         if ($mode === DreMode::COMPETENCE) {
             // A returned payment no longer grants the discount. Follow the installment's competence.
@@ -161,10 +163,11 @@ class GenerateDreReportService
                 ->when($costCenterId, fn ($q) => $q->where('m.cost_center_id', $costCenterId))
                 ->when($resultCenterId, fn ($q) => $q->where('m.result_center_id', $resultCenterId))
                 ->whereBetween('m.transaction_date', [$startDate, $endDate])
-                ->sum(DB::raw("CASE WHEN p.amount > 0 THEN p.discount_amount * (1.0 * m.amount / p.amount) * CASE WHEN m.direction = 'inflow' THEN 1 ELSE -1 END ELSE 0 END"));
+                ->get(['p.discount_amount', 'p.amount as payment_amount', 'm.amount as movement_amount', 'm.direction'])
+                ->sum(fn ($row) => Money::proportion((int) $row->discount_amount, (int) $row->movement_amount, (int) $row->payment_amount) * ($row->direction === 'inflow' ? 1 : -1));
         }
 
-        return round((float) $amount / 100, 2);
+        return (int) $amount;
     }
 
     /**
@@ -193,7 +196,7 @@ class GenerateDreReportService
      * @param  array<int, int>  $accountIds
      * @param  array<int, int>  $companyIds
      */
-    private function competenceAmount(array $accountIds, array $companyIds, string $startDate, string $endDate, DreView $view, ?int $costCenterId, ?int $resultCenterId): float
+    private function competenceAmount(array $accountIds, array $companyIds, string $startDate, string $endDate, DreView $view, ?int $costCenterId, ?int $resultCenterId): int
     {
         $payables = DB::table('account_payable_installments')
             ->when($view === DreView::PROJECTED_ONLY, fn ($query) => $query->whereNull('ignored_at'))
@@ -228,19 +231,20 @@ class GenerateDreReportService
             });
 
         $manualMovements = $view === DreView::PROJECTED_ONLY
-            ? 0.0
+            ? 0
             : $this->manualCashMovementAmount($accountIds, $companyIds, 'COALESCE(competence_date, transaction_date)', $startDate, $endDate, $costCenterId, $resultCenterId);
 
-        return round((((float) $receivables - (float) $payables) / 100) + $manualMovements, 2);
+        return (int) $receivables - (int) $payables + $manualMovements;
     }
 
     /**
      * @param  array<int, int>  $accountIds
      * @param  array<int, int>  $companyIds
      */
-    private function cashAmount(array $accountIds, array $companyIds, string $startDate, string $endDate, DreView $view, ?int $costCenterId, ?int $resultCenterId): float
+    private function cashAmount(array $accountIds, array $companyIds, string $startDate, string $endDate, DreView $view, ?int $costCenterId, ?int $resultCenterId): int
     {
         $movements = DB::table('cash_movements')
+            ->tap(fn ($query) => GroupedFinancialEffect::effective($query, 'cash_movements.id', 'cash_movement_id'))
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
             ->whereBetween('transaction_date', [$startDate, $endDate])
@@ -254,11 +258,10 @@ class GenerateDreReportService
                     ->orWhere('origin_type', AccountPayableInstallmentPayment::class)
                     ->orWhere('origin_type', AccountReceivableInstallmentPayment::class);
             })
-            ->get(['direction', 'amount'])
-            ->sum(fn (object $movement): float => ((string) $movement->direction === CashMovementDirection::INFLOW->value ? 1 : -1) * ((float) $movement->amount / 100));
+            ->sum(DB::raw("CASE WHEN direction = 'inflow' THEN amount ELSE -amount END"));
 
         if ($view === DreView::REALIZED) {
-            return round((float) $movements, 2);
+            return (int) $movements;
         }
 
         $openPayables = DB::table('account_payable_installments')
@@ -281,16 +284,17 @@ class GenerateDreReportService
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))
             ->sum('balance_amount');
 
-        return round(($view === DreView::PROJECTED_ONLY ? 0.0 : (float) $movements) + (((float) $openReceivables - (float) $openPayables) / 100), 2);
+        return ($view === DreView::PROJECTED_ONLY ? 0 : (int) $movements) + (int) $openReceivables - (int) $openPayables;
     }
 
     /**
      * @param  array<int, int>  $accountIds
      * @param  array<int, int>  $companyIds
      */
-    private function manualCashMovementAmount(array $accountIds, array $companyIds, string $dateColumn, string $startDate, string $endDate, ?int $costCenterId, ?int $resultCenterId): float
+    private function manualCashMovementAmount(array $accountIds, array $companyIds, string $dateColumn, string $startDate, string $endDate, ?int $costCenterId, ?int $resultCenterId): int
     {
-        return round((float) DB::table('cash_movements')
+        return (int) DB::table('cash_movements')
+            ->tap(fn ($query) => GroupedFinancialEffect::effective($query, 'cash_movements.id', 'cash_movement_id'))
             ->whereIn('company_id', $companyIds)
             ->whereIn('chart_account_id', $accountIds)
             ->where(function ($query): void {
@@ -300,30 +304,29 @@ class GenerateDreReportService
             ->whereBetween(DB::raw($dateColumn), [$startDate, $endDate])
             ->when($costCenterId, fn ($query) => $query->where('cost_center_id', $costCenterId))
             ->when($resultCenterId, fn ($query) => $query->where('result_center_id', $resultCenterId))
-            ->get(['direction', 'amount'])
-            ->sum(fn (object $movement): float => ((string) $movement->direction === CashMovementDirection::INFLOW->value ? 1 : -1) * ((float) $movement->amount / 100)), 2);
+            ->sum(DB::raw("CASE WHEN direction = 'inflow' THEN amount ELSE -amount END"));
     }
 
     /**
      * @param  Collection<int, DreLine>  $lines
-     * @param  Collection<int, float>  $amountsByLine
+     * @param  Collection<int, int>  $amountsByLine
      * @return Collection<int, DreLineResultDTO>
      */
-    private function buildLineTree(Collection $lines, Collection $amountsByLine, float $revenueBase, ?int $parentId = null, int $depth = 0): Collection
+    private function buildLineTree(Collection $lines, Collection $amountsByLine, int $revenueBase, ?int $parentId = null, int $depth = 0): Collection
     {
-        $runningAmount = 0.0;
+        $runningAmount = 0;
 
         return $lines
             ->where('parent_id', $parentId)
             ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
             ->map(function (DreLine $line) use ($lines, $amountsByLine, $revenueBase, $depth, &$runningAmount): DreLineResultDTO {
                 $children = $this->buildLineTree($lines, $amountsByLine, $revenueBase, (int) $line->id, $depth + 1);
-                $ownAmount = (float) ($amountsByLine->get($line->id) ?? 0);
+                $ownAmount = (int) ($amountsByLine->get($line->id) ?? 0);
                 $amount = in_array($line->line_type, [DreLineType::SUBTOTAL, DreLineType::HEADER], true)
-                    ? round((float) $children->reject(fn ($child) => $child->lineType === DreLineType::RUNNING_TOTAL->value)->sum('amount'), 2)
+                    ? (int) $children->reject(fn ($child) => $child->lineType === DreLineType::RUNNING_TOTAL->value)->sum(fn ($child) => Money::cents($child->amount))
                     : $ownAmount;
                 if ($line->line_type === DreLineType::RUNNING_TOTAL) {
-                    $amount = round($runningAmount, 2);
+                    $amount = $runningAmount;
                 } else {
                     $runningAmount += $amount;
                 }
@@ -333,7 +336,7 @@ class GenerateDreReportService
                     name: $line->name,
                     code: $line->code,
                     lineType: $line->line_type?->value ?? '',
-                    amount: $amount,
+                    amount: (float) Money::decimal($amount),
                     percentage: $revenueBase > 0 ? round(($amount / $revenueBase) * 100, 2) : null,
                     depth: $depth,
                     displayDepth: max(0, (int) ($line->display_depth ?? $depth)),

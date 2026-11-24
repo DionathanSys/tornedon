@@ -23,7 +23,9 @@ use App\Support\Financial\AccountEditGuard;
 use App\Support\Financial\ExplicitPayableInstallments;
 use App\Support\Financial\InstallmentDescription;
 use App\Support\Financial\InstallmentPaymentGuard;
+use App\Support\Financial\InstallmentPaymentTotals;
 use App\Support\Financial\InstallmentSchedule;
+use App\Support\Financial\Money;
 use App\Traits\HandlesServiceResponse;
 use App\Traits\RunsFinancialTransactions;
 use Carbon\Carbon;
@@ -165,7 +167,7 @@ class AccountPayableService
         }
 
         $amountMode = (string) ($data['amount_input_mode'] ?? 'total');
-        $inputAmountInCents = (int) round(((float) ($data['due_amount'] ?? 0)) * 100);
+        $inputAmountInCents = Money::cents($data['due_amount'] ?? 0);
 
         if ($installmentCount === 1) {
             $data['sequence_number'] = $this->formatSequenceNumber(1);
@@ -211,7 +213,7 @@ class AccountPayableService
      */
     private function buildHeaderData(array $data, array $installments): array
     {
-        $totalAmount = round((float) array_sum(array_column($installments, 'due_amount')), 2);
+        $totalAmount = Money::decimal(array_sum(array_map(fn ($item) => Money::cents($item['due_amount']), $installments)));
 
         return [
             ...$data,
@@ -249,20 +251,19 @@ class AccountPayableService
         return $counterpartyName === '' ? null : $counterpartyName;
     }
 
-    private function recalculatePayableInstallment(AccountPayableInstallment $installment): void
+    public function recalculatePayableInstallment(AccountPayableInstallment $installment): void
     {
         InstallmentPaymentGuard::validateExistingPayments($installment, $installment->accountPayable);
         $installment->loadMissing('payments', 'accountPayable');
 
-        $paid = round((float) $installment->payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->amount), 2);
-        $interest = round((float) $installment->payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->interest_amount), 2);
-        $fine = round((float) $installment->payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->fine_amount), 2);
-        $discount = round((float) $installment->payments->sum(fn (AccountPayableInstallmentPayment $payment) => (float) $payment->discount_amount), 2);
-        $dueAmount = round((float) $installment->original_amount + $interest + $fine - $discount, 2);
-        $balance = max(round($dueAmount - $paid, 2), 0);
-        $status = $balance <= 0
-            ? Status::PAID->value
-            : ($paid > 0 ? Status::PARTIALLY_PAID->value : Status::PENDING->value);
+        $totals = InstallmentPaymentTotals::calculate($installment, false);
+        $paid = $totals['paid'];
+        $interest = $totals['interest'];
+        $fine = $totals['fine'];
+        $discount = $totals['discount'];
+        $dueAmount = $totals['due_amount'];
+        $balance = $totals['balance'];
+        $status = $totals['status'];
 
         $installment->update([
             'interest_amount' => $interest,
@@ -284,7 +285,7 @@ class AccountPayableService
      */
     private function buildInstallmentRecordData(array $installmentData, AccountPayable $accountPayable): array
     {
-        $amount = (float) ($installmentData['due_amount'] ?? 0);
+        $amount = Money::decimal(Money::cents($installmentData['due_amount'] ?? 0));
         $companyId = (int) $accountPayable->company_id;
         $categoryId = $this->classificationService->resolveInstallmentCategoryId(
             $installmentData['financial_category_id'] ?? null,
@@ -423,7 +424,7 @@ class AccountPayableService
 
     public function registerInstallmentPayment(
         AccountPayableInstallment $installment,
-        float $amount,
+        float|string $amount,
         string $paymentDate,
         array $extra = []
     ): ?AccountPayableInstallmentPayment {
@@ -444,9 +445,9 @@ class AccountPayableService
                     'payment_date' => $paymentDate,
                     'origin' => $extra['origin'] ?? 'manual',
                     'amount' => $amount,
-                    'interest_amount' => (float) ($extra['interest_amount'] ?? 0),
-                    'fine_amount' => (float) ($extra['fine_amount'] ?? 0),
-                    'discount_amount' => (float) ($extra['discount_amount'] ?? 0),
+                    'interest_amount' => $extra['interest_amount'] ?? '0.00',
+                    'fine_amount' => $extra['fine_amount'] ?? '0.00',
+                    'discount_amount' => $extra['discount_amount'] ?? '0.00',
                     'bank_account_id' => $extra['bank_account_id'] ?? null,
                     'financial_account_id' => $extra['financial_account_id'] ?? null,
                     'description' => $extra['description']
@@ -899,7 +900,7 @@ class AccountPayableService
 
                     return true;
                 }
-                if ($accountPayable->paid || (float) $accountPayable->paid_amount > 0 || $accountPayable->installments()->whereHas('payments')->exists()) {
+                if ($accountPayable->paid || (float) $accountPayable->paid_amount > 0 || $accountPayable->installments()->whereHas('payments', fn ($query) => $query->effective()->whereColumn('amount', '>', 'returned_amount'))->exists()) {
                     throw ValidationException::withMessages(['payments' => ['A conta possui pagamentos. Trate o estorno ou a compensação antes de cancelar.']]);
                 }
 

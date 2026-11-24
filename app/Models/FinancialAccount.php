@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\MoneyCast;
 use App\Enum\Financial\FinancialAccountType;
+use App\Support\Financial\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -108,11 +109,12 @@ class FinancialAccount extends Model
 
     public function getCurrentBalanceAttribute(): float
     {
-        $movementBalance = (float) $this->cashMovements()
-            ->get(['amount', 'direction'])
-            ->sum(fn (CashMovement $movement) => $movement->signed_amount);
+        $balance = Money::stored($this, 'opening_balance');
+        foreach ($this->cashMovements()->effective()->get(['amount', 'direction']) as $movement) {
+            $balance += Money::stored($movement) * $movement->direction->multiplier();
+        }
 
-        return round((float) $this->opening_balance + $movementBalance, 2);
+        return (float) Money::decimal($balance);
     }
 
     public function getDisplayNameAttribute(): string

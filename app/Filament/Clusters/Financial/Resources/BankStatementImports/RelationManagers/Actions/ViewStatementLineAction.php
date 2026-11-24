@@ -44,9 +44,19 @@ final class ViewStatementLineAction
                     TextEntry::make('needs_review_at')->label('Revisão solicitada em')->dateTime('d/m/Y H:i')->placeholder('Sem revisão'),
                     TextEntry::make('review_reason')->label('Motivo da revisão')->placeholder('Sem revisão')->columnSpanFull(),
                     TextEntry::make('linked_movements')->label('Movimentos vinculados')->state(fn (BankStatementLine $record): string => $record->bank_reconciliation_group_id
-                        ? $record->cashMovements->map(fn ($movement) => '#'.$movement->id.' — '.$movement->description)->implode('; ')
+                        ? $record->cashMovements->map(fn ($movement) => '#'.$movement->id.' — '.($movement->direction?->value === 'inflow' ? '+' : '−').' R$ '.number_format($movement->amount, 2, ',', '.').' — '.$movement->description)->implode('; ')
                         : ($record->cashMovement ? '#'.$record->cashMovement->id.' — '.$record->cashMovement->description : 'Nenhum'))->columnSpanFull(),
                 ]),
+                Section::make('Recebimento com despesas retidas')
+                    ->visible(fn (BankStatementLine $record): bool => $record->reconciliationGroup?->operation_type === 'retained_receipt')
+                    ->columns(3)->schema([
+                        TextEntry::make('reconciliationGroup.id')->label('Operação'),
+                        TextEntry::make('reconciliationGroup.status')->label('Situação da operação'),
+                        TextEntry::make('retained_gross')->label('Recebimento bruto')->state(fn (BankStatementLine $record) => ($record->reconciliationGroup?->metadata['gross_cents'] ?? 0) / 100)->money('BRL'),
+                        TextEntry::make('retained_fees')->label('Despesas retidas')->state(fn (BankStatementLine $record) => ($record->reconciliationGroup?->metadata['expenses_cents'] ?? 0) / 100)->money('BRL'),
+                        TextEntry::make('retained_net')->label('Líquido da operação')->state(fn (BankStatementLine $record) => ($record->reconciliationGroup?->metadata['net_cents'] ?? 0) / 100)->money('BRL'),
+                        TextEntry::make('retained_documents')->label('Documentos das despesas')->state(fn (BankStatementLine $record) => $record->reconciliationGroup?->items()->where('role', 'retained_expense')->with('payablePayment.installment.accountPayable')->get()->map(fn ($item) => 'Conta a pagar #'.$item->payablePayment->installment->account_payable_id.' — '.$item->payablePayment->installment->financialCategory?->full_name.' — '.$item->payablePayment->installment->accountPayable->counterparty_label)->implode('; '))->columnSpanFull(),
+                    ]),
                 Section::make('Dados técnicos gravados')->collapsible()->collapsed()->columns(2)->schema([
                     TextEntry::make('id')->label('ID do registro'),
                     TextEntry::make('bank_statement_import_id')->label('ID da importação'),

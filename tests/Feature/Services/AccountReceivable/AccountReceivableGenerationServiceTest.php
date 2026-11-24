@@ -183,15 +183,23 @@ class AccountReceivableGenerationServiceTest extends TestCase
             'company_id' => $this->company->id,
             'invoice_number' => (string) random_int(100000, 999999),
             'invoice_date' => $invoiceDate,
-            'status' => InvoiceStatus::CONFIRMED->value,
-            'pending' => false,
-            'confirmed' => true,
+            'status' => InvoiceStatus::PENDING->value,
+            'pending' => true,
+            'confirmed' => false,
             'created_by' => $this->user->id,
         ]);
     }
 
     private function createAuthorizedNfeForInvoice(Invoice $invoice): FiscalDocument
     {
+        // The legacy fiscal callback is exercised on a confirmed invoice, but its
+        // commercial composition must have been attached while it was a draft.
+        $invoice->update([
+            'status' => InvoiceStatus::CONFIRMED,
+            'confirmed_by' => $this->user->id,
+            'confirmed_at' => now(),
+        ]);
+
         return FiscalDocument::create([
             'customer_id' => $invoice->customer_id,
             'company_id' => $invoice->company_id,

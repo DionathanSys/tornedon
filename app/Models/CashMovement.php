@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Casts\MoneyCast;
 use App\Enum\Financial\CashMovementDirection;
 use App\Models\Concerns\HasAttachments;
+use App\Models\Concerns\HasGroupedFinancialEffect;
+use App\Support\Financial\Money;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Collection;
@@ -16,6 +18,7 @@ use Illuminate\Support\Str;
 class CashMovement extends Model
 {
     use HasAttachments;
+    use HasGroupedFinancialEffect;
 
     protected $fillable = [
         'company_id',
@@ -367,7 +370,7 @@ class CashMovement extends Model
     protected function amount(): Attribute
     {
         return Attribute::make(
-            set: fn (mixed $value) => (float) abs((float) $value) * 100,
+            set: fn (mixed $value) => abs(Money::cents($value)),
         );
     }
 }

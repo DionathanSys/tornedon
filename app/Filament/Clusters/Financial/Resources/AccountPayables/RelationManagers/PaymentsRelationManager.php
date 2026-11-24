@@ -49,6 +49,10 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Data')
                     ->date('d/m/Y')
                     ->sortable(),
+                TextColumn::make('reconciliationComponent.bank_reconciliation_group_id')
+                    ->label('Recebimento de origem')
+                    ->formatStateUsing(fn ($state, $record) => '#'.$state.' · '.$record->reconciliationComponent?->group?->status)
+                    ->placeholder('-')->toggleable(),
                 TextColumn::make('amount')
                     ->label('Valor Pago')
                     ->money('BRL')

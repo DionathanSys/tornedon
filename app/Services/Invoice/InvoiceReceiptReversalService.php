@@ -10,6 +10,7 @@ use App\Models\CashMovement;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
 use App\Services\Financial\CashMovementService;
+use App\Support\Financial\GroupedFinancialEffect;
 use App\Support\Financial\InstallmentPaymentGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,6 +19,7 @@ class InvoiceReceiptReversalService
 {
     public function reverseManual(AccountReceivableInstallmentPayment $payment, ?int $userId): void
     {
+        GroupedFinancialEffect::assertMutable($payment);
         DB::transaction(function () use ($payment, $userId): void {
             $installment = InstallmentPaymentGuard::lock($payment->installment);
             $payment = AccountReceivableInstallmentPayment::where('company_id', $installment->company_id)->lockForUpdate()->findOrFail($payment->id);
@@ -45,7 +47,7 @@ class InvoiceReceiptReversalService
     public function blockers(AccountReceivable $receivable): array
     {
         $errors = [];
-        $receivable->load('installments.payments');
+        $receivable->load(['installments.payments' => fn ($query) => $query->effective()]);
         foreach ($receivable->installments as $installment) {
             foreach ([$installment->bankSlips()->withTrashed()->get(), $installment->pixCharges()->withTrashed()->get()] as $charges) {
                 foreach ($charges as $charge) {

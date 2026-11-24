@@ -62,7 +62,7 @@ class StatsOverview extends BaseStatsOverviewWidget
         $previousMonthStart = now()->subMonthNoOverflow()->startOfMonth();
         $previousMonthEnd = now()->subMonthNoOverflow()->endOfMonth();
 
-        $cashIn = CashMovement::query()
+        $cashIn = CashMovement::query()->effective()
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::INFLOW->value)
             ->whereNull('reversal_of_id')
@@ -70,7 +70,7 @@ class StatsOverview extends BaseStatsOverviewWidget
             ->selectRaw('COALESCE(SUM(amount), 0) as total')
             ->value('total');
 
-        $cashOut = CashMovement::query()
+        $cashOut = CashMovement::query()->effective()
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::OUTFLOW->value)
             ->whereNull('reversal_of_id')
@@ -78,14 +78,14 @@ class StatsOverview extends BaseStatsOverviewWidget
             ->selectRaw('COALESCE(SUM(amount), 0) as total')
             ->value('total');
 
-        $totalCashIn = CashMovement::query()
+        $totalCashIn = CashMovement::query()->effective()
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::INFLOW->value)
             ->whereNull('reversal_of_id')
             ->selectRaw('COALESCE(SUM(amount), 0) as total')
             ->value('total');
 
-        $totalCashOut = CashMovement::query()
+        $totalCashOut = CashMovement::query()->effective()
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::OUTFLOW->value)
             ->whereNull('reversal_of_id')
@@ -94,7 +94,7 @@ class StatsOverview extends BaseStatsOverviewWidget
 
         $generalBalance = (float) $totalCashIn - (float) $totalCashOut;
 
-        $previousCashIn = CashMovement::query()
+        $previousCashIn = CashMovement::query()->effective()
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::INFLOW->value)
             ->whereNull('reversal_of_id')
@@ -102,7 +102,7 @@ class StatsOverview extends BaseStatsOverviewWidget
             ->selectRaw('COALESCE(SUM(amount), 0) as total')
             ->value('total');
 
-        $previousCashOut = CashMovement::query()
+        $previousCashOut = CashMovement::query()->effective()
             ->where('company_id', $tenantId)
             ->where('direction', CashMovementDirection::OUTFLOW->value)
             ->whereNull('reversal_of_id')

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Access\UserAccessService;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Audit\AuditRecorder;
+use App\Support\Financial\GroupedFinancialEffect;
 use App\Support\Financial\InstallmentPaymentGuard;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\DB;
@@ -134,6 +135,7 @@ final class BankingResolutionService
             $installment = InstallmentPaymentGuard::lock($charge->installment);
             $field = $charge instanceof BankSlip ? 'bank_slip_id' : 'pix_charge_id';
             $payment = $installment->payments()->where('company_id', $event->company_id)->where($field, $charge->id)->lockForUpdate()->findOrFail($paymentId);
+            GroupedFinancialEffect::assertMutable($payment);
             if (! $payment->bank_confirmed_at || (float) $payment->returned_amount > 0) {
                 throw ValidationException::withMessages(['payment_id' => ['Recebimento não confirmado ou já devolvido.']]);
             }

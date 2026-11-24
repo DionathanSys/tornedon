@@ -97,6 +97,11 @@
     .brw-remove { padding: 3px; color: var(--brw-muted); background: none; }
     .brw-remove:hover { color: #dc2626; }
     .brw-effect { padding: 10px 12px; background: var(--brw-soft); color: var(--brw-muted); border-radius: 7px; font-size: 11px; margin-top: 10px; }
+    .brw-retained-expenses { margin-top: 12px; padding: 12px; border: 1px solid var(--brw-border); border-radius: 8px; }
+    .brw-retained-entry { border-top: 1px solid var(--brw-border); margin-top: 12px; padding-bottom: 10px; }
+    .brw-retained-expenses .brw-adjustment-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .brw-retained-expenses input, .brw-retained-expenses select { width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--brw-border); border-radius: 6px; background: var(--brw-bg); color: var(--brw-text); font-size: 12px; }
+    .brw-retained-expenses select:focus-visible { outline: 2px solid var(--brw-accent); outline-offset: 2px; }
     .brw-reason { margin-top: 16px; border: 1px solid #f59e0b; padding: 14px; border-radius: 10px; background: color-mix(in srgb, #f59e0b 5%, var(--brw-bg)); }
     .brw-reason label { display: block; font-weight: 600; font-size: 12px; }
     .brw-reason p { font-size: 11px; color: var(--brw-muted); margin: 5px 0 10px; }

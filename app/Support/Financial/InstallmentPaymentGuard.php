@@ -22,13 +22,17 @@ final class InstallmentPaymentGuard
     /** The installment must be locked by the caller for the entire operation. */
     public static function validateExistingPayments(Model $installment, Model $account): void
     {
-        $payment = $installment->payments()->first();
+        $payment = $installment->payments()->effective()->lockForUpdate()->first();
         if ($payment) {
-            self::validate($installment, $account, (float) $payment->amount - (float) $payment->returned_amount, $payment->only(['interest_amount', 'fine_amount', 'discount_amount']), $payment->id, true);
+            $charges = [];
+            foreach (['interest_amount', 'fine_amount', 'discount_amount'] as $field) {
+                $charges[$field] = Money::decimal(Money::stored($payment, 'returned_amount') < Money::stored($payment) ? Money::stored($payment, $field) : 0);
+            }
+            self::validate($installment, $account, Money::decimal(Money::stored($payment) - Money::stored($payment, 'returned_amount')), $charges, $payment->id, true);
         }
     }
 
-    public static function validate(Model $installment, Model $account, float $amount, array $charges, ?int $replacedPaymentId = null, bool $allowZero = false): void
+    public static function validate(Model $installment, Model $account, float|string $amount, array $charges, ?int $replacedPaymentId = null, bool $allowZero = false): void
     {
         if ($installment->ignored_at && ! $allowZero) {
             throw ValidationException::withMessages(['ignored_at' => ['Restaure a consideração da parcela antes de registrar ou alterar uma baixa.']]);
@@ -49,16 +53,16 @@ final class InstallmentPaymentGuard
             throw ValidationException::withMessages(['amount' => ['O valor deve ser de pelo menos R$ 0,01.']]);
         }
 
-        $due = self::cents((float) $installment->original_amount, 'original_amount');
+        $due = Money::stored($installment, 'original_amount');
         foreach (['interest_amount' => 1, 'fine_amount' => 1, 'discount_amount' => -1] as $field => $sign) {
-            $due += $sign * self::cents((float) ($charges[$field] ?? 0), $field);
+            $due += $sign * self::cents($charges[$field] ?? 0, $field);
         }
 
-        foreach ($installment->payments()->when($replacedPaymentId, fn ($query) => $query->whereKeyNot($replacedPaymentId))->get() as $payment) {
-            $paid += self::cents((float) $payment->amount - (float) $payment->returned_amount, 'amount');
-            $due += self::cents((float) $payment->interest_amount, 'interest_amount')
-                + self::cents((float) $payment->fine_amount, 'fine_amount')
-                - self::cents((float) $payment->discount_amount, 'discount_amount');
+        foreach ($installment->payments()->effective()->when($replacedPaymentId, fn ($query) => $query->whereKeyNot($replacedPaymentId))->lockForUpdate()->get() as $payment) {
+            $paid += Money::stored($payment) - Money::stored($payment, 'returned_amount');
+            if (Money::stored($payment, 'returned_amount') < Money::stored($payment)) {
+                $due += Money::stored($payment, 'interest_amount') + Money::stored($payment, 'fine_amount') - Money::stored($payment, 'discount_amount');
+            }
         }
 
         if ($paid > $due) {
@@ -68,12 +72,13 @@ final class InstallmentPaymentGuard
         }
     }
 
-    private static function cents(float $value, string $field): int
+    private static function cents(mixed $value, string $field): int
     {
-        if (! is_finite($value) || $value < 0) {
+        $cents = Money::cents($value);
+        if ($cents < 0) {
             throw ValidationException::withMessages([$field => ['Informe um valor válido e não negativo.']]);
         }
 
-        return (int) round($value * 100);
+        return $cents;
     }
 }

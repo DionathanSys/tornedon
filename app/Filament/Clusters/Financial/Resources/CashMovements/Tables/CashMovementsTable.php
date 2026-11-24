@@ -84,6 +84,10 @@ class CashMovementsTable
                 TextColumn::make('origin_label')
                     ->label('Origem')
                     ->toggleable(),
+                TextColumn::make('reconciliationComponent.bank_reconciliation_group_id')
+                    ->label('Operação de recebimento')
+                    ->formatStateUsing(fn ($state, CashMovement $record) => '#'.$state.' · '.$record->reconciliationComponent?->group?->status)
+                    ->placeholder('-')->toggleable(),
                 TextColumn::make('transfer_group_id')
                     ->label('Vinculo')
                     ->formatStateUsing(fn ($state, $record): string => $record->isTransfer() ? 'Transferencia' : '-')

@@ -5,6 +5,7 @@ namespace App\Services\AccountPayable\Actions\Installment;
 use App\Enum\AccountPayable\Status;
 use App\Models\AccountPayable;
 use App\Models\AccountPayableInstallment;
+use App\Support\Financial\Money;
 use App\Traits\HandlesActionResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Log;
@@ -32,8 +33,8 @@ class SyncAccountPayableStatusFromInstallmentsAction
             }
             $this->accountPayable->load('installments');
 
-            $totalDue = round((float) $this->accountPayable->installments->sum('due_amount'), 2);
-            $totalPaid = round((float) $this->accountPayable->installments->sum('paid_amount'), 2);
+            $totalDue = Money::sum($this->accountPayable->installments, 'due_amount');
+            $totalPaid = Money::sum($this->accountPayable->installments, 'paid_amount');
             $hasOverdue = $this->accountPayable->installments
                 ->contains(fn (AccountPayableInstallment $installment) => $installment->status !== Status::CANCELLED && $installment->balance_amount > 0 && $installment->due_date?->lt(today()));
 
@@ -47,11 +48,11 @@ class SyncAccountPayableStatusFromInstallmentsAction
             $this->accountPayable->update([
                 'status' => $status,
                 'paid' => $status === Status::PAID->value,
-                'paid_amount' => $totalPaid,
+                'paid_amount' => Money::decimal($totalPaid),
                 'paid_date' => $status === Status::PAID->value
                     ? $this->accountPayable->installments->max('paid_date')
                     : null,
-                'due_amount' => $totalDue,
+                'due_amount' => Money::decimal($totalDue),
                 'due_date' => $this->accountPayable->installments->min('due_date') ?? $this->accountPayable->due_date,
             ]);
 

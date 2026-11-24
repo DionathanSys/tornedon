@@ -2,12 +2,18 @@
 
 namespace App\Models\Concerns;
 
+use App\Support\Financial\GroupedFinancialEffect;
 use App\Support\Financial\InstallmentPaymentGuard;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 trait ProtectsFinancialHistory
 {
+    protected static function bootProtectsFinancialHistory(): void
+    {
+        static::updating(fn ($model) => GroupedFinancialEffect::assertDocumentMutable($model));
+    }
+
     /** Protect direct model/Filament deletions as well as service calls. */
     public function delete(): ?bool
     {

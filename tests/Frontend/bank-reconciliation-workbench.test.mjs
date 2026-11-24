@@ -18,6 +18,42 @@ function workbench(overrides = {}) {
 
 const record = (id, amount_cents, extra = {}) => ({ id, amount_cents, description: 'Conta ' + id, ...extra });
 
+test('recebimento bruto com retenções fecha pelo líquido sem converter a taxa em desconto', () => {
+    const component = workbench({ idempotencyKey: 'request-1', bank: { valid: true, inflow: true, total_cents: 450000, lines: [{ id: 1, amount_cents: 450000 }] } });
+    component.changeType('retained_receipt');
+    component.toggle(record(10, 460000));
+    assert.equal(component.items[0].gross_cents, 460000);
+    assert.equal(component.canSubmit, false);
+    component.addExpense(component.items[0]);
+    component.updateExpense(component.items[0], 0, 'amount_cents', '100,00');
+    component.updateExpense(component.items[0], 0, 'financial_category_id', '2');
+    component.updateExpense(component.items[0], 0, 'manual_counterparty_name', 'Intermediador');
+    assert.equal(component.selectedTotal, 450000);
+    assert.equal(component.retainedTotal, 10000);
+    assert.equal(component.items[0].discount_amount_cents, 0);
+    assert.equal(Boolean(component.canSubmit), true);
+    assert.equal(component.state.idempotency_key, 'request-1');
+    component.updateExpense(component.items[0], 0, 'amount_cents', '100,001');
+    assert.equal(Boolean(component.canSubmit), false);
+});
+
+test('retenções usam centavos exatos e exigem fechamento por depósito', () => {
+    const component = workbench({ bank: { valid: true, inflow: true, total_cents: 900000, lines: [{ id: 1, amount_cents: 450000 }, { id: 2, amount_cents: 450000 }] } });
+    component.changeType('retained_receipt');
+    component.toggle(record(10, 920000));
+    component.updateAmount(component.entryKey(component.items[0]), '9.200,00');
+    component.addExpense(component.items[0]);
+    component.updateExpense(component.items[0], 0, 'amount_cents', '200,00');
+    component.updateExpense(component.items[0], 0, 'financial_category_id', '2');
+    component.updateExpense(component.items[0], 0, 'supplier_id', '3');
+    assert.equal(component.difference, 0);
+    assert.equal(Boolean(component.canSubmit), false);
+    assert.match(component.status, /cada depósito/);
+    assert.equal(component.parseCents('0,29'), 29);
+    assert.equal(component.parseCents('1.000,01'), 100001);
+    assert.equal(component.parseCents('1e2'), null);
+});
+
 test('seleciona duas contas, limita a segunda ao restante e explica o saldo em aberto', () => {
     const component = workbench();
     component.toggle(record(1, 70000));

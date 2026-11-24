@@ -7,8 +7,10 @@ use App\Filament\Clusters\Financial\Resources\BankStatementImports\BankStatement
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\CreateManualMovementAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\IgnoreStatementLineAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileMultipleAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReconcileRetainedReturnAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\RefreshStatementSuggestionsAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReopenIgnoredStatementLineAction;
+use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReturnRetainedReceiptAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementImports\RelationManagers\Actions\ReverseStatementLineReconciliationAction;
 use App\Filament\Clusters\Financial\Resources\BankStatementLines\Pages\ListBankStatementLines;
 use App\Models\BankStatementLine;
@@ -73,6 +75,8 @@ class BankStatementLineResource extends Resource
                 IgnoreStatementLineAction::make()->iconButton(),
                 ReopenIgnoredStatementLineAction::make()->iconButton(),
                 ReverseStatementLineReconciliationAction::make()->iconButton(),
+                ReturnRetainedReceiptAction::make()->iconButton(),
+                ReconcileRetainedReturnAction::make()->iconButton(),
             ])
             ->toolbarActions([ReconcileMultipleAction::make(bulk: true)]);
     }

@@ -44,7 +44,7 @@ class ReconcileBankStatementGroupService
                     default => CashMovement::class,
                 };
                 $query = $type === 'cash_movement'
-                    ? $model::query()->where('company_id', $companyId)
+                    ? $model::query()->effective()->where('company_id', $companyId)
                     : app(BankStatementCandidateEligibilityService::class)->installmentsForLine($first);
                 $target = $query->lockForUpdate()->find($item['id']);
                 $this->ensure($target !== null, 'Item não encontrado na empresa atual.');
@@ -121,6 +121,16 @@ class ReconcileBankStatementGroupService
 
     public function reverse(BankStatementLine $line, ?int $userId, string $reason): void
     {
+        if (DB::table('bank_reconciliation_groups')->where('id', $line->bank_reconciliation_group_id)->where('company_id', $line->company_id)->where('operation_type', 'retained_receipt_return')->exists()) {
+            app(ReconcileRetainedReceiptReturnService::class)->unlink($line, (int) $userId, $reason);
+
+            return;
+        }
+        if (DB::table('bank_reconciliation_groups')->where('id', $line->bank_reconciliation_group_id)->where('company_id', $line->company_id)->where('operation_type', 'retained_receipt')->exists()) {
+            app(ReceiptWithRetainedExpensesReversalService::class)->correct($line->company_id, $line->bank_reconciliation_group_id, (int) $userId, $reason);
+
+            return;
+        }
         DB::transaction(function () use ($line, $userId, $reason) {
             $this->ensure(filled($reason), 'Informe o motivo do desfazimento.');
             $group = DB::table('bank_reconciliation_groups')->where('id', $line->bank_reconciliation_group_id)->where('company_id', $line->company_id)->lockForUpdate()->first();

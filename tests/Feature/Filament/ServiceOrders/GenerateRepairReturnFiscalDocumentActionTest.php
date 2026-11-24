@@ -17,6 +17,7 @@ use App\Enum\ServiceOrder\State;
 use App\Enum\ServiceOrder\Type;
 use App\Filament\Clusters\Sales\Resources\FiscalDocuments\FiscalDocumentResource as SalesFiscalDocumentResource;
 use App\Filament\Clusters\Sales\Resources\ServiceOrders\Pages\EditServiceOrder;
+use App\Filament\Clusters\Sales\Resources\ServiceOrders\RelationManagers\ReceivedAssetsRelationManager;
 use App\Models\Company;
 use App\Models\Equipment;
 use App\Models\FiscalDocument;
@@ -88,6 +89,16 @@ class GenerateRepairReturnFiscalDocumentActionTest extends TestCase
         Livewire::test(EditServiceOrder::class, ['record' => (string) $serviceOrder->getRouteKey()])
             ->assertSee('Remessa')
             ->assertSee('Itens vinculados')
+            ->assertSee('7001');
+
+        // The embedded relation manager is lazy; inspect its loaded table rather
+        // than expecting its rows in the parent page's initial placeholder.
+        Livewire::test(ReceivedAssetsRelationManager::class, [
+            'ownerRecord' => $serviceOrder,
+            'pageClass' => EditServiceOrder::class,
+        ])
+            ->call('loadTable')
+            ->assertCanSeeTableRecords($serviceOrder->remittanceAssets)
             ->assertSee('Ativos recebidos pela nota de remessa')
             ->assertSee('Notebook Panasonic Toughbook')
             ->assertSee('7001');
