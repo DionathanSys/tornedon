@@ -51,6 +51,7 @@ final class LinkedAccountPayablesSection
                         Actions::make([
                             Action::make('open_account_payable')
                                 ->label('Abrir conta a pagar')
+                                ->link()
                                 ->icon('heroicon-o-arrow-top-right-on-square')
                                 ->url(fn (AccountPayable $record): string => (Filament::getCurrentPanel()?->getId() === 'bpo'
                                     ? BpoAccountPayableResource::class
