@@ -8,7 +8,10 @@ use App\Enum\Payment\Method as PaymentMethod;
 use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Filament\Forms\Components\PaymentConditionFields;
 use App\Models\CompanyCreditCard;
+use App\Models\CostCenter;
+use App\Models\FinancialAccount;
 use App\Models\FiscalDocument;
+use App\Models\ResultCenter;
 use App\Models\SefazDistributionDocument;
 use App\Notification\NotifyService as notify;
 use App\Services\Access\UserAccessService;
@@ -17,6 +20,7 @@ use App\Services\FiscalDocument\Actions\GenerateFiscalEntryCardTransactionAction
 use App\Services\FiscalDocument\Actions\GenerateFiscalEntryPayableAction;
 use App\Services\FiscalDocument\Actions\ProcessFiscalEntryStockAction;
 use App\Support\Financial\FiscalEntryAmount;
+use App\Support\Financial\InstallmentSchedule;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
@@ -41,7 +45,7 @@ final class ConfirmEntryAction
             ->label('Confirmar')
             ->icon(Heroicon::OutlinedCheckCircle)
             ->color('success')
-            ->modalWidth('lg')
+            ->modalWidth('2xl')
             ->modalHeading('Confirmar Documento Fiscal')
             ->modalSubmitActionLabel('Confirmar entrada')->modalCancelActionLabel('Manter pendente')->stickyModalFooter()
             ->modalDescription('Confirme a entrada para gerar as movimentações de estoque. O financeiro pode ser gerado agora como conta a pagar ou como lançamento de cartão corporativo.')
@@ -201,12 +205,15 @@ final class ConfirmEntryAction
                 ->columnSpanFull(),
 
             PaymentConditionFields::make(corporateCard: true)
-                ->visible(fn (Get $get): bool => (bool) $get('generate_account_payable_now') && $get('payment_condition') === Condition::CUSTOM->value),
+                ->visible(fn (Get $get): bool => (bool) $get('generate_account_payable_now')
+                    && $get('payment_method') === PaymentMethod::CREDIT_CARD->value
+                    && $get('payment_condition') === Condition::CUSTOM->value),
             Select::make('payment_condition')->live()
                 ->label('Condição de Pagamento')
                 ->options(Condition::toGroupedSelectArray())
                 ->native(false)
-                ->required(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
+                ->required(fn (Get $get): bool => (bool) $get('generate_account_payable_now')
+                    && $get('payment_method') === PaymentMethod::CREDIT_CARD->value)
                 ->live()
                 ->afterStateUpdated(function (?string $state, Set $set) use ($record): void {
                     if (! $state) {
@@ -217,7 +224,38 @@ final class ConfirmEntryAction
                     $days = $condition->days();
                     $set('due_date', Carbon::parse($baseDate)->addDays($days)->format('Y-m-d'));
                 })
-                ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false))
+                ->visible(fn (Get $get): bool => (bool) $get('generate_account_payable_now')
+                    && $get('payment_method') === PaymentMethod::CREDIT_CARD->value)
+                ->columnSpanFull(),
+
+            TextInput::make('installment_count')
+                ->label('Qtd. Parcelas')
+                ->integer()->minValue(1)->maxValue(999)->default(1)->required()->live()
+                ->visible(fn (Get $get): bool => self::isPayable($get))
+                ->helperText('O valor total da nota será distribuído entre as parcelas.')
+                ->columnSpanFull(),
+            Select::make('installment_due_mode')
+                ->label('Prazo entre Parcelas')
+                ->options([
+                    ...Condition::installmentIntervalOptions(),
+                    InstallmentSchedule::FIXED_DAY_OF_MONTH => 'Dia fixo do mês',
+                    InstallmentSchedule::CUSTOM_INTERVAL_DAYS => 'Intervalo personalizado',
+                ])
+                ->default(Condition::DAYS_30->value)->native(false)->required()->live()
+                ->visible(fn (Get $get): bool => self::isPayable($get) && (int) $get('installment_count') > 1)
+                ->columnSpanFull(),
+            TextInput::make('installment_fixed_day')
+                ->label('Dia Fixo do Mês')
+                ->integer()->minValue(1)->maxValue(31)->required()
+                ->visible(fn (Get $get): bool => self::isPayable($get) && (int) $get('installment_count') > 1
+                    && $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
+                ->helperText('Usado da 2ª parcela em diante. Se o mês não tiver esse dia, será usado o último dia do mês.')
+                ->columnSpanFull(),
+            TextInput::make('installment_interval_days')
+                ->label('Intervalo em Dias')
+                ->integer()->minValue(1)->maxValue(365)->required()
+                ->visible(fn (Get $get): bool => self::isPayable($get) && (int) $get('installment_count') > 1
+                    && $get('installment_due_mode') === InstallmentSchedule::CUSTOM_INTERVAL_DAYS)
                 ->columnSpanFull(),
 
             DatePicker::make('due_date')
@@ -228,8 +266,7 @@ final class ConfirmEntryAction
                 ->helperText('Data base para o primeiro vencimento. As demais parcelas serão calculadas a partir desta data.')
                 ->default(now()->format('Y-m-d'))
                 ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
-                    && ($get('payment_method') ?? null) !== PaymentMethod::CREDIT_CARD->value
-                    && ($get('payment_condition') ?? null) !== Condition::CUSTOM->value)
+                    && ($get('payment_method') ?? null) !== PaymentMethod::CREDIT_CARD->value)
                 ->columnSpanFull(),
 
             DatePicker::make('card_transaction_date')
@@ -257,13 +294,52 @@ final class ConfirmEntryAction
                     && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
                 ->columnSpanFull(),
 
-            TextInput::make('cost_center_id')
-                ->label('Centro de Custo (ID)')
-                ->numeric()
-                ->visible(fn (callable $get): bool => (bool) ($get('generate_account_payable_now') ?? false)
-                    && ($get('payment_method') ?? null) === PaymentMethod::CREDIT_CARD->value)
+            SelectFinancialCategory::make('financial_category_id', 'payable')
+                ->label('Categoria Financeira')
+                ->visible(fn (Get $get): bool => self::isPayable($get))
+                ->helperText('A categoria será aplicada às parcelas geradas para esta conta.')
+                ->columnSpanFull(),
+            Select::make('cost_center_id')
+                ->label('Centro de Custo')
+                ->options(fn (): array => CostCenter::optionsForCompany($record->company_id))
+                ->searchable()->preload()->native(false)
+                ->visible(fn (Get $get): bool => (bool) $get('generate_account_payable_now'))
+                ->columnSpanFull(),
+            Select::make('result_center_id')
+                ->label('Centro de Resultado')
+                ->options(fn (): array => ResultCenter::optionsForCompany($record->company_id))
+                ->searchable()->preload()->native(false)
+                ->visible(fn (Get $get): bool => self::isPayable($get))
+                ->columnSpanFull(),
+            TextInput::make('bank_slip_number')
+                ->label('Nº do Boleto')->maxLength(100)
+                ->visible(fn (Get $get): bool => self::isPayable($get))
+                ->columnSpanFull(),
+            Toggle::make('is_effective')
+                ->label('Efetivada?')->default(false)->live()
+                ->visible(fn (Get $get): bool => self::isPayable($get))
+                ->columnSpanFull(),
+            Toggle::make('auto_register_payment_on_due_date')
+                ->label('Registrar automaticamente o pagamento na data de vencimento?')
+                ->default(false)->live()
+                ->visible(fn (Get $get): bool => self::isPayable($get) && (bool) $get('is_effective'))
+                ->helperText('Um serviço diário verifica as parcelas vencendo hoje e registra a baixa automaticamente.')
+                ->columnSpanFull(),
+            Select::make('auto_payment_financial_account_id')
+                ->label('Conta Financeira do Pagamento Automático')
+                ->options(fn (): array => FinancialAccount::optionsForCompany($record->company_id))
+                ->default(fn (): ?int => FinancialAccount::defaultIdForCompany($record->company_id))
+                ->searchable()->preload()->native(false)->required()
+                ->visible(fn (Get $get): bool => self::isPayable($get) && (bool) $get('is_effective')
+                    && (bool) $get('auto_register_payment_on_due_date'))
                 ->columnSpanFull(),
         ];
+    }
+
+    private static function isPayable(Get $get): bool
+    {
+        return (bool) $get('generate_account_payable_now')
+            && $get('payment_method') !== PaymentMethod::CREDIT_CARD->value;
     }
 
     private static function resolveFinancialControlMode(array $data): string

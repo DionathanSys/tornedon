@@ -23,7 +23,11 @@ class GenerateFiscalEntryPayableAction
     /**
      * @param  array{
      *     payment_method: string,
-     *     payment_condition: string,
+     *     payment_condition?: string,
+     *     installment_count?: int,
+     *     installment_due_mode?: string,
+     *     installment_fixed_day?: int,
+     *     installment_interval_days?: int,
      *     due_date: string,
      *     description: ?string,
      * } $paymentData
@@ -59,9 +63,8 @@ class GenerateFiscalEntryPayableAction
 
         $document->loadMissing('items');
 
-        $condition = Condition::from($paymentData['payment_condition']);
         $totalAmount = FiscalEntryAmount::fromDocument($document);
-        $description = $paymentData['description'] ?? "NF #{$document->document_number}";
+        $description = filled($paymentData['description'] ?? null) ? $paymentData['description'] : "NF #{$document->document_number}";
         $result = [
             'payables' => 0,
             'errors' => [],
@@ -78,19 +81,32 @@ class GenerateFiscalEntryPayableAction
             'due_amount' => $totalAmount,
             'description' => $description,
             'document_number' => $document->document_number,
+            'note_number' => $document->document_number,
+            'bank_slip_number' => $paymentData['bank_slip_number'] ?? null,
+            'financial_category_id' => $paymentData['financial_category_id'] ?? null,
+            'cost_center_id' => $paymentData['cost_center_id'] ?? null,
+            'result_center_id' => $paymentData['result_center_id'] ?? null,
+            'is_effective' => (bool) ($paymentData['is_effective'] ?? false),
+            'auto_register_payment_on_due_date' => (bool) ($paymentData['auto_register_payment_on_due_date'] ?? false),
+            'auto_payment_financial_account_id' => $paymentData['auto_payment_financial_account_id'] ?? null,
         ];
 
-        $installmentCount = PaymentTerms::count($condition, $paymentData['payment_condition_details'] ?? null);
-        if ($condition === Condition::CUSTOM) {
-            $payload['due_date'] = PaymentTerms::firstDueDate($condition, Carbon::parse($document->issued_at ?? now()), $paymentData['payment_condition_details'])->toDateString();
-            $payload['installment_due_mode'] = InstallmentSchedule::CUSTOM_INTERVAL_DAYS;
-            $payload['installment_interval_days'] = PaymentTerms::interval($condition, $paymentData['payment_condition_details']);
-        }
-
-        if ($installmentCount > 1) {
-            $payload['installment_count'] = $installmentCount;
-
-            if ($condition->isTerm()) {
+        if (array_key_exists('installment_count', $paymentData)) {
+            $payload['installment_count'] = $paymentData['installment_count'];
+            if ((int) $paymentData['installment_count'] > 1) {
+                $payload['installment_due_mode'] = $paymentData['installment_due_mode'] ?? Condition::DAYS_30->value;
+                $payload['installment_fixed_day'] = $paymentData['installment_fixed_day'] ?? null;
+                $payload['installment_interval_days'] = $paymentData['installment_interval_days'] ?? null;
+            }
+        } else {
+            // Compatibilidade com chamadas que ainda informam a condição de pagamento.
+            $condition = Condition::from($paymentData['payment_condition']);
+            $payload['installment_count'] = PaymentTerms::count($condition, $paymentData['payment_condition_details'] ?? null);
+            if ($condition === Condition::CUSTOM) {
+                $payload['due_date'] = PaymentTerms::firstDueDate($condition, Carbon::parse($document->issued_at ?? now()), $paymentData['payment_condition_details'])->toDateString();
+                $payload['installment_due_mode'] = InstallmentSchedule::CUSTOM_INTERVAL_DAYS;
+                $payload['installment_interval_days'] = PaymentTerms::interval($condition, $paymentData['payment_condition_details']);
+            } elseif ($condition->isTerm() && $payload['installment_count'] > 1) {
                 $payload['installment_due_mode'] = $condition->value;
             }
         }
