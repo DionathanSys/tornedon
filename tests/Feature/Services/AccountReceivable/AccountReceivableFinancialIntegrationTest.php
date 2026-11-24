@@ -15,6 +15,7 @@ use App\Models\AuditEntry;
 use App\Models\BankStatementImport;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
+use App\Models\ChartAccount;
 use App\Models\Company;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
@@ -173,6 +174,115 @@ class AccountReceivableFinancialIntegrationTest extends TestCase
             'event' => 'account_receivable.payment_registered',
             'action' => 'payment_registered',
         ]);
+    }
+
+    public function test_receipt_assigns_missing_category_and_chart_account_before_creating_movement(): void
+    {
+        $installment = $this->createUnclassifiedInstallment();
+        $chartAccount = ChartAccount::create([
+            'company_id' => $this->company->id,
+            'code' => '3.01',
+            'name' => 'Receita de serviços',
+            'type' => 'revenue',
+            'nature' => 'credit',
+            'is_active' => true,
+            'is_postable' => true,
+        ]);
+        $this->receivableCategory->update(['chart_account_id' => $chartAccount->id]);
+
+        $payment = $this->service->registerInstallmentPayment($installment, 40, '2026-04-15', [
+            'financial_account_id' => $this->financialAccount->id,
+            'financial_category_id' => $this->receivableCategory->id,
+        ]);
+
+        $this->assertNotNull($payment, $this->service->getMessage());
+        $this->assertSame($this->receivableCategory->id, $installment->fresh()->financial_category_id);
+        $this->assertSame($chartAccount->id, $installment->fresh()->chart_account_id);
+        $movement = CashMovement::query()->sole();
+        $this->assertSame($this->receivableCategory->id, $movement->financial_category_id);
+        $this->assertSame($chartAccount->id, $movement->chart_account_id);
+
+        $secondPayment = $this->service->registerInstallmentPayment($installment->fresh(), 60, '2026-04-15', [
+            'financial_account_id' => $this->financialAccount->id,
+            'financial_category_id' => $this->payableOnlyCategory->id,
+        ]);
+        $this->assertNotNull($secondPayment, $this->service->getMessage());
+        $this->assertSame(2, CashMovement::where('financial_category_id', $this->receivableCategory->id)->count());
+    }
+
+    public function test_receipt_requires_a_category_when_installment_is_unclassified(): void
+    {
+        $installment = $this->createUnclassifiedInstallment();
+        $payment = $this->service->registerInstallmentPayment($installment, 100, '2026-04-15', [
+            'financial_account_id' => $this->financialAccount->id,
+        ]);
+
+        $this->assertNull($payment);
+        $this->assertArrayHasKey('financial_category_id', $this->service->getErrors());
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+        $this->assertDatabaseCount('cash_movements', 0);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
+    }
+
+    public function test_receipt_rejects_unusable_categories_without_changing_installment(): void
+    {
+        $installment = $this->createUnclassifiedInstallment();
+        $otherCompany = Company::factory()->create(['created_by' => $this->user->id]);
+        $externalCategory = FinancialCategory::create([
+            'company_id' => $otherCompany->id, 'name' => 'Externa', 'is_active' => true, 'allow_receivable' => true,
+        ]);
+        $inactiveCategory = FinancialCategory::create([
+            'company_id' => $this->company->id, 'name' => 'Inativa', 'is_active' => false, 'allow_receivable' => true,
+        ]);
+        $parentCategory = $this->receivableCategory->parent;
+        $parentCategory->update(['allow_receivable' => true]);
+
+        foreach ([$externalCategory, $inactiveCategory, $parentCategory, $this->payableOnlyCategory] as $category) {
+            $payment = $this->service->registerInstallmentPayment($installment->fresh(), 100, '2026-04-15', [
+                'financial_account_id' => $this->financialAccount->id,
+                'financial_category_id' => $category->id,
+            ]);
+
+            $this->assertNull($payment);
+            $this->assertArrayHasKey('financial_category_id', $this->service->getErrors());
+            $this->assertNull($installment->fresh()->financial_category_id);
+            $this->assertSame(100.0, $installment->fresh()->balance_amount);
+        }
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+        $this->assertDatabaseCount('cash_movements', 0);
+    }
+
+    public function test_failed_receipt_rolls_back_new_category(): void
+    {
+        $installment = $this->createUnclassifiedInstallment();
+        $this->financialAccount->update(['is_active' => false]);
+
+        $payment = $this->service->registerInstallmentPayment($installment, 100, '2026-04-15', [
+            'financial_account_id' => $this->financialAccount->id,
+            'financial_category_id' => $this->receivableCategory->id,
+        ]);
+
+        $this->assertNull($payment);
+        $this->assertTrue($this->service->hasError());
+        $this->assertNull($installment->fresh()->financial_category_id);
+        $this->assertSame(100.0, $installment->fresh()->balance_amount);
+        $this->assertDatabaseCount('account_receivable_installment_payments', 0);
+        $this->assertDatabaseCount('cash_movements', 0);
+    }
+
+    private function createUnclassifiedInstallment(): AccountReceivableInstallment
+    {
+        $receivable = $this->service->create([
+            'customer_id' => $this->customer->id,
+            'company_id' => $this->company->id,
+            'due_date' => '2026-04-15',
+            'due_amount' => 100,
+            'payment_method' => PaymentMethod::PIX->value,
+        ], $this->user->id);
+
+        $this->assertNotNull($receivable, $this->service->getMessage());
+
+        return $receivable->installments()->sole();
     }
 
     public function test_delete_receipt_removes_cash_movement_when_not_reconciled(): void

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions;
 
+use App\Filament\Clusters\Financial\Resources\Components\SelectFinancialCategory;
 use App\Models\AccountReceivableInstallment;
 use App\Models\FinancialAccount;
 use App\Services\AccountReceivable\AccountReceivableService;
@@ -83,6 +84,11 @@ final class RegisterInstallmentPaymentAction
                         ->default(fn (AccountReceivableInstallment $record) => $record->description ?? $record->accountReceivable?->description)
                         ->maxLength(255)
                         ->columnSpanFull(),
+                    SelectFinancialCategory::make('financial_category_id', 'receivable')
+                        ->visible(fn (AccountReceivableInstallment $record): bool => ! $record->financial_category_id)
+                        ->required(fn (AccountReceivableInstallment $record): bool => ! $record->financial_category_id)
+                        ->helperText('A categoria será vinculada à parcela e ao movimento financeiro do recebimento.')
+                        ->columnSpanFull(),
                     Textarea::make('notes')
                         ->label('Observações')
                         ->rows(3)
@@ -100,6 +106,7 @@ final class RegisterInstallmentPaymentAction
                         'discount_amount' => (float) ($data['discount_amount'] ?? 0),
                         'bank_account_id' => $data['bank_account_id'] ?? null,
                         'financial_account_id' => $data['financial_account_id'] ?? null,
+                        'financial_category_id' => $data['financial_category_id'] ?? null,
                         'competence_date' => $data['competence_date'] ?? null,
                         'description' => $data['description'] ?? null,
                         'notes' => $data['notes'] ?? null,

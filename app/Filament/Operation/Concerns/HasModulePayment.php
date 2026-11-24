@@ -4,6 +4,7 @@ namespace App\Filament\Operation\Concerns;
 
 use App\Filament\Operation\OperationResourceSupport as Support;
 use App\Models\FinancialAccount;
+use App\Models\FinancialCategory;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -17,6 +18,9 @@ trait HasModulePayment
     public ?int $paymentRecordId = null;
 
     public array $paymentData = [];
+
+    #[Locked]
+    public bool $paymentNeedsFinancialCategory = false;
 
     private function paymentInstallment(int $id): mixed
     {
@@ -37,6 +41,7 @@ trait HasModulePayment
             return;
         }
         $this->paymentRecordId = $id;
+        $this->paymentNeedsFinancialCategory = $this->moduleKey() === 'account_receivables' && ! $installment->financial_category_id;
         $this->paymentData = ['payment_date' => today()->toDateString(), 'amount' => number_format((float) $installment->balance_amount, 2, ',', '.'), 'interest_amount' => '0,00', 'fine_amount' => '0,00', 'discount_amount' => '0,00', 'financial_account_id' => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id), 'description' => $installment->description, 'notes' => null];
         $this->showPaymentForm = true;
     }
@@ -62,6 +67,7 @@ trait HasModulePayment
             'paymentData.payment_date' => 'required|date', 'paymentData.amount' => 'required|numeric|gt:0',
             'paymentData.interest_amount' => 'nullable|numeric|min:0', 'paymentData.fine_amount' => 'nullable|numeric|min:0', 'paymentData.discount_amount' => 'nullable|numeric|min:0',
             'paymentData.financial_account_id' => ['required', Rule::in(array_keys(FinancialAccount::optionsForCompany(Filament::getTenant()->id)))],
+            'paymentData.financial_category_id' => [Rule::requiredIf($this->moduleKey() === 'account_receivables' && ! $installment->financial_category_id), 'nullable', 'integer', Rule::in(array_keys($this->getPaymentFinancialCategoryOptionsProperty()))],
             'paymentData.description' => 'nullable|string|max:255', 'paymentData.notes' => 'nullable|string',
         ])->validate()['paymentData'];
         $service = app(Support::definition($this->moduleKey())['service']);
@@ -82,5 +88,10 @@ trait HasModulePayment
     public function getFinancialAccountOptionsProperty(): array
     {
         return FinancialAccount::optionsForCompany(Filament::getTenant()->id);
+    }
+
+    public function getPaymentFinancialCategoryOptionsProperty(): array
+    {
+        return FinancialCategory::optionsForCompany(Filament::getTenant()->id, 'receivable');
     }
 }

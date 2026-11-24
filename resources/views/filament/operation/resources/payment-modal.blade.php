@@ -8,6 +8,9 @@
             <x-mary-input label="Desconto" prefix="R$" inputmode="decimal" wire:model="paymentData.discount_amount" />
         </div>
         <x-operation.search-select label="Conta financeira" wire:model="paymentData.financial_account_id" :options="collect($this->financialAccountOptions)->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values()->all()" offline />
+        @if ($this->paymentNeedsFinancialCategory)
+            <x-operation.search-select label="Categoria financeira" wire:model="paymentData.financial_category_id" :options="collect($this->paymentFinancialCategoryOptions)->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values()->all()" offline />
+        @endif
         <x-mary-input label="Descrição" wire:model="paymentData.description" />
         <x-mary-textarea label="Observações" wire:model="paymentData.notes" rows="2" />
         <x-slot:actions>

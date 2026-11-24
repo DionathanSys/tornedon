@@ -122,6 +122,25 @@ class OperationResourceInteractionsTest extends TestCase
         $this->assertStringContainsString('toast(', json_encode($page->effects));
     }
 
+    public function test_receipt_modal_requires_and_saves_missing_category(): void
+    {
+        [, $company, $account, $category] = $this->authenticate();
+        $record = $this->record('account_receivables', $company, $account, 'Recebimento sem categoria');
+        $page = Livewire::test(Support::resource('account_receivables')::getPages()['index']->getPage())
+            ->call('openRegisterPayment', $record->id)
+            ->assertSet('paymentNeedsFinancialCategory', true)
+            ->assertSee('Categoria financeira')
+            ->call('savePayment')->assertHasErrors(['paymentData.financial_category_id']);
+
+        $this->assertDatabaseCount('cash_movements', 0);
+
+        $page->set('paymentData.financial_category_id', $category->id)
+            ->call('savePayment')->assertHasNoErrors()->assertSet('showPaymentForm', false);
+
+        $this->assertSame($category->id, $record->installments()->sole()->financial_category_id);
+        $this->assertSame($category->id, CashMovement::query()->sole()->financial_category_id);
+    }
+
     public function test_production_items_confirmation_and_delivery_preserve_business_rules(): void
     {
         [$user, $company, $account, $category] = $this->authenticate();

@@ -295,6 +295,24 @@ class AccountReceivableService
                 $installment->loadMissing('accountReceivable');
                 InstallmentPaymentGuard::validate($installment, $installment->accountReceivable, $amount, $extra);
                 $before = $audit->snapshot($installment->accountReceivable);
+                if (! $installment->financial_category_id) {
+                    $classification = Validator::make($extra, [
+                        'financial_category_id' => ['required', 'integer'],
+                    ], [
+                        'financial_category_id.required' => 'Informe a categoria financeira para registrar o recebimento.',
+                    ])->validate();
+                    $categoryId = (int) $classification['financial_category_id'];
+                    $chartAccountId = $this->classificationService->resolveChartAccountIdFromCategoryId(
+                        $categoryId,
+                        (int) $installment->company_id,
+                        'receivable',
+                    );
+                    $installment->update([
+                        'financial_category_id' => $categoryId,
+                        'chart_account_id' => $chartAccountId,
+                    ]);
+                }
+
                 $paymentAction = new RegisterAccountReceivableInstallmentPaymentAction($installment);
                 $payment = $paymentAction->execute([
                     'account_receivable_installment_id' => $installment->id,
