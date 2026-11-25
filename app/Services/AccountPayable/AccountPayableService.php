@@ -61,6 +61,11 @@ class AccountPayableService
                 $data['manual_counterparty_name'] = $this->normalizeCounterpartyName($data['manual_counterparty_name'] ?? null);
                 unset($data['is_manual_counterparty']);
 
+                $alreadyPaid = (bool) ($data['already_paid'] ?? false);
+                $paymentDate = $data['initial_payment_date'] ?? null;
+                $paymentAccountId = $data['initial_payment_financial_account_id'] ?? null;
+                unset($data['already_paid'], $data['initial_payment_date'], $data['initial_payment_financial_account_id']);
+
                 $installmentCount = max(1, (int) ($data['installment_count'] ?? 1));
                 $scheduleConfig = InstallmentSchedule::extractConfig($data);
                 unset($data['installment_count']);
@@ -92,6 +97,24 @@ class AccountPayableService
                         throw ValidationException::withMessages(
                             $createInstallmentAction->getErrors() ?: ['parcela' => [$createInstallmentAction->getMessage()]]
                         );
+                    }
+
+                    if ($alreadyPaid) {
+                        $payment = $this->registerInstallmentPayment(
+                            $createdInstallment,
+                            $createdInstallment->balance_amount,
+                            $paymentDate,
+                            [
+                                'financial_account_id' => $paymentAccountId,
+                                'user_id' => $createdBy,
+                            ],
+                        );
+
+                        if ($payment === null || $this->hasError()) {
+                            throw ValidationException::withMessages(
+                                $this->getErrors() ?: ['pagamento' => [$this->getMessage()]]
+                            );
+                        }
                     }
                 }
 

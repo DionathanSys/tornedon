@@ -17,6 +17,8 @@ use App\Models\Partner;
 use App\Models\User;
 use App\Services\AccountPayable\AccountPayableService;
 use App\Services\AccountPayable\Validators\AccountPayableInstallmentValidator;
+use App\Services\Financial\CashMovementService;
+use App\Services\Financial\FinancialClassificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
@@ -91,6 +93,92 @@ class AccountPayableFinancialIntegrationTest extends TestCase
             'created_by' => $this->user->id,
             'updated_by' => $this->user->id,
         ]);
+    }
+
+    public function test_create_already_paid_account_registers_backdated_payment_and_cash_outflow(): void
+    {
+        $paymentDate = today()->subDays(5)->toDateString();
+        $payable = $this->service->create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'due_date' => $paymentDate,
+            'due_amount' => 150,
+            'financial_category_id' => $this->payableCategory->id,
+            'already_paid' => true,
+            'initial_payment_date' => $paymentDate,
+            'initial_payment_financial_account_id' => $this->financialAccount->id,
+        ], $this->user->id);
+
+        $this->assertNotNull($payable, $this->service->getMessage());
+        $this->assertSame(AccountPayableStatus::PAID, $payable->status);
+        $this->assertTrue($payable->paid);
+        $this->assertSame(150.0, $payable->paid_amount);
+        $this->assertSame($paymentDate, $payable->paid_date->toDateString());
+        $installment = $payable->installments()->sole();
+        $this->assertSame(0.0, $installment->balance_amount);
+        $this->assertSame(AccountPayableStatus::PAID, $installment->status);
+        $payment = $installment->payments()->sole();
+        $this->assertSame($paymentDate, $payment->payment_date->toDateString());
+        $movement = CashMovement::query()->sole();
+        $this->assertSame(CashMovementDirection::OUTFLOW, $movement->direction);
+        $this->assertSame($this->financialAccount->id, $movement->financial_account_id);
+        $this->assertSame($payment->id, $movement->origin_id);
+        $this->assertSame($this->user->id, $movement->created_by);
+    }
+
+    public function test_create_already_paid_account_requires_payment_details_and_tenant_account(): void
+    {
+        $data = [
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'due_date' => today()->toDateString(),
+            'due_amount' => 150,
+            'already_paid' => true,
+        ];
+
+        $this->assertNull($this->service->create($data, $this->user->id));
+        $this->assertArrayHasKey('initial_payment_date', $this->service->getErrors());
+        $this->assertArrayHasKey('initial_payment_financial_account_id', $this->service->getErrors());
+
+        $otherCompany = Company::create([
+            'name' => 'Outra empresa',
+            'document_number' => '12345678000270',
+            'address' => ['city' => 'Sao Paulo', 'state' => 'SP'],
+            'created_by' => $this->user->id,
+        ]);
+        $this->financialAccount->update(['company_id' => $otherCompany->id]);
+        $this->assertNull($this->service->create([
+            ...$data,
+            'initial_payment_date' => today()->toDateString(),
+            'initial_payment_financial_account_id' => $this->financialAccount->id,
+        ], $this->user->id));
+        $this->assertArrayHasKey('initial_payment_financial_account_id', $this->service->getErrors());
+        $this->assertDatabaseCount('account_payables', 0);
+        $this->assertDatabaseCount('cash_movements', 0);
+    }
+
+    public function test_create_already_paid_account_rolls_back_when_payment_fails(): void
+    {
+        $service = \Mockery::mock(AccountPayableService::class, [
+            app(FinancialClassificationService::class),
+            app(CashMovementService::class),
+        ])->makePartial();
+        $service->shouldReceive('registerInstallmentPayment')->once()->andReturnNull();
+
+        $this->assertNull($service->create([
+            'supplier_id' => $this->supplier->id,
+            'company_id' => $this->company->id,
+            'due_date' => today()->toDateString(),
+            'due_amount' => 150,
+            'financial_category_id' => $this->payableCategory->id,
+            'already_paid' => true,
+            'initial_payment_date' => today()->toDateString(),
+            'initial_payment_financial_account_id' => $this->financialAccount->id,
+        ], $this->user->id));
+
+        $this->assertDatabaseCount('account_payables', 0);
+        $this->assertDatabaseCount('account_payable_installments', 0);
+        $this->assertDatabaseCount('cash_movements', 0);
     }
 
     public function test_bank_slip_code_validation_accepts_supported_formats_and_normalizes_punctuation(): void

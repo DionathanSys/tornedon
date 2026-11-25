@@ -68,6 +68,14 @@ class AccountPayableValidator
             'sequence_number' => 'required|string|max:2',
             'status' => ['required', Rule::in(array_map(fn ($s) => $s->value, Status::cases()))],
             'installment_count' => 'nullable|integer|min:1|max:999',
+            'already_paid' => 'nullable|boolean',
+            'initial_payment_date' => 'nullable|required_if:already_paid,true|date|before_or_equal:today',
+            'initial_payment_financial_account_id' => [
+                'nullable',
+                'required_if:already_paid,true',
+                'integer',
+                Rule::exists('financial_accounts', 'id')->where('company_id', $data['company_id'] ?? null)->where('is_active', true),
+            ],
             'installment_due_mode' => ['nullable', Rule::in([
                 ...array_keys(PaymentCondition::installmentIntervalOptions()),
                 'fixed_day_of_month',
@@ -93,6 +101,9 @@ class AccountPayableValidator
             }
 
             $autoRegister = (bool) ($data['auto_register_payment_on_due_date'] ?? false);
+            if ($autoRegister && ($data['already_paid'] ?? false)) {
+                $validator->errors()->add('auto_register_payment_on_due_date', 'Uma conta já paga não pode ter pagamento automático.');
+            }
             $isEffective = (bool) ($data['is_effective'] ?? true);
 
             if ($autoRegister && ! $isEffective) {

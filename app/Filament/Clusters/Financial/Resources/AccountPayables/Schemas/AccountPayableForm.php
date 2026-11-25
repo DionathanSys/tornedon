@@ -190,6 +190,7 @@ class AccountPayableForm
                                 ? 'O total da conta será calculado pela quantidade de parcelas.'
                                 : 'O valor total será distribuido entre as parcelas.'),
                         DatePicker::make('paid_date')
+                            ->visibleOn('edit')
                             ->label('Data de Pagamento')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->displayFormat('d/m/Y')
@@ -197,6 +198,7 @@ class AccountPayableForm
                             ->disabled()
                             ->helperText('A baixa é controlada nas parcelas da conta a pagar.'),
                         Money::make('paid_amount')
+                            ->visibleOn('edit')
                             ->label('Valor Pago')
                             ->columnSpan(['md' => 1, 'lg' => 3])
                             ->default(0)
@@ -262,20 +264,42 @@ class AccountPayableForm
                             ->native(false)
                             ->visibleOn('create')
                             ->helperText('Aplicado às parcelas geradas para esta conta.'),
-                        Toggle::make('is_effective')
-                            ->label('Efetivada?')
+                        Toggle::make('already_paid')
+                            ->label('Já foi paga')
                             ->columnSpan(['md' => 1, 'lg' => 2])
                             ->default(false)
                             ->live()
                             ->visibleOn('create')
-                            ->helperText('Quando marcada, irá gerar a baixa das parcelas na data de vencimento.'),
+                            ->afterStateUpdated(function (bool $state, Set $set): void {
+                                if ($state) {
+                                    $set('auto_register_payment_on_due_date', false);
+                                }
+                            })
+                            ->helperText('Registra o pagamento integral de todas as parcelas ao salvar a conta.'),
+                        DatePicker::make('initial_payment_date')
+                            ->label('Data do pagamento')
+                            ->columnSpan(['md' => 1, 'lg' => 3])
+                            ->default(now())
+                            ->maxDate(today())
+                            ->displayFormat('d/m/Y')
+                            ->required(fn (Get $get): bool => (bool) $get('already_paid'))
+                            ->visible(fn (Get $get, string $operation): bool => $operation === 'create' && (bool) $get('already_paid')),
+                        Select::make('initial_payment_financial_account_id')
+                            ->label('Conta financeira do pagamento')
+                            ->columnSpan(['md' => 2, 'lg' => 4])
+                            ->options(fn (): array => FinancialAccount::optionsForCompany(Filament::getTenant()->id))
+                            ->default(fn (): ?int => FinancialAccount::defaultIdForCompany(Filament::getTenant()->id))
+                            ->searchable()
+                            ->preload()
+                            ->native(false)
+                            ->required(fn (Get $get): bool => (bool) $get('already_paid'))
+                            ->visible(fn (Get $get, string $operation): bool => $operation === 'create' && (bool) $get('already_paid')),
                         Toggle::make('auto_register_payment_on_due_date')
                             ->label('Registrar automaticamente o pagamento na data de vencimento?')
                             ->columnSpan(['md' => 2, 'lg' => 4])
                             ->default(false)
                             ->live()
-                            ->visibleOn('create')
-                            ->visible(fn (callable $get): bool => (bool) ($get('is_effective') ?? true))
+                            ->visible(fn (Get $get, string $operation): bool => $operation === 'create' && ! (bool) $get('already_paid'))
                             ->helperText('Um servico diario verifica as parcelas vencendo hoje e registra a baixa automaticamente.'),
                         Select::make('auto_payment_financial_account_id')
                             ->label('Conta Financeira do Pagamento Automatico')
@@ -286,8 +310,7 @@ class AccountPayableForm
                             ->preload()
                             ->native(false)
                             ->required(fn (callable $get): bool => (bool) ($get('auto_register_payment_on_due_date') ?? false))
-                            ->visibleOn('create')
-                            ->visible(fn (callable $get): bool => (bool) ($get('is_effective') ?? true)
+                            ->visible(fn (Get $get, string $operation): bool => $operation === 'create' && ! (bool) $get('already_paid')
                                 && (bool) ($get('auto_register_payment_on_due_date') ?? false)),
                         Toggle::make('paid')
                             ->label('Pago')
