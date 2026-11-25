@@ -6,19 +6,21 @@ use App\Models\Company;
 use App\Models\SefazDistributionDocument;
 use App\Services\Fiscal\Sefaz\DTO\DfeDistributionDocument;
 use DOMDocument;
+use InvalidArgumentException;
 
 class SefazUploadedXmlService
 {
     public function __construct(
         private readonly SefazDistributionDocumentService $documentService,
         private readonly SefazDfeStorageService $storageService,
-    ) {
-    }
+        private readonly SefazDistributionDocumentParser $parser,
+        private readonly SefazDfeDocumentClassifier $documentClassifier,
+    ) {}
 
     public function register(Company $company, string $xml, ?string $originalFilename = null): SefazDistributionDocument
     {
         if (trim($xml) === '') {
-            throw new \RuntimeException('O arquivo XML enviado está vazio.');
+            throw new InvalidArgumentException('O arquivo XML enviado está vazio.');
         }
 
         $document = new DfeDistributionDocument(
@@ -27,6 +29,26 @@ class SefazUploadedXmlService
             xml: $xml,
             accessKey: $this->extractAccessKey($xml),
         );
+
+        $parsed = $this->parser->parse($document);
+
+        if (($parsed['payload']['parse_error'] ?? null) === 'invalid_xml') {
+            throw new InvalidArgumentException('O arquivo enviado não contém um XML válido.');
+        }
+
+        if (! $parsed['is_full_xml'] && ! $parsed['is_summary_xml']) {
+            throw new InvalidArgumentException('O arquivo enviado não é um XML de NF-e ou resumo de NF-e compatível com a inbox de DF-e.');
+        }
+
+        if (! is_string($parsed['document_key']) || preg_match('/^\d{44}$/', $parsed['document_key']) !== 1) {
+            throw new InvalidArgumentException('O XML não contém uma chave de acesso de NF-e válida com 44 dígitos.');
+        }
+
+        $rejectionReason = $this->documentClassifier->rejectionReason($company, $document, $parsed);
+
+        if ($rejectionReason !== null) {
+            throw new InvalidArgumentException($rejectionReason);
+        }
 
         $rawResponsePath = $this->storageService->storeRawResponse($company, $xml);
         $record = $this->documentService->persistFromDistribution($company, $document, $rawResponsePath);
@@ -40,9 +62,9 @@ class SefazUploadedXmlService
 
     private function inferSchema(string $xml, ?string $originalFilename): string
     {
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
 
-        if (@ $dom->loadXML($xml)) {
+        if (@$dom->loadXML($xml)) {
             $root = $dom->documentElement?->localName;
 
             return match ($root) {
@@ -58,9 +80,9 @@ class SefazUploadedXmlService
 
     private function extractAccessKey(string $xml): ?string
     {
-        $dom = new DOMDocument();
+        $dom = new DOMDocument;
 
-        if (! @ $dom->loadXML($xml)) {
+        if (! @$dom->loadXML($xml)) {
             return null;
         }
 

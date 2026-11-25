@@ -5,12 +5,19 @@ namespace Tests\Feature\Services\Fiscal\Sefaz;
 use App\Enum\SefazDistributionDocument\ImportStatus;
 use App\Enum\SefazDistributionDocument\ManifestationStatus;
 use App\Enum\SefazDistributionDocument\Status;
+use App\Filament\Clusters\Financial\Resources\SefazDistributionDocuments\Pages\ListSefazDistributionDocuments;
 use App\Models\Company;
 use App\Models\User;
 use App\Services\Fiscal\Sefaz\SefazUploadedXmlService;
+use Filament\Facades\Filament;
+use Filament\Notifications\Notification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
+use Livewire\Livewire;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class SefazUploadedXmlServiceTest extends TestCase
@@ -70,9 +77,78 @@ class SefazUploadedXmlServiceTest extends TestCase
             );
 
             $this->fail('O XML emitido pela própria empresa deveria ser ignorado.');
-        } catch (\RuntimeException $exception) {
-            $this->assertSame('Não foi possível registrar o XML enviado na inbox de DF-e.', $exception->getMessage());
+        } catch (InvalidArgumentException $exception) {
+            $this->assertSame('O XML foi emitido pela própria empresa ativa. A inbox de DF-e aceita apenas documentos recebidos de fornecedores.', $exception->getMessage());
         }
+
+        $this->assertDatabaseCount('sefaz_distribution_documents', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    #[DataProvider('rejectedXmlProvider')]
+    public function test_it_explains_rejected_uploads_without_persisting_them(string $scenario, string $message): void
+    {
+        Storage::fake('local');
+
+        $company = Company::factory()->create(['document_number' => '22345678000188']);
+        $xml = match ($scenario) {
+            'empty' => ' ',
+            'malformed' => '<NFe>',
+            'unsupported' => '<evento/>',
+            'missing_key' => str_replace('Id="NFe42260445790457000185557000000000201122876237"', '', $this->fullXml()),
+            'other_recipient' => str_replace('<CNPJ>22345678000188</CNPJ>', '<CNPJ>33345678000188</CNPJ>', $this->fullXml()),
+            'missing_recipient' => str_replace('<CNPJ>22345678000188</CNPJ>', '', $this->fullXml()),
+            'invalid_company' => $this->fullXml(),
+        };
+
+        if ($scenario === 'invalid_company') {
+            $company->document_number = '';
+        }
+
+        try {
+            app(SefazUploadedXmlService::class)->register($company, $xml, 'upload.xml');
+            $this->fail('O XML deveria ter sido recusado.');
+        } catch (InvalidArgumentException $exception) {
+            $this->assertSame($message, $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('sefaz_distribution_documents', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public static function rejectedXmlProvider(): array
+    {
+        return [
+            ['empty', 'O arquivo XML enviado está vazio.'],
+            ['malformed', 'O arquivo enviado não contém um XML válido.'],
+            ['unsupported', 'O arquivo enviado não é um XML de NF-e ou resumo de NF-e compatível com a inbox de DF-e.'],
+            ['missing_key', 'O XML não contém uma chave de acesso de NF-e válida com 44 dígitos.'],
+            ['other_recipient', 'O CNPJ do destinatário do XML não corresponde ao CNPJ da empresa ativa. Selecione a empresa destinatária para enviar este XML.'],
+            ['missing_recipient', 'O CNPJ do destinatário do XML não corresponde ao CNPJ da empresa ativa. Selecione a empresa destinatária para enviar este XML.'],
+            ['invalid_company', 'A empresa ativa não possui um CNPJ válido cadastrado.'],
+        ];
+    }
+
+    public function test_upload_for_another_company_shows_a_friendly_notification(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->create();
+        $company = Company::factory()->create(['document_number' => '33345678000188']);
+        $user->companies()->attach($company, ['role' => 'owner', 'is_active' => true]);
+        $this->actingAs($user);
+        Filament::setCurrentPanel('admin');
+        Filament::setTenant($company);
+
+        Livewire::test(ListSefazDistributionDocuments::class)
+            ->callAction('uploadXml', data: [
+                'xml_file' => UploadedFile::fake()->createWithContent('nota.xml', $this->fullXml()),
+            ])
+            ->assertHasNoActionErrors()
+            ->assertActionMounted('uploadXml')
+            ->assertNotified(Notification::make()
+                ->title('XML não registrado')
+                ->body('O CNPJ do destinatário do XML não corresponde ao CNPJ da empresa ativa. Selecione a empresa destinatária para enviar este XML.')
+                ->danger());
 
         $this->assertDatabaseCount('sefaz_distribution_documents', 0);
     }

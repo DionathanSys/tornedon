@@ -9,7 +9,9 @@ use Filament\Facades\Filament;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 class ListSefazDistributionDocuments extends ListRecords
 {
@@ -45,7 +47,17 @@ class ListSefazDistributionDocuments extends ListRecords
                         throw new \RuntimeException('Não foi possível identificar a empresa ativa para registrar o XML.');
                     }
 
-                    $record = app(SefazUploadedXmlService::class)->register($company, $xml, basename($path));
+                    try {
+                        $record = app(SefazUploadedXmlService::class)->register($company, $xml, basename($path));
+                    } catch (InvalidArgumentException $exception) {
+                        Notification::make()
+                            ->title('XML não registrado')
+                            ->body($exception->getMessage())
+                            ->danger()
+                            ->send();
+
+                        throw new Halt;
+                    }
                     Storage::disk('local')->delete($path);
 
                     Notification::make()
