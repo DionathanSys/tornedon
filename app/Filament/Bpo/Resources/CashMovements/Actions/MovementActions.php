@@ -7,6 +7,7 @@ use App\Filament\Clusters\Financial\Actions\RefreshChartAccountFromCategoryBulkA
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\CreateTransferAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\EditTransferAction;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Actions\ReverseTransferAction;
+use App\Filament\Clusters\Financial\Resources\CashMovements\Schemas\CashMovementInfolist;
 use App\Models\AccountPayableInstallmentPayment;
 use App\Models\AccountReceivableInstallmentPayment;
 use App\Models\CashMovement;
@@ -43,7 +44,7 @@ final class MovementActions
                     TextEntry::make('reconciliation')->label('Conciliação')->state(fn (CashMovement $record) => $record->hasStatementLinks() ? 'Conciliado' : 'Não conciliado'),
                     TextEntry::make('reversed_at')->label('Estornado em')->dateTime('d/m/Y H:i')->placeholder('Não estornado'),
                     TextEntry::make('notes')->label('Observações')->placeholder('Sem observações')->columnSpanFull(),
-                ])]),
+                ]), CashMovementInfolist::history()]),
             EditAction::make()->label('Editar movimento')
                 ->authorize(fn (ListMovements $livewire, CashMovement $record) => $livewire->canOperateMovement('update', $record))
                 ->visible(fn (CashMovement $record) => self::editable($record) && blank($record->transfer_group_id)),

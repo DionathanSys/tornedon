@@ -2,11 +2,19 @@
 
 namespace Tests\Feature\Filament\Bpo;
 
+use App\Enum\FiscalDocument\NfeStatus;
+use App\Enum\FiscalDocument\Status;
+use App\Filament\Bpo\Resources\AccountPayableResource;
+use App\Filament\Bpo\Resources\AccountReceivableResource;
 use App\Filament\Bpo\Resources\CashMovementResource;
 use App\Filament\Bpo\Resources\CashMovements\Pages\CreateMovement;
 use App\Filament\Bpo\Resources\CashMovements\Pages\EditMovement;
 use App\Filament\Bpo\Resources\CashMovements\Pages\ListMovements;
+use App\Filament\Bpo\Resources\CashMovements\Pages\ViewMovement;
+use App\Filament\Bpo\Resources\IncomingFiscalDocumentResource;
 use App\Filament\Clusters\Financial\Resources\CashMovements\Pages\ListCashMovements;
+use App\Filament\Clusters\Financial\Resources\CashMovements\Support\MovementHistory;
+use App\Filament\Operation\Resources\CashMovements\Pages\ViewCashMovement;
 use App\Models\BankStatementImport;
 use App\Models\BankStatementLine;
 use App\Models\CashMovement;
@@ -14,9 +22,12 @@ use App\Models\ChartAccount;
 use App\Models\Company;
 use App\Models\FinancialAccount;
 use App\Models\FinancialCategory;
+use App\Models\FiscalDocument;
+use App\Models\Partner;
 use App\Models\User;
 use App\Services\Access\CompanyTeamService;
 use App\Services\Access\PermissionCatalog;
+use App\Services\AccountPayable\AccountPayableService;
 use App\Services\AccountReceivable\AccountReceivableService;
 use App\Services\Financial\CashMovementService;
 use Filament\Actions\Testing\TestAction;
@@ -93,6 +104,126 @@ class CashMovementsWorkspaceTest extends TestCase
     {
         return CashMovement::create(['company_id' => $this->company->id, 'financial_account_id' => $this->source->id, 'financial_category_id' => $this->category->id,
             'direction' => 'inflow', 'origin_type' => 'manual', 'transaction_date' => today()->toDateString(), 'amount' => 75, 'description' => 'Entrada avulsa', 'created_by' => $this->user->id, ...$changes]);
+    }
+
+    private function originatingMovement(bool $payable): array
+    {
+        $service = app($payable ? AccountPayableService::class : AccountReceivableService::class);
+        $title = $service->create(['company_id' => $this->company->id, 'manual_counterparty_name' => 'Parceiro da origem',
+            'description' => $payable ? 'Origem exclusiva a pagar' : 'Origem exclusiva a receber',
+            'document_number' => $payable ? 'PAG-123' : 'REC-456',
+            'due_date' => today()->toDateString(), 'due_amount' => 300, 'installment_count' => 1], $this->user->id);
+        $this->assertNotNull($title, $service->getMessageUser());
+        if (! $payable) {
+            $this->category->update(['allow_receivable' => true]);
+            $title->installments()->update(['financial_category_id' => $this->category->id]);
+        }
+        $payment = $service->registerInstallmentPayment($title->installments()->first(), 100, today()->toDateString(), ['financial_account_id' => $this->source->id, 'user_id' => $this->user->id]);
+        $this->assertNotNull($payment, $service->getMessageUser());
+
+        return [$title, $payment, CashMovement::where('origin_type', $payment::class)->where('origin_id', $payment->id)->sole()];
+    }
+
+    public function test_history_navigates_to_the_correct_title_even_when_payment_ids_collide(): void
+    {
+        [$payable, $payment, $outflow] = $this->originatingMovement(true);
+        [$receivable, $receipt, $inflow] = $this->originatingMovement(false);
+        $this->assertSame($payment->id, $receipt->id);
+        $this->authenticate();
+
+        foreach ([[$outflow, $payable, AccountPayableResource::class, 'Conta a pagar', 'REC-456'], [$inflow, $receivable, AccountReceivableResource::class, 'Conta a receber', 'PAG-123']] as [$movement, $title, $resource, $label, $otherNumber]) {
+            $entries = collect(app(MovementHistory::class)->entries($movement));
+            $origin = $entries->firstWhere('label', $label);
+            $url = $resource::getUrl('view', ['record' => $title], panel: 'bpo', tenant: $this->company);
+            $this->assertSame($url, $origin['url']);
+            $this->assertSame(300.0, $origin['amount']);
+            $this->assertStringContainsString($title->document_number, $origin['description']);
+            Livewire::test(ViewMovement::class, ['record' => $movement->id])->assertOk()
+                ->assertSee('Origem e histórico')->assertSee($title->document_number)->assertDontSee($otherNumber)->assertSee($url, false);
+            $this->get($url)->assertOk();
+            $page = Livewire::test(ListMovements::class)->mountAction(TestAction::make('details')->table($movement))
+                ->assertActionMounted(TestAction::make('details')->table($movement));
+            $html = $page->instance()->getSchema($page->instance()->getMountedActionSchemaName())->toHtml();
+            $this->assertStringContainsString('Origem e histórico', $html);
+            $this->assertStringContainsString($title->document_number, $html);
+            $this->assertStringContainsString($url, $html);
+        }
+    }
+
+    public function test_reversal_history_follows_the_previous_movement_to_its_origin(): void
+    {
+        [$title, , $original] = $this->originatingMovement(true);
+        $reversal = $this->manual(['direction' => 'inflow', 'origin_type' => null, 'reversal_of_id' => $original->id, 'description' => 'Estorno da baixa']);
+        $this->authenticate();
+        $entries = collect(app(MovementHistory::class)->entries($reversal));
+        $this->assertSame(CashMovementResource::getUrl('view', ['record' => $original]), $entries->firstWhere('label', 'Movimento anterior')['url']);
+        $this->assertSame(AccountPayableResource::getUrl('view', ['record' => $title]), $entries->firstWhere('label', 'Conta a pagar')['url']);
+        Livewire::test(ViewMovement::class, ['record' => $reversal->id])->assertOk()->assertSee('Movimento anterior')->assertSee('PAG-123');
+        $this->assertSame(CashMovementResource::getUrl('view', ['record' => $reversal]), collect(app(MovementHistory::class)->entries($original))->firstWhere('label', 'Estorno')['url']);
+    }
+
+    public function test_history_does_not_disclose_origins_without_title_permission(): void
+    {
+        [, , $movement] = $this->originatingMovement(true);
+        $this->permissions(['cash_movements.view' => 'company', 'financial_accounts.view' => 'company']);
+        $this->authenticate();
+        Livewire::test(ViewMovement::class, ['record' => $movement->id])->assertOk()
+            ->assertSee('Registro indisponível ou sem permissão de acesso.')->assertDontSee('PAG-123');
+    }
+
+    public function test_history_handles_missing_and_cross_tenant_origins(): void
+    {
+        [, $payment, $movement] = $this->originatingMovement(true);
+        $otherCompany = Company::factory()->create();
+        DB::table($payment->getTable())->where('id', $payment->id)->update(['company_id' => $otherCompany->id]);
+        $this->authenticate();
+        Livewire::test(ViewMovement::class, ['record' => $movement->id])->assertOk()->assertDontSee('PAG-123')->assertSee('Registro indisponível');
+        DB::table($payment->getTable())->where('id', $payment->id)->delete();
+        Livewire::test(ViewMovement::class, ['record' => $movement->id])->assertOk()->assertSee('Registro indisponível');
+        Filament::setTenant($otherCompany);
+        $this->assertSame([], app(MovementHistory::class)->entries($movement));
+    }
+
+    public function test_transfer_history_links_to_the_other_movement(): void
+    {
+        $movement = $this->transfer();
+        $other = $movement->transferCounterpart();
+        $this->authenticate();
+        $entry = collect(app(MovementHistory::class)->entries($movement))->firstWhere('label', 'Outra conta da transferência');
+        $this->assertSame(CashMovementResource::getUrl('view', ['record' => $other]), $entry['url']);
+        Livewire::test(ViewMovement::class, ['record' => $other->id])->assertOk()->assertSee('Outra conta da transferência');
+    }
+
+    public function test_history_uses_the_resources_of_the_current_panel(): void
+    {
+        [$title, , $movement] = $this->originatingMovement(true);
+        $this->actingAs($this->owner);
+        Filament::setTenant($this->company);
+        foreach ([
+            ['admin', \App\Filament\Clusters\Financial\Resources\AccountPayables\AccountPayableResource::class, \App\Filament\Clusters\Financial\Resources\CashMovements\Pages\ViewCashMovement::class],
+            ['operation', \App\Filament\Operation\Resources\AccountPayables\AccountPayableResource::class, ViewCashMovement::class],
+        ] as [$panel, $resource, $page]) {
+            Filament::setCurrentPanel(Filament::getPanel($panel));
+            $entry = collect(app(MovementHistory::class)->entries($movement))->firstWhere('label', 'Conta a pagar');
+            $this->assertSame($resource::getUrl('view', ['record' => $title], panel: $panel, tenant: $this->company), $entry['url']);
+            Livewire::test($page, ['record' => $movement->id])->assertOk()->assertSee('PAG-123');
+        }
+    }
+
+    public function test_history_links_to_the_document_resource_with_the_correct_operation_type(): void
+    {
+        [$title, , $movement] = $this->originatingMovement(true);
+        $partner = Partner::create(['name' => 'Fornecedor fiscal', 'document_type' => 'CNPJ', 'document_number' => '12345678000199']);
+        $document = FiscalDocument::create(['company_id' => $this->company->id, 'customer_id' => $partner->id,
+            'document_type' => 'nfe', 'operation_type' => '0', 'status' => Status::PENDING,
+            'issued_at' => today(), 'movement_at' => today(), 'created_by' => $this->user->id,
+            'nfe_status' => NfeStatus::PENDING]);
+        $title->update(['fiscal_document_id' => $document->id]);
+        $this->permissions([...PermissionCatalog::templates()['Financeiro'], 'fiscal_documents.view' => 'company', 'fiscal_documents.update' => 'company']);
+        $this->authenticate();
+        $entries = collect(app(MovementHistory::class)->entries($movement));
+        $this->assertSame(IncomingFiscalDocumentResource::getUrl('edit', ['record' => $document]), $entries->firstWhere('label', 'Documento fiscal')['url']);
+        Livewire::test(ViewMovement::class, ['record' => $movement->id])->assertOk()->assertSee('Documento fiscal');
     }
 
     public function test_manual_movement_saves_a_single_brazilian_date_and_displays_it_on_edit(): void

@@ -6,6 +6,7 @@ use App\Enum\Financial\CashMovementDirection;
 use App\Models\FinancialCategory;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Tables\Columns\Layout\Grid;
 use Filament\Tables\Columns\Layout\Panel;
@@ -77,6 +78,7 @@ class CashMovementsTable
                     ->native(false),
             ])
             ->recordActions([
+                ViewAction::make()->label('Origem e histórico'),
                 EditAction::make()
                     ->iconButton(),
             ])

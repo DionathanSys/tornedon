@@ -63,6 +63,7 @@ class CashMovementResource extends Resource
         return [
             'index' => ListCashMovements::route('/'),
             'create' => CreateCashMovement::route('/create'),
+            'view' => Pages\ViewCashMovement::route('/{record}'),
             'edit' => EditCashMovement::route('/{record}/edit'),
         ];
     }

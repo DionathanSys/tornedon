@@ -13,6 +13,7 @@ use App\Services\Financial\CashMovementService;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
@@ -158,6 +159,7 @@ class CashMovementsTable
             ])
             ->recordUrl(null)
             ->recordActions([
+                ViewAction::make()->label('Origem e histórico')->iconButton(),
                 EditAction::make()
                     ->iconButton()
                     ->visible(fn ($record): bool => $record->origin_type === 'manual' && ! $record->isTransfer()),

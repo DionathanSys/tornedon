@@ -42,7 +42,7 @@ class CashMovementResource extends \App\Filament\Clusters\Financial\Resources\Ca
 
     public static function getPages(): array
     {
-        return ['index' => Pages\ListMovements::route('/'), 'create' => Pages\CreateMovement::route('/create'), 'edit' => Pages\EditMovement::route('/{record}/edit')];
+        return ['index' => Pages\ListMovements::route('/'), 'create' => Pages\CreateMovement::route('/create'), 'view' => Pages\ViewMovement::route('/{record}'), 'edit' => Pages\EditMovement::route('/{record}/edit')];
     }
 
     public static function canEdit(Model $record): bool
