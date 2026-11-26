@@ -176,38 +176,70 @@
 }
 
 .operation-bottom-sheet {
-    align-items: end;
-    padding: 0;
+    position: fixed;
+    inset: 0;
+    z-index: 90;
 }
 
-.operation-bottom-sheet .modal-box {
+.operation-bottom-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 45%);
+}
+
+.operation-bottom-sheet-panel {
+    position: absolute;
+    inset: auto 0 0;
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    max-width: none;
     height: 80dvh;
     max-height: 80dvh;
+    overflow: hidden;
+    border-radius: 1.5rem 1.5rem 0 0;
+    background: var(--color-base-100);
+    color: var(--color-base-content);
+    box-shadow: 0 -1rem 3rem rgb(0 0 0 / 15%);
+}
+
+.operation-bottom-sheet-header {
+    position: relative;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--color-base-300);
+    padding: 0.75rem 1.5rem 1rem;
+}
+
+.operation-bottom-sheet-handle {
+    width: 3rem;
+    height: 0.25rem;
+    margin: 0 auto 1rem;
+    border-radius: 9999px;
+    background: var(--color-base-300);
+}
+
+.operation-bottom-sheet-content {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
-    border-radius: var(--radius-box) var(--radius-box) 0 0;
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-    transform: translateY(100%);
+    padding: 1.25rem 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+}
+
+.operation-bottom-sheet-transition {
     transition: transform 250ms ease-out;
 }
 
-.operation-bottom-sheet.modal-open .modal-box {
+.operation-bottom-sheet-open {
     transform: translateY(0);
-    animation: operation-sheet-enter 250ms ease-out;
 }
 
-@keyframes operation-sheet-enter {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
+.operation-bottom-sheet-closed {
+    transform: translateY(100%);
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .operation-bottom-sheet .modal-box,
-    .operation-bottom-sheet.modal-open .modal-box {
-        transition: none;
-        animation: none;
+    .operation-bottom-sheet-transition {
+        transition-duration: 0ms;
     }
 }
 
