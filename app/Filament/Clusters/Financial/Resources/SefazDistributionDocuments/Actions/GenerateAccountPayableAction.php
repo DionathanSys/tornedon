@@ -129,7 +129,7 @@ class GenerateAccountPayableAction
                         ->afterStateUpdated(fn (Set $set) => $set('installments', [])),
                     TextInput::make('installment_fixed_day')->label('Dia fixo')->integer()->minValue(1)->maxValue(31)
                         ->visible(fn (Get $get): bool => $get('installment_due_mode') === InstallmentSchedule::FIXED_DAY_OF_MONTH)
-                        ->required()->live()->afterStateUpdated(fn (Set $set) => $set('installments', [])),
+                        ->required()->live(onBlur: true)->afterStateUpdated(fn (Set $set) => $set('installments', [])),
                     Actions::make([Action::make('calculateInstallments')->label('Calcular / atualizar parcelas')
                         ->action(function (Get $get, Set $set) use ($record): void {
                             $set('installments', self::formatInstallments(app(SefazDistributionPayablePlan::class)->calculate($record, [
@@ -141,11 +141,11 @@ class GenerateAccountPayableAction
                 ]),
                 Repeater::make('installments')->label('Revise os valores e vencimentos')->minItems(1)->maxItems(999)->required()
                     ->addActionLabel('Adicionar parcela')
-                    ->reorderable(false)->columns(4)->live()->schema([
+                    ->reorderable(false)->columns(4)->schema([
                         DatePicker::make('due_date')->label('Vencimento')->displayFormat('d/m/Y')->required(),
                         Money::make('due_amount')->label('Valor')
                             ->formatStateUsing(fn ($state) => number_format((float) $state, 2, ',', '.'))
-                            ->required(),
+                            ->required()->live(onBlur: true),
                         TextInput::make('description')->label('Descrição')->maxLength(255),
                         Textarea::make('notes')->label('Observações')->rows(1),
                     ]),
