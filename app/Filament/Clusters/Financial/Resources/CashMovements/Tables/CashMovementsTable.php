@@ -16,8 +16,10 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\ColumnManagerLayout;
 use Filament\Tables\Enums\RecordActionsPosition;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
@@ -32,6 +34,10 @@ class CashMovementsTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->columnManagerLayout(ColumnManagerLayout::Modal)
+            ->columnManagerColumns(['default' => 1, 'md' => 3])
+            ->columnManagerWidth(Width::FiveExtraLarge)
+            ->columnManagerTriggerAction(fn (Action $action) => $action->slideOver(false))
             ->modifyQueryUsing(fn (Builder $query) => $query
                 ->with(['financialAccount', 'financialCategory', 'counterpartyPartner', 'counterpartyFinancialAccount', 'company',
                     'transferGroupRecords' => fn ($query) => $query->where('company_id', Filament::getTenant()->id)->withExists(['statementLines', 'statementAllocations']),
