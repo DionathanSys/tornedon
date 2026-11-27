@@ -5,6 +5,7 @@ namespace App\Filament\Clusters\Financial\Resources\AccountReceivableInstallment
 use App\Enum\AccountReceivable\Status;
 use App\Filament\Clusters\Financial\Actions\IgnoreFinancialAction;
 use App\Filament\Clusters\Financial\Actions\RefreshChartAccountFromCategoryBulkAction;
+use App\Filament\Clusters\Financial\Resources\AccountReceivableInstallments\Actions\BulkRegisterReceivablePaymentsAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\DeleteInstallmentAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivables\RelationManagers\Actions\EditInstallmentAction;
@@ -175,6 +176,7 @@ class AccountReceivableInstallmentsTable
                     ->color('gray')
                     ->url(AccountReceivableResource::getUrl('create')),
                 RefreshChartAccountFromCategoryBulkAction::make(),
+                BulkRegisterReceivablePaymentsAction::make(),
                 IgnoreFinancialAction::make(bulk: true),
                 IgnoreFinancialAction::make(restore: true, bulk: true),
             ])

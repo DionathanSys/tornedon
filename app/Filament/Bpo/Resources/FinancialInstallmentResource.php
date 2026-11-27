@@ -4,6 +4,7 @@ namespace App\Filament\Bpo\Resources;
 
 use App\Filament\Bpo\Resources\Pages\ListFinancialInstallments;
 use App\Filament\Clusters\Financial\Resources\AccountPayableInstallments\Tables\AccountPayableInstallmentsTable;
+use App\Filament\Clusters\Financial\Resources\AccountReceivableInstallments\Actions\BulkRegisterReceivablePaymentsAction;
 use App\Filament\Clusters\Financial\Resources\AccountReceivableInstallments\Tables\AccountReceivableInstallmentsTable;
 use App\Filament\Clusters\Financial\Resources\Components\InstallmentEditForm;
 use App\Models\AccountPayableInstallment;
@@ -42,6 +43,7 @@ abstract class FinancialInstallmentResource extends Resource
     public static function table(Table $table): Table
     {
         $payable = static::$module === 'account_payables';
+        $toolbarActions = $payable ? [] : [BulkRegisterReceivablePaymentsAction::make()];
         $table = $payable ? AccountPayableInstallmentsTable::configure($table) : AccountReceivableInstallmentsTable::configure($table);
         $accountUrl = fn (AccountPayableInstallment|AccountReceivableInstallment $record): string => static::accountResource()::getUrl('view', ['record' => $record->{static::accountRelationship()}]);
 
@@ -107,7 +109,7 @@ abstract class FinancialInstallmentResource extends Resource
             ->emptyStateHeading('Nenhuma conta encontrada')
             ->emptyStateDescription($payable ? 'As contas a pagar aparecerão aqui.' : 'As contas a receber aparecerão aqui.')
             ->recordActionsPosition(RecordActionsPosition::AfterColumns)
-            ->toolbarActions([])->bulkActions([])
+            ->toolbarActions($toolbarActions)
             ->defaultPaginationPageOption(15)->paginated([15, 30, 50]);
     }
 }
