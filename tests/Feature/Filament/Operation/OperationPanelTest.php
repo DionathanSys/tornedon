@@ -62,7 +62,7 @@ class OperationPanelTest extends TestCase
             ->assertSee('Acesso rápido')
             ->assertSee('Ordens de Serviço')
             ->assertSee('Requisições')
-            ->assertDontSee('Equipamentos');
+            ->assertSee('Equipamentos');
 
         Livewire::test(OperationDashboard::class)
             ->assertActionDoesNotExist('createServiceOrder')

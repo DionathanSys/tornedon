@@ -3,12 +3,14 @@
 namespace App\Filament\Operation;
 
 use App\Filament\Operation\Pages\CommercialDashboard;
+use App\Filament\Operation\Pages\CompanyTeam;
 use App\Filament\Operation\Pages\OperationDashboard;
 use App\Filament\Operation\Pages\Requisitions\RequisitionList;
 use App\Filament\Operation\Pages\ServiceOrders\ServiceOrderQueue;
 use App\Filament\Operation\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Operation\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Operation\Resources\CashMovements\CashMovementResource;
+use App\Filament\Operation\Resources\Equipments\EquipmentResource;
 use App\Filament\Operation\Resources\ProductionRequests\ProductionRequestResource;
 use App\Models\User;
 use App\Services\Access\UserAccessService;
@@ -26,8 +28,9 @@ class OperationModules
             'account_receivables' => ['label' => 'Receber', 'icon' => 'o-arrow-trending-up', 'page' => AccountReceivableResource::class, 'permission' => 'account_receivables.access'],
             'account_payables' => ['label' => 'Pagar', 'icon' => 'o-arrow-trending-down', 'page' => AccountPayableResource::class, 'permission' => 'account_payables.access'],
             'cash_movements' => ['label' => 'Caixa', 'icon' => 'o-arrows-right-left', 'page' => CashMovementResource::class, 'permission' => 'cash_movements.access'],
+            'equipments' => ['label' => 'Equipamentos', 'icon' => 'o-wrench', 'page' => EquipmentResource::class, 'permission' => 'equipments.access'],
             'commercial_dashboard' => ['label' => 'Produção e financeiro', 'icon' => 'o-chart-bar', 'page' => CommercialDashboard::class, 'permission' => 'commercial_dashboard.access'],
-            'team' => ['label' => 'Equipe e acessos', 'icon' => 'o-users', 'page' => \App\Filament\Operation\Pages\CompanyTeam::class, 'permission' => null],
+            'team' => ['label' => 'Equipe e acessos', 'icon' => 'o-users', 'page' => CompanyTeam::class, 'permission' => null],
         ];
     }
 
@@ -67,7 +70,7 @@ class OperationModules
             return false;
         }
         if ($module === 'team') {
-            return \App\Filament\Operation\Pages\CompanyTeam::canAccess();
+            return CompanyTeam::canAccess();
         }
 
         $access = app(UserAccessService::class);
@@ -86,6 +89,7 @@ class OperationModules
             '\\AccountReceivables\\' => 'account_receivables',
             '\\AccountPayables\\' => 'account_payables',
             '\\CashMovements\\' => 'cash_movements',
+            '\\Equipments\\' => 'equipments',
         ] as $namespace => $module) {
             if (str_contains($class, $namespace)) {
                 return $module;
@@ -116,7 +120,7 @@ class OperationModules
                 continue;
             }
             $module = $definitions[$key];
-            if ($key === 'team' && ! \App\Filament\Operation\Pages\CompanyTeam::canAccess()) {
+            if ($key === 'team' && ! CompanyTeam::canAccess()) {
                 continue;
             }
             if ($module['permission'] && ! app(UserAccessService::class)->allows($user, $tenant, $module['permission'], 'operation')) {

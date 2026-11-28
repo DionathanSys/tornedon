@@ -5,6 +5,7 @@ namespace App\Providers\Filament;
 use App\Filament\Operation\Resources\AccountPayables\AccountPayableResource;
 use App\Filament\Operation\Resources\AccountReceivables\AccountReceivableResource;
 use App\Filament\Operation\Resources\CashMovements\CashMovementResource;
+use App\Filament\Operation\Resources\Equipments\EquipmentResource;
 use App\Filament\Operation\Resources\ProductionRequests\ProductionRequestResource;
 use App\Filament\Operation\Widgets\AccountsChart;
 use App\Filament\Operation\Widgets\ProductionRequestChart;
@@ -52,6 +53,7 @@ class OperationPanelProvider extends PanelProvider
                 AccountReceivableResource::class,
                 AccountPayableResource::class,
                 CashMovementResource::class,
+                EquipmentResource::class,
             ])
             ->widgets([
                 StatsOverview::class,
